@@ -1,0 +1,15 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: auth_sphere
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: ${AUTHSPHERE_MYSQL_URL}
+    username: ${AUTHSPHERE_MYSQL_USERNAME}
+    password: ${AUTHSPHERE_MYSQL_PASSWORD}
+mybatis-plus:
+  mapper-locations: classpath*:mapper/**/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
