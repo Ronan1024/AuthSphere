@@ -1,14 +1,11 @@
 package com.authsphere.server.common.enums;
 
-import lombok.Getter;
-
 /**
  * @program: AuthSphere
  * @description:
  * @author: L.J.Ran
  * @create: 2026/5/28
  */
-@Getter
 public enum ResponseCode {
     /**
      * 成功
@@ -45,4 +42,11 @@ public enum ResponseCode {
         this.message = message;
     }
 
+    public String getCode() {
+        return code;
+    }
+
+    public String getMessage() {
+        return message;
+    }
 }

@@ -1,0 +1,31 @@
+package com.authsphere.server.common.enums;
+
+import lombok.Getter;
+
+/**
+ * @program: AuthSphere
+ * @description:
+ * @author: L.J.Ran
+ * @create: 2026/5/26
+ */
+@Getter
+public enum StatusEnum {
+    /**
+     * 正常
+     */
+    NORMAL(1, "正常"),
+    /**
+     * 禁用
+     */
+    DISABLED(2, "禁用");
+
+    private Integer code;
+
+    private String desc;
+
+    StatusEnum(Integer code, String desc) {
+        this.code = code;
+        this.desc = desc;
+    }
+
+}

@@ -1,6 +1,7 @@
 package com.authsphere.server.common.model;
 
 import com.authsphere.server.common.enums.ResponseCode;
+import lombok.Data;
 
 import static com.authsphere.server.common.enums.ResponseCode.SUCCESS;
 
@@ -10,6 +11,7 @@ import static com.authsphere.server.common.enums.ResponseCode.SUCCESS;
  * @author: L.J.Ran
  * @create: 2026/5/28
  */
+@Data
 public class R<T> {
 
     private T data;
@@ -46,37 +48,5 @@ public class R<T> {
 
     public static <T> R<T> fail(String code, String message) {
         return new R<>(null, code, message, "v1");
-    }
-
-    public T getData() {
-        return data;
-    }
-
-    public void setData(T data) {
-        this.data = data;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public void setMessage(String message) {
-        this.message = message;
-    }
-
-    public String getVersion() {
-        return version;
-    }
-
-    public void setVersion(String version) {
-        this.version = version;
     }
 }
