@@ -32,7 +32,7 @@ public class Realm  extends BaseDataBaseModel {
     /**
      * 身份域类型
      */
-    private String typeCode;
+    private Long typeCategoryId;
 
     /**
      * 独立登录页

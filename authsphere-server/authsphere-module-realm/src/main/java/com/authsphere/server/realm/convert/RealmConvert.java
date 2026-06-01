@@ -19,21 +19,13 @@ public interface RealmConvert {
 
 
     @Mapping(target = "updateTime", ignore = true)
-    @Mapping(target = "uniquePolicy", ignore = true)
-    @Mapping(target = "typeCode", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "passwordPolicy", ignore = true)
-    @Mapping(target = "mfaPolicy", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     Realm model(CreateRealmRequest createRealmRequest);
 
     @Mapping(target = "updateTime", ignore = true)
-    @Mapping(target = "uniquePolicy", ignore = true)
-    @Mapping(target = "typeCode", ignore = true)
     @Mapping(target = "status", ignore = true)
-    @Mapping(target = "passwordPolicy", ignore = true)
-    @Mapping(target = "mfaPolicy", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     void copyByModel(CreateRealmRequest createRealmRequest, @MappingTarget Realm realm);

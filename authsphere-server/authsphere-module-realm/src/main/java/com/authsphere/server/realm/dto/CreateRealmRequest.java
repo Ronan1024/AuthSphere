@@ -31,6 +31,12 @@ public class CreateRealmRequest {
 //    @NotEmpty(message = "身份域编号不能为空")
 //    private String typeCode;
 
+
+    /**
+     * 身份域类型id
+     */
+    private Long typeCategoryId;
+
     /**
      * 独立登录页
      */
@@ -46,6 +52,21 @@ public class CreateRealmRequest {
      * 是否开启SSO
      */
     private Boolean ssoEnabled;
+
+    /**
+     * 密码策略id。
+     */
+    private Long passwordPolicy;
+
+    /**
+     * MFA 策略id。
+     */
+    private Long mfaPolicy;
+
+    /**
+     * 账号唯一性规则id。
+     */
+    private Long uniquePolicy;
 
     /**
      * 描述

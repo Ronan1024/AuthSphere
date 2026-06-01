@@ -30,12 +30,51 @@ public class RealmPageResponse extends BaseDataBaseModel {
     private String name;
 
     /**
+     * 身份域类型id。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long typeCategoryId;
+
+    /**
      * 是否允许注册
      */
     private Boolean registerEnabled;
 
     /**
+     * 独立登录页
+     */
+    private String loginUrl;
+
+    /**
+     * 是否开启SSO
+     */
+    private Boolean ssoEnabled;
+
+    /**
+     * 密码策略id。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long passwordPolicy;
+
+    /**
+     * MFA 策略id。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long mfaPolicy;
+
+    /**
+     * 账号唯一性规则id。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long uniquePolicy;
+
+    /**
      * 状态
      */
     private Integer status;
+
+    /**
+     * 描述
+     */
+    private String description;
 }

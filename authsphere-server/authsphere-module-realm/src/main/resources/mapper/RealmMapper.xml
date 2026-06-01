@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.realm.mapper.RealmMapper">
+    <select id="page" resultType="com.authsphere.server.realm.dto.RealmPageResponse">
+        select
+        id,
+        code,
+        name,
+        type_category_id as typeCategoryId,
+        login_url as loginUrl,
+        realm.register_enabled as registerEnabled,
+        sso_enabled as ssoEnabled,
+        password_policy as passwordPolicy,
+        mfa_policy as mfaPolicy,
+        unique_policy as uniquePolicy,
+        status,
+        description,
+        create_time,
+        update_time
+        from realm
+        <where>
+            <if test="realmPageRequest.name != null and realmPageRequest.name != ''">
+                and `name` like concat('%', #{realmPageRequest.name}, '%')
+            </if>
+            <if test="realmPageRequest.code != null and realmPageRequest.code  != ''">
+                and `code` = #{realmPageRequest.code}
+            </if>
+            <if test="realmPageRequest.status != null">
+                and `status` = #{realmPageRequest.status}
+            </if>
+        </where>
+        order by update_time desc, create_time desc
+    </select>
+</mapper>

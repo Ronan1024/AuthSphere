@@ -44,6 +44,7 @@ public class RealmServiceImpl implements RealmService {
         }
 
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
+        realm.setStatus(NORMAL.getCode());
         realmMapper.insert(realm);
         return Boolean.TRUE;
     }

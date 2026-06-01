@@ -5,27 +5,24 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * @program: AuthSphere
- * @description:
- * @author: L.J.Ran
- * @create: 2026/5/28
+ * 类型分类分页请求。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class RealmPageRequest extends PageRequest {
+public class TypeCategoryPageRequest extends PageRequest {
 
     /**
-     * 身份域编号
+     * 分类编号。
      */
     private String code;
 
     /**
-     * 身份域名称
+     * 分类名称。
      */
     private String name;
 
     /**
-     * 状态
+     * 状态。
      */
     private Integer status;
 }
