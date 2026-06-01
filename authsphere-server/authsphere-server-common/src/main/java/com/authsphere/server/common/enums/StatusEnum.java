@@ -2,6 +2,8 @@ package com.authsphere.server.common.enums;
 
 import lombok.Getter;
 
+import java.util.Objects;
+
 /**
  * @program: AuthSphere
  * @description:
@@ -26,6 +28,13 @@ public enum StatusEnum {
     StatusEnum(Integer code, String desc) {
         this.code = code;
         this.desc = desc;
+    }
+
+    /**
+     * 获取当前状态反向状态
+     */
+    public static  Integer reverseStatus(Integer status) {
+        return Objects.equals(status, NORMAL.code) ? DISABLED.getCode() : NORMAL.getCode();
     }
 
 }

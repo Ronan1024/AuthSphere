@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.subject.mapper.SubjectMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.subject.model.Subject">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="subjectTypeId" column="subject_type_id" jdbcType="BIGINT"/>
+            <result property="realmId" column="realm_id" jdbcType="BIGINT"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="rootSubjectId" column="root_subject_id" jdbcType="BIGINT"/>
+            <result property="parentSubjectId" column="parent_subject_id" jdbcType="BIGINT"/>
+            <result property="isRoot" column="is_root" jdbcType="TINYINT"/>
+            <result property="builtIn" column="built_in" jdbcType="TINYINT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,subject_type_id,realm_id,
+        code,name,status,
+        root_subject_id,parent_subject_id,is_root,
+        built_in,description,create_time,
+        update_time
+    </sql>
+
+    <sql id="Response_Column_List">
+        s.id,
+        s.subject_type_id as subjectTypeId,
+        st.code as subjectTypeCode,
+        st.name as subjectTypeName,
+        s.realm_id as realmId,
+        r.code as realmCode,
+        r.name as realmName,
+        s.code,
+        s.name,
+        s.status,
+        s.root_subject_id as rootSubjectId,
+        root_subject.code as rootSubjectCode,
+        root_subject.name as rootSubjectName,
+        s.parent_subject_id as parentSubjectId,
+        parent_subject.code as parentSubjectCode,
+        parent_subject.name as parentSubjectName,
+        s.is_root as isRoot,
+        s.built_in as builtIn,
+        s.description,
+        s.create_time,
+        s.update_time
+    </sql>
+
+    <sql id="Response_From">
+        from subject s
+        left join subject_type st on st.id = s.subject_type_id
+        left join realm r on r.id = s.realm_id
+        left join subject root_subject on root_subject.id = s.root_subject_id
+        left join subject parent_subject on parent_subject.id = s.parent_subject_id
+    </sql>
+
+    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+        select
+        <include refid="Response_Column_List"/>
+        <include refid="Response_From"/>
+        <where>
+            <if test="request.subjectTypeId != null">
+                and s.subject_type_id = #{request.subjectTypeId}
+            </if>
+            <if test="request.realmId != null">
+                and s.realm_id = #{request.realmId}
+            </if>
+            <if test="request.code != null and request.code != ''">
+                and s.code = #{request.code}
+            </if>
+            <if test="request.name != null and request.name != ''">
+                and s.name like concat('%', #{request.name}, '%')
+            </if>
+            <if test="request.rootSubjectId != null">
+                and s.root_subject_id = #{request.rootSubjectId}
+            </if>
+            <if test="request.parentSubjectId != null">
+                and s.parent_subject_id = #{request.parentSubjectId}
+            </if>
+            <if test="request.isRoot != null">
+                and s.is_root = #{request.isRoot}
+            </if>
+            <if test="request.status != null">
+                and s.status = #{request.status}
+            </if>
+        </where>
+        order by s.create_time desc
+    </select>
+
+    <select id="listAll" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+        select
+        <include refid="Response_Column_List"/>
+        <include refid="Response_From"/>
+        where s.status = 1
+        order by s.create_time desc
+    </select>
+
+    <select id="detail" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+        select
+        <include refid="Response_Column_List"/>
+        <include refid="Response_From"/>
+        where s.id = #{id}
+    </select>
+
+    <select id="countRealmById" resultType="java.lang.Long">
+        select count(1)
+        from realm
+        where id = #{realmId}
+    </select>
+</mapper>

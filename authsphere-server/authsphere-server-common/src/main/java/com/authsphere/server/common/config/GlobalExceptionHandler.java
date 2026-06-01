@@ -31,17 +31,22 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BizException.class)
     public R<Void> handleBizException(BizException exception) {
+        log.error("业务异常，code={}，message={}", exception.getCode(), exception.getMessage(), exception);
         return R.fail(exception.getCode(), exception.getMessage());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public R<Void> handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
-        return R.fail(ResponseCode.PARAM_ERROR.getCode(), getFieldErrorMessage(exception));
+        String message = getFieldErrorMessage(exception);
+        log.error("请求参数校验失败，message={}", message, exception);
+        return R.fail(ResponseCode.PARAM_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(BindException.class)
     public R<Void> handleBindException(BindException exception) {
-        return R.fail(ResponseCode.PARAM_ERROR.getCode(), getFieldErrorMessage(exception));
+        String message = getFieldErrorMessage(exception);
+        log.error("请求参数绑定失败，message={}", message, exception);
+        return R.fail(ResponseCode.PARAM_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
@@ -50,31 +55,37 @@ public class GlobalExceptionHandler {
                 .stream()
                 .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
                 .collect(Collectors.joining("; "));
+        log.error("请求参数约束校验失败，message={}", message, exception);
         return R.fail(ResponseCode.PARAM_ERROR.getCode(), message);
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public R<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException exception) {
+        log.error("缺少请求参数，parameter={}", exception.getParameterName(), exception);
         return R.fail(ResponseCode.PARAM_ERROR.getCode(), exception.getParameterName() + "不能为空");
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public R<Void> handleMethodArgumentTypeMismatchException(MethodArgumentTypeMismatchException exception) {
+        log.error("请求参数类型错误，parameter={}", exception.getName(), exception);
         return R.fail(ResponseCode.PARAM_ERROR.getCode(), exception.getName() + "参数类型错误");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public R<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException exception) {
+        log.error("请求体格式错误", exception);
         return R.fail(ResponseCode.PARAM_ERROR.getCode(), "请求体格式错误");
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public R<Void> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException exception) {
+        log.error("请求方法不支持，method={}", exception.getMethod(), exception);
         return R.fail(ResponseCode.METHOD_NOT_ALLOWED);
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
     public R<Void> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException exception) {
+        log.error("请求媒体类型不支持，contentType={}", exception.getContentType(), exception);
         return R.fail(ResponseCode.UNSUPPORTED_MEDIA_TYPE);
     }
 
