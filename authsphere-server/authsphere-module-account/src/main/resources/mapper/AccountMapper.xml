@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.account.mapper.AccountMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.account.model.Account">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="realmId" column="realm_id" jdbcType="BIGINT"/>
+            <result property="username" column="username" jdbcType="VARCHAR"/>
+            <result property="password" column="password" jdbcType="VARCHAR"/>
+            <result property="email" column="email" jdbcType="VARCHAR"/>
+            <result property="mobile" column="mobile" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="nickname" column="nickname" jdbcType="VARCHAR"/>
+            <result property="avatar" column="avatar" jdbcType="VARCHAR"/>
+            <result property="lastLoginTime" column="last_login_time" jdbcType="TIMESTAMP"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,realm_id,username,
+        password,email,mobile,
+        status,nickname,avatar,
+        last_login_time,create_time,update_time
+    </sql>
+
+    <select id="page" resultType="com.authsphere.server.account.dto.AccountPageResponse">
+        select
+            a.id,
+            a.realm_id as realmId,
+            r.code as realmCode,
+            r.name as realmName,
+            a.username,
+            a.nickname,
+            a.avatar,
+            a.email,
+            a.mobile,
+            a.status,
+            a.last_login_time as lastLoginTime,
+            (
+                select count(1)
+                from subject_member sm
+                where sm.account_id = a.id
+                  and sm.status != 3
+            ) as subjectMemberCount,
+            (
+                select count(1)
+                from iam_account_external_identity ei
+                where ei.account_id = a.id
+            ) as externalIdentityCount,
+            a.create_time,
+            a.update_time
+        from account a
+        left join realm r on r.id = a.realm_id
+        <where>
+            <if test="request.realmId != null">
+                and a.realm_id = #{request.realmId}
+            </if>
+            <if test="request.realmCode != null and request.realmCode != ''">
+                and r.code = #{request.realmCode}
+            </if>
+            <if test="request.keyword != null and request.keyword != ''">
+                and (
+                    a.username like concat('%', #{request.keyword}, '%')
+                    or a.mobile like concat('%', #{request.keyword}, '%')
+                    or a.email like concat('%', #{request.keyword}, '%')
+                    or a.nickname like concat('%', #{request.keyword}, '%')
+                )
+            </if>
+            <if test="request.username != null and request.username != ''">
+                and a.username like concat('%', #{request.username}, '%')
+            </if>
+            <if test="request.mobile != null and request.mobile != ''">
+                and a.mobile = #{request.mobile}
+            </if>
+            <if test="request.email != null and request.email != ''">
+                and a.email = #{request.email}
+            </if>
+            <if test="request.status != null">
+                and a.status = #{request.status}
+            </if>
+        </where>
+        order by a.create_time desc
+    </select>
+
+    <select id="detail" resultType="com.authsphere.server.account.dto.AccountInfoResponse">
+        select
+            a.id,
+            a.realm_id as realmId,
+            r.code as realmCode,
+            r.name as realmName,
+            a.username,
+            a.nickname,
+            a.avatar,
+            a.email,
+            a.mobile,
+            a.status,
+            a.last_login_time as lastLoginTime,
+            (
+                select count(1)
+                from subject_member sm
+                where sm.account_id = a.id
+                  and sm.status != 3
+            ) as subjectMemberCount,
+            (
+                select count(1)
+                from iam_account_external_identity ei
+                where ei.account_id = a.id
+            ) as externalIdentityCount,
+            a.create_time,
+            a.update_time
+        from account a
+        left join realm r on r.id = a.realm_id
+        where a.id = #{id}
+    </select>
+
+    <select id="countRealmById" resultType="java.lang.Long">
+        select count(1)
+        from realm
+        where id = #{realmId}
+    </select>
+
+    <select id="countEnabledRealmById" resultType="java.lang.Long">
+        select count(1)
+        from realm
+        where id = #{realmId}
+          and status = 1
+    </select>
+
+    <insert id="upsertPasswordCredential">
+        insert into account_credential (
+            id,
+            account_id,
+            realm_id,
+            credential_type,
+            credential_value,
+            password_algo,
+            force_change,
+            status,
+            create_time,
+            update_time
+        )
+        values (
+            #{account.id},
+            #{account.id},
+            #{account.realmId},
+            1,
+            #{password},
+            'PLAIN_DEV',
+            case when #{forceReset} = true then 1 else 0 end,
+            1,
+            now(),
+            now()
+        )
+        on duplicate key update
+            credential_value = values(credential_value),
+            password_algo = values(password_algo),
+            force_change = values(force_change),
+            status = 1,
+            update_time = now()
+    </insert>
+
+    <select id="listSubjects" resultType="com.authsphere.server.account.dto.AccountSubjectResponse">
+        select
+            sm.id as memberId,
+            s.id as subjectId,
+            s.code as subjectCode,
+            s.name as subjectName,
+            st.name as subjectTypeName,
+            root_subject.name as rootSubjectName,
+            sm.member_type as memberType,
+            case sm.member_type
+                when 1 then 'OWNER'
+                when 2 then 'ADMIN'
+                when 3 then 'MEMBER'
+                when 4 then 'STAFF'
+                else 'UNKNOWN'
+            end as memberTypeName,
+            sm.status as memberStatus,
+            s.status as subjectStatus,
+            sm.joined_at as joinedAt
+        from subject_member sm
+        inner join subject s on s.id = sm.subject_id
+        left join subject_type st on st.id = s.subject_type_id
+        left join subject root_subject on root_subject.id = s.root_subject_id
+        where sm.account_id = #{accountId}
+        order by sm.joined_at desc, sm.create_time desc
+    </select>
+
+    <select id="listExternalIdentities" resultType="com.authsphere.server.account.dto.AccountExternalIdentityResponse">
+        select
+            ei.id,
+            ei.provider_type as providerType,
+            ei.provider_code as providerCode,
+            coalesce(p.provider_name, ei.provider_code) as providerName,
+            ei.external_user_id as externalUserId,
+            ei.external_union_id as externalUnionId,
+            ei.external_app_id as externalAppId,
+            ei.external_nickname as externalNickname,
+            ei.external_avatar as externalAvatar,
+            ei.status,
+            ei.bind_at as bindAt,
+            ei.last_login_time as lastLoginTime
+        from iam_account_external_identity ei
+        left join iam_realm_identity_provider p on p.id = ei.provider_id
+        where ei.account_id = #{accountId}
+        order by ei.bind_at desc, ei.create_time desc
+    </select>
+
+    <select id="pageLoginLogs" resultType="com.authsphere.server.account.dto.AccountLoginLogResponse">
+        select
+            l.id,
+            r.name as realmName,
+            l.login_entry_code as loginEntryCode,
+            l.provider_type as providerType,
+            l.login_type as loginType,
+            l.login_identifier as loginIdentifier,
+            l.success = 1 as success,
+            l.fail_reason as failReason,
+            l.ip,
+            l.user_agent as userAgent,
+            l.device_id as deviceId,
+            l.create_time
+        from iam_login_log l
+        left join realm r on r.id = l.realm_id
+        <where>
+            l.account_id = #{accountId}
+            <if test="request.loginType != null and request.loginType != ''">
+                and l.login_type = #{request.loginType}
+            </if>
+            <if test="request.success != null">
+                and l.success = case when #{request.success} = true then 1 else 0 end
+            </if>
+            <if test="request.loginEntryCode != null and request.loginEntryCode != ''">
+                and l.login_entry_code = #{request.loginEntryCode}
+            </if>
+        </where>
+        order by l.create_time desc
+    </select>
+</mapper>
