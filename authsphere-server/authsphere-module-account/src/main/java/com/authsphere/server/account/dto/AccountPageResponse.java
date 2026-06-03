@@ -65,7 +65,7 @@ public class AccountPageResponse extends BaseDataBaseModel {
     /**
      * 加入主体数。
      */
-    private Long subjectMemberCount;
+    private Integer subjectMemberCount = 0;
 
     /**
      * 第三方绑定数。

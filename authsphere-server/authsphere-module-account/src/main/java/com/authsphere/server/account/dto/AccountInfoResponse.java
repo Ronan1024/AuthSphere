@@ -1,10 +1,13 @@
 package com.authsphere.server.account.dto;
 
 import com.authsphere.server.common.model.BaseDataBaseModel;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
 
 /**
  * @program: AuthSphere
@@ -31,6 +34,9 @@ public class AccountInfoResponse extends BaseDataBaseModel {
 
     private String realmCode;
 
+    /**
+     * 身份域名称
+     */
     private String realmName;
 
     /**
@@ -58,9 +64,13 @@ public class AccountInfoResponse extends BaseDataBaseModel {
      */
     private Integer status;
 
-    private Long subjectMemberCount;
+    /**
+     * 绑定主体数量
+     */
+    private Integer subjectMemberCount;
 
     private Long externalIdentityCount;
 
-    private java.time.LocalDateTime lastLoginTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime lastLoginTime;
 }

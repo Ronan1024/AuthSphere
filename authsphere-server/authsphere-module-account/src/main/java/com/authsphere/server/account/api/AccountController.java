@@ -44,7 +44,7 @@ public class AccountController {
      * 账号详情。
      */
     @GetMapping("/{id}")
-    public AccountInfoResponse detail(@PathVariable("id") Long id) {
+    public AccountInfoResponse detail(@PathVariable Long id) {
         return accountService.detail(id);
     }
 

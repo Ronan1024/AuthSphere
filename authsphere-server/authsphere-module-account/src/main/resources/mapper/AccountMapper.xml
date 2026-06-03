@@ -28,93 +28,45 @@
 
     <select id="page" resultType="com.authsphere.server.account.dto.AccountPageResponse">
         select
-            a.id,
-            a.realm_id as realmId,
-            r.code as realmCode,
-            r.name as realmName,
-            a.username,
-            a.nickname,
-            a.avatar,
-            a.email,
-            a.mobile,
-            a.status,
-            a.last_login_time as lastLoginTime,
-            (
-                select count(1)
-                from subject_member sm
-                where sm.account_id = a.id
-                  and sm.status != 3
-            ) as subjectMemberCount,
-            (
-                select count(1)
-                from iam_account_external_identity ei
-                where ei.account_id = a.id
-            ) as externalIdentityCount,
-            a.create_time,
-            a.update_time
+            id,
+            realm_id as realmId,
+            username,
+            nickname,
+            avatar,
+            email,
+            mobile,
+            status,
+            last_login_time as lastLoginTime,
+            create_time,
+            update_time
         from account a
-        left join realm r on r.id = a.realm_id
         <where>
             <if test="request.realmId != null">
-                and a.realm_id = #{request.realmId}
-            </if>
-            <if test="request.realmCode != null and request.realmCode != ''">
-                and r.code = #{request.realmCode}
+                and realm_id = #{request.realmId}
             </if>
             <if test="request.keyword != null and request.keyword != ''">
-                and (
-                    a.username like concat('%', #{request.keyword}, '%')
-                    or a.mobile like concat('%', #{request.keyword}, '%')
-                    or a.email like concat('%', #{request.keyword}, '%')
-                    or a.nickname like concat('%', #{request.keyword}, '%')
+                and (username like concat('%', #{request.keyword}, '%')
+                    or mobile like concat('%', #{request.keyword}, '%')
+                    or email like concat('%', #{request.keyword}, '%')
+                    or nickname like concat('%', #{request.keyword}, '%')
                 )
             </if>
             <if test="request.username != null and request.username != ''">
-                and a.username like concat('%', #{request.username}, '%')
+                and username like concat('%', #{request.username}, '%')
             </if>
             <if test="request.mobile != null and request.mobile != ''">
-                and a.mobile = #{request.mobile}
+                and mobile = #{request.mobile}
             </if>
             <if test="request.email != null and request.email != ''">
-                and a.email = #{request.email}
+                and email = #{request.email}
             </if>
             <if test="request.status != null">
-                and a.status = #{request.status}
+                and status = #{request.status}
             </if>
         </where>
-        order by a.create_time desc
+        order by create_time desc
     </select>
 
-    <select id="detail" resultType="com.authsphere.server.account.dto.AccountInfoResponse">
-        select
-            a.id,
-            a.realm_id as realmId,
-            r.code as realmCode,
-            r.name as realmName,
-            a.username,
-            a.nickname,
-            a.avatar,
-            a.email,
-            a.mobile,
-            a.status,
-            a.last_login_time as lastLoginTime,
-            (
-                select count(1)
-                from subject_member sm
-                where sm.account_id = a.id
-                  and sm.status != 3
-            ) as subjectMemberCount,
-            (
-                select count(1)
-                from iam_account_external_identity ei
-                where ei.account_id = a.id
-            ) as externalIdentityCount,
-            a.create_time,
-            a.update_time
-        from account a
-        left join realm r on r.id = a.realm_id
-        where a.id = #{id}
-    </select>
 
     <select id="countRealmById" resultType="java.lang.Long">
         select count(1)

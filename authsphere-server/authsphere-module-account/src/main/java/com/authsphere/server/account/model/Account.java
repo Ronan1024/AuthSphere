@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDateTime;
+
 /**
  * 账号表
  * @TableName account
@@ -64,5 +66,5 @@ public class Account extends BaseDataBaseModel {
     /**
      * 最后登录时间
      */
-    private java.time.LocalDateTime lastLoginTime;
+    private LocalDateTime lastLoginTime;
 }

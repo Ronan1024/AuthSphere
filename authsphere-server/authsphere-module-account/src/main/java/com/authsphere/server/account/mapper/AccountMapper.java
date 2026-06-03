@@ -15,17 +15,18 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 /**
-* @author longjiangran
-* @description 针对表【account(账号表)】的数据库操作Mapper
-* @createDate 2026-05-28 16:01:48
-* @Entity com.authsphere.server.realm.model.Account
-*/
+ * @author longjiangran
+ * @description 针对表【account(账号表)】的数据库操作Mapper
+ * @createDate 2026-05-28 16:01:48
+ * @Entity com.authsphere.server.realm.model.Account
+ */
 @Mapper
 public interface AccountMapper extends BaseMapper<Account> {
 
+    /**
+     * 获取账号分页列表
+     */
     Page<AccountPageResponse> page(@Param("page") IPage<AccountPageResponse> page, @Param("request") AccountPageRequest request);
-
-    AccountInfoResponse detail(@Param("id") Long id);
 
     Long countRealmById(@Param("realmId") Long realmId);
 

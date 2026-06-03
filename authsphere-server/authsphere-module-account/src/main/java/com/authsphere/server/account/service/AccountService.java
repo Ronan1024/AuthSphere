@@ -12,6 +12,7 @@ import com.authsphere.server.account.dto.AccountSubjectResponse;
 import com.authsphere.server.account.model.Account;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
 * @author longjiangran
@@ -33,6 +34,7 @@ public interface AccountService extends IService<Account> {
     /**
      * 新增账号
      */
+    @Transactional(rollbackFor = Exception.class)
     Boolean create(AccountCreateRequest request);
 
     /**
