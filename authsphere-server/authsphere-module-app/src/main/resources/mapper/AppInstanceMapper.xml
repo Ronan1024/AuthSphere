@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.app.mapper.AppInstanceMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppInstance">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="appId" column="app_id" jdbcType="BIGINT"/>
+            <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
+            <result property="ownerSubjectId" column="owner_subject_id" jdbcType="BIGINT"/>
+            <result property="rootSubjectId" column="root_subject_id" jdbcType="BIGINT"/>
+            <result property="instanceCode" column="instance_code" jdbcType="VARCHAR"/>
+            <result property="instanceName" column="instance_name" jdbcType="VARCHAR"/>
+            <result property="openMode" column="open_mode" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="configJson" column="config_json" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,app_id,app_code,
+        owner_subject_id,root_subject_id,instance_code,
+        instance_name,open_mode,status,
+        config_json,create_time,update_time
+    </sql>
+
+    <select id="page" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from app_instance
+        <where>
+            <if test="request.appId != null">
+                and app_id = #{request.appId}
+            </if>
+            <if test="request.appCode != null and request.appCode != ''">
+                and app_code = #{request.appCode}
+            </if>
+            <if test="request.ownerSubjectId != null">
+                and owner_subject_id = #{request.ownerSubjectId}
+            </if>
+            <if test="request.instanceCode != null and request.instanceCode != ''">
+                and instance_code like concat('%', #{request.instanceCode}, '%')
+            </if>
+            <if test="request.instanceName != null and request.instanceName != ''">
+                and instance_name like concat('%', #{request.instanceName}, '%')
+            </if>
+            <if test="request.status != null">
+                and status = #{request.status}
+            </if>
+        </where>
+        order by update_time desc, create_time desc
+    </select>
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.app.mapper.AppMenuMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppMenu">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
+            <result property="clientCode" column="client_code" jdbcType="VARCHAR"/>
+            <result property="parentId" column="parent_id" jdbcType="BIGINT"/>
+            <result property="menuCode" column="menu_code" jdbcType="VARCHAR"/>
+            <result property="menuName" column="menu_name" jdbcType="VARCHAR"/>
+            <result property="routePath" column="route_path" jdbcType="VARCHAR"/>
+            <result property="componentPath" column="component_path" jdbcType="VARCHAR"/>
+            <result property="icon" column="icon" jdbcType="VARCHAR"/>
+            <result property="sortNo" column="sort_no" jdbcType="INTEGER"/>
+            <result property="visible" column="visible" jdbcType="TINYINT"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="builtIn" column="built_in" jdbcType="TINYINT"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,app_code,client_code,
+        parent_id,menu_code,menu_name,
+        route_path,component_path,icon,
+        sort_no,visible,status,
+        built_in,create_time,update_time
+    </sql>
+</mapper>

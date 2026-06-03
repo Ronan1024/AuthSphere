@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.app.mapper.AppMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.App">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
+            <result property="appName" column="app_name" jdbcType="VARCHAR"/>
+            <result property="appType" column="app_type" jdbcType="VARCHAR"/>
+            <result property="entryUrl" column="entry_url" jdbcType="VARCHAR"/>
+            <result property="icon" column="icon" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="builtIn" column="built_in" jdbcType="TINYINT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,app_code,app_name,
+        app_type,entry_url,icon,
+        status,built_in,description,
+        create_time,update_time
+    </sql>
+</mapper>

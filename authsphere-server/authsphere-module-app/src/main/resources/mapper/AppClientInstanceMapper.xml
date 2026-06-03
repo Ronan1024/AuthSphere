@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.app.mapper.AppClientInstanceMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppClientInstance">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="appInstanceId" column="app_instance_id" jdbcType="BIGINT"/>
+        <result property="appId" column="app_id" jdbcType="BIGINT"/>
+        <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
+        <result property="appClientId" column="app_client_id" jdbcType="BIGINT"/>
+        <result property="clientCode" column="client_code" jdbcType="VARCHAR"/>
+        <result property="ownerSubjectId" column="owner_subject_id" jdbcType="BIGINT"/>
+        <result property="rootSubjectId" column="root_subject_id" jdbcType="BIGINT"/>
+        <result property="clientInstanceCode" column="client_instance_code" jdbcType="VARCHAR"/>
+        <result property="clientInstanceName" column="client_instance_name" jdbcType="VARCHAR"/>
+        <result property="realmId" column="realm_id" jdbcType="BIGINT"/>
+        <result property="entryUrl" column="entry_url" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="TINYINT"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,app_instance_id,app_id,
+        app_code,app_client_id,client_code,
+        owner_subject_id,root_subject_id,client_instance_code,
+        client_instance_name,realm_id,entry_url,
+        status,create_time,update_time
+    </sql>
+
+    <select id="page" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from app_client_instance
+        <where>
+            <if test="request.appInstanceId != null">
+                and app_instance_id = #{request.appInstanceId}
+            </if>
+            <if test="request.appClientId != null">
+                and app_client_id = #{request.appClientId}
+            </if>
+            <if test="request.appCode != null and request.appCode != ''">
+                and app_code = #{request.appCode}
+            </if>
+            <if test="request.clientCode != null and request.clientCode != ''">
+                and client_code = #{request.clientCode}
+            </if>
+            <if test="request.clientInstanceCode != null and request.clientInstanceCode != ''">
+                and client_instance_code like concat('%', #{request.clientInstanceCode}, '%')
+            </if>
+            <if test="request.clientInstanceName != null and request.clientInstanceName != ''">
+                and client_instance_name like concat('%', #{request.clientInstanceName}, '%')
+            </if>
+            <if test="request.ownerSubjectId != null">
+                and owner_subject_id = #{request.ownerSubjectId}
+            </if>
+            <if test="request.status != null">
+                and status = #{request.status}
+            </if>
+        </where>
+        order by update_time desc, create_time desc
+    </select>
+</mapper>

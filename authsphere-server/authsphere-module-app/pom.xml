@@ -9,7 +9,8 @@
         <version>0.1.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>authsphere-server-subject</artifactId>
+    <groupId>com.authsphere.server.app</groupId>
+    <artifactId>authsphere-module-app</artifactId>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -23,12 +24,16 @@
             <artifactId>authsphere-server-common</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
+            <groupId>com.authsphere.server</groupId>
+            <artifactId>authsphere-module-subject</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
+            <groupId>com.authsphere.server.realm</groupId>
+            <artifactId>authsphere-module-realm</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
