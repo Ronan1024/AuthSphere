@@ -1,6 +1,12 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { Plus, InfoFilled, FolderOpened, Menu as MenuIcon, Warning, Search, RefreshLeft } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { appClientApi, type AppClientRecord } from '@/api/appClient'
+import { menuApi, type AppMenuRecord } from '@/api/menu'
+
+const route = useRoute()
 
 const query = reactive({
   name: '',
@@ -10,173 +16,183 @@ const query = reactive({
 })
 
 const loading = ref(false)
+const dialogVisible = ref(false)
+const submitLoading = ref(false)
+const isEdit = ref(false)
+const formRef = ref()
+const formData = reactive({
+  id: '',
+  parentId: '',
+  menuName: '',
+  menuCode: '',
+  routePath: '',
+  componentPath: '',
+  sortNo: 0,
+  visible: 1,
+  status: 1
+})
 
-// Tree Mock Data
-const tableData = [
-  {
-    id: '1',
-    name: '应用管理',
-    code: 'app:manage',
-    parentName: '根目录',
-    routePath: '/app',
-    componentPath: 'Layout',
-    sort: 1,
-    status: 1,
-    isVisible: true,
-    isBuiltIn: true,
-    updateTime: '2024-05-20 16:45:00',
-    isFolder: true,
-    children: [
-      {
-        id: '11',
-        name: '应用列表',
-        code: 'app:list',
-        parentName: '应用管理',
-        routePath: '/app/list',
-        componentPath: 'app/list/index.vue',
-        sort: 1,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      },
-      {
-        id: '12',
-        name: '新增应用',
-        code: 'app:create',
-        parentName: '应用管理',
-        routePath: '/app/create',
-        componentPath: 'app/create/index.vue',
-        sort: 2,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      },
-      {
-        id: '13',
-        name: '应用详情',
-        code: 'app:detail',
-        parentName: '应用管理',
-        routePath: '/app/detail/:id',
-        componentPath: 'app/detail/index.vue',
-        sort: 3,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      }
-    ]
-  },
-  {
-    id: '2',
-    name: '权限管理',
-    code: 'permission:manage',
-    parentName: '根目录',
-    routePath: '/permission',
-    componentPath: 'Layout',
-    sort: 2,
-    status: 1,
-    isVisible: true,
-    isBuiltIn: true,
-    updateTime: '2024-05-20 16:45:00',
-    isFolder: true,
-    children: [
-      {
-        id: '21',
-        name: '权限列表',
-        code: 'permission:list',
-        parentName: '权限管理',
-        routePath: '/permission/list',
-        componentPath: 'permission/list/index.vue',
-        sort: 1,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      },
-      {
-        id: '22',
-        name: '新增权限',
-        code: 'permission:create',
-        parentName: '权限管理',
-        routePath: '/permission/create',
-        componentPath: 'permission/create/index.vue',
-        sort: 2,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      }
-    ]
-  },
-  {
-    id: '3',
-    name: '菜单管理',
-    code: 'menu:manage',
-    parentName: '根目录',
-    routePath: '/menu',
-    componentPath: 'Layout',
-    sort: 3,
-    status: 1,
-    isVisible: true,
-    isBuiltIn: true,
-    updateTime: '2024-05-20 16:45:00',
-    isFolder: true,
-    children: [
-      {
-        id: '31',
-        name: '菜单列表',
-        code: 'menu:resource',
-        parentName: '菜单管理',
-        routePath: '/menu/resource',
-        componentPath: 'menu/resource/index.vue',
-        sort: 1,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      },
-      {
-        id: '32',
-        name: '新增菜单',
-        code: 'menu:create',
-        parentName: '菜单管理',
-        routePath: '/menu/create',
-        componentPath: 'menu/create/index.vue',
-        sort: 2,
-        status: 1,
-        isVisible: true,
-        isBuiltIn: true,
-        updateTime: '2024-05-20 16:45:00',
-        isFolder: false
-      }
-    ]
-  }
-]
+const rules = {
+  menuName: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
+  menuCode: [{ required: true, message: '请输入菜单编码', trigger: 'blur' }]
+}
+
+// Tree Data
+const tableData = ref<AppMenuRecord[]>([])
+const clientList = ref<AppClientRecord[]>([])
+const currentClientId = ref<string>('')
 
 // To make the tree expand by default, we capture the row keys
-const expandRowKeys = ref(['1', '2', '3'])
+const expandRowKeys = ref<string[]>([])
+
+const fetchClients = async () => {
+  const appId = route.params.id as string
+  if (!appId) return
+  
+  try {
+    const clients = await appClientApi.listByApp(appId)
+    clientList.value = clients
+    if (clients.length > 0) {
+      currentClientId.value = clients[0].id
+      fetchMenus()
+    } else {
+      tableData.value = []
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取客户端列表失败')
+  }
+}
+
+const buildTree = (menus: AppMenuRecord[]): AppMenuRecord[] => {
+  const map = new Map<string, AppMenuRecord>()
+  const tree: AppMenuRecord[] = []
+  
+  menus.forEach(menu => {
+    map.set(menu.id, { ...menu, children: [] })
+  })
+  
+  menus.forEach(menu => {
+    const node = map.get(menu.id)!
+    if (menu.parentId && menu.parentId !== '0' && map.has(menu.parentId)) {
+      map.get(menu.parentId)!.children!.push(node)
+    } else {
+      tree.push(node)
+    }
+  })
+  return tree
+}
+
+const fetchMenus = async () => {
+  if (!currentClientId.value) return
+  loading.value = true
+  try {
+    const data = await menuApi.listByClient(currentClientId.value)
+    tableData.value = buildTree(data)
+    expandRowKeys.value = data.map(m => m.id)
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取菜单失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+const handleClientChange = () => {
+  fetchMenus()
+}
+
+const handleOpenCreate = () => {
+  if (!currentClientId.value) {
+    ElMessage.warning('请先选择客户端')
+    return
+  }
+  isEdit.value = false
+  formData.id = ''
+  formData.parentId = ''
+  formData.menuName = ''
+  formData.menuCode = ''
+  formData.routePath = ''
+  formData.componentPath = ''
+  formData.sortNo = 0
+  formData.visible = 1
+  formData.status = 1
+  dialogVisible.value = true
+}
+
+const handleOpenEdit = (row: AppMenuRecord) => {
+  isEdit.value = true
+  formData.id = row.id
+  formData.parentId = row.parentId || ''
+  formData.menuName = row.menuName
+  formData.menuCode = row.menuCode
+  formData.routePath = row.routePath || ''
+  formData.componentPath = row.componentPath || ''
+  formData.sortNo = row.sortNo
+  formData.visible = row.visible
+  formData.status = row.status
+  dialogVisible.value = true
+}
+
+const submitForm = async () => {
+  if (!formRef.value) return
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+
+  submitLoading.value = true
+  try {
+    const payload = {
+      parentId: formData.parentId || undefined,
+      menuName: formData.menuName,
+      menuCode: formData.menuCode,
+      routePath: formData.routePath || undefined,
+      componentPath: formData.componentPath || undefined,
+      sortNo: formData.sortNo,
+      visible: formData.visible,
+      status: formData.status
+    }
+    if (isEdit.value) {
+      await menuApi.edit(formData.id, payload)
+      ElMessage.success('菜单修改成功')
+    } else {
+      await menuApi.create(currentClientId.value, payload)
+      ElMessage.success('菜单创建成功')
+    }
+    dialogVisible.value = false
+    fetchMenus()
+  } catch (error: any) {
+    ElMessage.error(error.message || (isEdit.value ? '修改失败' : '创建失败'))
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const handleStatusToggle = async (row: AppMenuRecord) => {
+  try {
+    if (row.status === 1) {
+      await menuApi.disable(row.id)
+      ElMessage.success('禁用成功')
+    } else {
+      await menuApi.enable(row.id)
+      ElMessage.success('启用成功')
+    }
+    fetchMenus()
+  } catch (error: any) {
+    ElMessage.error(error.message || '操作失败')
+  }
+}
 
 const handleSearch = () => {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-  }, 300)
+  // Client side filtering since tree data is usually small and nested
 }
 
 const handleReset = () => {
   query.name = ''
   query.code = ''
-  query.parent = ''
   query.status = ''
 }
+
+onMounted(() => {
+  fetchClients()
+})
 </script>
 
 <template>
@@ -184,6 +200,17 @@ const handleReset = () => {
     <!-- Filter and Actions -->
     <div class="filter-action-bar">
       <div class="filter-form">
+        <div class="filter-item">
+          <label>所属客户端</label>
+          <el-select v-model="currentClientId" @change="handleClientChange" placeholder="请选择客户端" style="width: 200px">
+            <el-option
+              v-for="item in clientList"
+              :key="item.id"
+              :label="item.clientName"
+              :value="item.id"
+            />
+          </el-select>
+        </div>
         <div class="filter-item">
           <label>菜单名称</label>
           <el-input v-model="query.name" placeholder="请输入菜单名称" clearable style="width: 150px" />
@@ -214,7 +241,7 @@ const handleReset = () => {
         </div>
       </div>
       <div class="action-btn-group">
-        <el-button type="primary" :icon="Plus">新增菜单</el-button>
+        <el-button type="primary" :icon="Plus" @click="handleOpenCreate">新增菜单</el-button>
         <el-button plain class="btn-batch-enable">
           <template #icon>
             <div class="icon-circle icon-circle-blue">
@@ -249,14 +276,13 @@ const handleReset = () => {
       <el-table-column label="菜单名称" min-width="200">
         <template #default="{ row }">
           <div class="menu-name-cell">
-            <el-icon class="folder-icon text-blue" v-if="row.isFolder"><FolderOpened /></el-icon>
+            <el-icon class="folder-icon text-blue" v-if="row.children && row.children.length > 0"><FolderOpened /></el-icon>
             <el-icon class="list-icon text-gray" v-else><MenuIcon /></el-icon>
-            <span class="node-name">{{ row.name }}</span>
+            <span class="node-name">{{ row.menuName }}</span>
           </div>
         </template>
       </el-table-column>
-      <el-table-column prop="code" label="菜单编码" min-width="140" />
-      <el-table-column prop="parentName" label="上级菜单" min-width="100" />
+      <el-table-column prop="menuCode" label="菜单编码" min-width="140" />
       <el-table-column prop="routePath" label="路由地址" min-width="160" />
       <el-table-column prop="componentPath" label="组件路径" min-width="200" />
       
@@ -267,7 +293,7 @@ const handleReset = () => {
           </div>
         </template>
         <template #default="{ row }">
-          {{ row.sort }}
+          {{ row.sortNo }}
         </template>
       </el-table-column>
       
@@ -284,14 +310,14 @@ const handleReset = () => {
 
       <el-table-column label="是否可见" width="100" align="center">
         <template #default="{ row }">
-          <span v-if="row.isVisible" class="text-green font-medium">可见</span>
+          <span v-if="row.visible === 1" class="text-green font-medium">可见</span>
           <span v-else class="text-gray font-medium">隐藏</span>
         </template>
       </el-table-column>
 
       <el-table-column label="是否内置" width="100" align="center">
         <template #default="{ row }">
-          <span class="text-blue font-medium" v-if="row.isBuiltIn">是</span>
+          <span class="text-blue font-medium" v-if="row.builtIn === 1">是</span>
           <span v-else>否</span>
         </template>
       </el-table-column>
@@ -301,12 +327,10 @@ const handleReset = () => {
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button link type="primary">详情</el-button>
+            <el-button link type="primary" @click="handleOpenEdit(row)">编辑</el-button>
             <span class="divider"></span>
-            <el-button link type="primary">编辑</el-button>
-            <span class="divider"></span>
-            <el-button link type="danger" v-if="row.status === 1">禁用</el-button>
-            <el-button link type="primary" v-else>启用</el-button>
+            <el-button link type="danger" v-if="row.status === 1" @click="handleStatusToggle(row)">禁用</el-button>
+            <el-button link type="primary" v-else @click="handleStatusToggle(row)">启用</el-button>
           </div>
         </template>
       </el-table-column>
@@ -324,6 +348,67 @@ const handleReset = () => {
         </div>
       </div>
     </div>
+
+    <!-- Create/Edit Drawer -->
+    <el-drawer
+      v-model="dialogVisible"
+      :title="isEdit ? '编辑菜单' : '新增菜单'"
+      size="500px"
+      :destroy-on-close="true"
+    >
+      <el-form ref="formRef" :model="formData" :rules="rules" label-width="100px" label-position="top">
+        <el-form-item label="父级菜单" prop="parentId">
+          <el-tree-select
+            v-model="formData.parentId"
+            :data="tableData"
+            :props="{ label: 'menuName', children: 'children' }"
+            node-key="id"
+            placeholder="请选择父级菜单 (不选默认为根菜单)"
+            clearable
+            check-strictly
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="菜单名称" prop="menuName">
+          <el-input v-model="formData.menuName" placeholder="例如：用户管理" />
+        </el-form-item>
+        <el-form-item label="菜单编码" prop="menuCode">
+          <el-input v-model="formData.menuCode" placeholder="例如：user:manage" />
+        </el-form-item>
+        <el-form-item label="路由地址" prop="routePath">
+          <el-input v-model="formData.routePath" placeholder="例如：/system/user" />
+        </el-form-item>
+        <el-form-item label="组件路径" prop="componentPath">
+          <el-input v-model="formData.componentPath" placeholder="例如：system/user/index.vue" />
+        </el-form-item>
+        
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="排序" prop="sortNo">
+              <el-input-number v-model="formData.sortNo" :min="0" :max="9999" controls-position="right" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="是否可见" prop="visible">
+              <el-switch v-model="formData.visible" :active-value="1" :inactive-value="0" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-form-item label="初始状态" prop="status" v-if="!isEdit">
+          <el-radio-group v-model="formData.status">
+            <el-radio :value="1">启用</el-radio>
+            <el-radio :value="0">禁用</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="drawer-footer">
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="submitLoading" @click="submitForm">确定</el-button>
+        </div>
+      </template>
+    </el-drawer>
   </div>
 </template>
 

@@ -1,6 +1,8 @@
 package com.authsphere.server.app.api;
 
+import com.authsphere.server.app.dto.AppInfoResponse;
 import com.authsphere.server.app.dto.AppPageRequest;
+import com.authsphere.server.app.dto.AppPageResponse;
 import com.authsphere.server.app.dto.AppRequest;
 import com.authsphere.server.app.model.App;
 import com.authsphere.server.app.service.AppService;
@@ -25,7 +27,7 @@ public class AppController {
      * 应用定义分页列表。
      */
     @PostMapping("/page")
-    public Page<App> page(@Validated @RequestBody AppPageRequest request) {
+    public Page<AppPageResponse> page(@Validated @RequestBody AppPageRequest request) {
         return appService.page(request);
     }
 
@@ -41,7 +43,7 @@ public class AppController {
      * 新增应用定义。
      */
     @PostMapping
-    public Boolean create(@Validated @RequestBody AppRequest request) {
+    public Long create(@Validated @RequestBody AppRequest request) {
         return appService.create(request);
     }
 
@@ -49,7 +51,7 @@ public class AppController {
      * 应用定义详情。
      */
     @GetMapping("/{appId}")
-    public App detail(@PathVariable Long appId) {
+    public AppInfoResponse detail(@PathVariable Long appId) {
         return appService.detail(appId);
     }
 

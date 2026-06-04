@@ -1,10 +1,13 @@
 package com.authsphere.server.app.service;
 
+import com.authsphere.server.app.dto.AppInfoResponse;
 import com.authsphere.server.app.dto.AppPageRequest;
+import com.authsphere.server.app.dto.AppPageResponse;
 import com.authsphere.server.app.dto.AppRequest;
 import com.authsphere.server.app.model.App;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -18,7 +21,7 @@ public interface AppService extends IService<App> {
     /**
      * 分页查询应用定义。
      */
-    Page<App> page(AppPageRequest request);
+    Page<AppPageResponse> page(AppPageRequest request);
 
     /**
      * 查询全部应用定义，供下拉选择等轻量场景使用。
@@ -28,12 +31,13 @@ public interface AppService extends IService<App> {
     /**
      * 查询应用详情。
      */
-    App detail(Long id);
+    AppInfoResponse detail(Long id);
 
     /**
      * 新增应用定义。
      */
-    Boolean create(AppRequest request);
+    @Transactional(rollbackFor = Exception.class)
+    Long create(AppRequest request);
 
     /**
      * 编辑应用定义。

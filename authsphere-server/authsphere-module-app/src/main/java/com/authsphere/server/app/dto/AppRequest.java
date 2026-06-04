@@ -1,8 +1,11 @@
 package com.authsphere.server.app.dto;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
+
+import java.util.List;
 
 /**
  * 应用定义提交请求。
@@ -33,6 +36,7 @@ public class AppRequest {
      */
     private String entryUrl;
 
+
     /**
      * 应用图标标识或图标资源地址。
      */
@@ -53,4 +57,10 @@ public class AppRequest {
      * 应用说明。
      */
     private String description;
+
+    /**
+     * 应用客户端列表；新增或编辑应用时可同时提交多个客户端。
+     */
+    @Valid
+    private List<AppClientRequest> clients;
 }

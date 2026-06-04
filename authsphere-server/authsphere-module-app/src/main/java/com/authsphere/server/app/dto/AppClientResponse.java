@@ -1,35 +1,28 @@
-package com.authsphere.server.app.model;
+package com.authsphere.server.app.dto;
 
 import com.authsphere.server.common.model.BaseDataBaseModel;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 应用端定义表。
- * @TableName app_client
+ * @program: AuthSphere
+ * @description:
+ * @author: L.J.Ran
+ * @create: 2026/6/4
  */
-@TableName(value ="app_client")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class AppClient extends BaseDataBaseModel {
+public class AppClientResponse extends BaseDataBaseModel {
+
     /**
      * 应用端 ID。
      */
-    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
-
-    /**
-     * 应用ID
-     */
-    private Long appId;
-
-    /**
-     * 应用编码
-     */
-    private String appCode;
 
     /**
      * 应用端编码，同一应用内唯一。
@@ -47,9 +40,9 @@ public class AppClient extends BaseDataBaseModel {
     private Integer clientType;
 
     /**
-     * 默认身份域 ID。
+     * 身份域名称
      */
-    private Long realmId;
+    private String realmName;
 
     /**
      * 默认访问入口。

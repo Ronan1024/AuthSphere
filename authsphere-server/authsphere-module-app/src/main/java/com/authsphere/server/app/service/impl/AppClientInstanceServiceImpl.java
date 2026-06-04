@@ -144,8 +144,8 @@ public class AppClientInstanceServiceImpl
         if (clientCount > 0) {
             throw new BizException(AppErrorCode.APP_CLIENT_INSTANCE_EXISTS);
         }
-        Long realmId = request.getRealmId() != null ? request.getRealmId() : appClient.getDefaultRealmId();
-        validateRealm(realmId);
+//        Long realmId = request.getRealmId() != null ? request.getRealmId() : appClient.getDefaultRealmId();
+//        validateRealm(realmId);
         return appClient;
     }
 
@@ -162,7 +162,7 @@ public class AppClientInstanceServiceImpl
 
     private void fillDefaultRealmAndEntry(AppClientInstance instance, AppClient appClient) {
         if (instance.getRealmId() == null) {
-            instance.setRealmId(appClient.getDefaultRealmId());
+//            instance.setRealmId(appClient.getDefaultRealmId());
         }
         if (instance.getEntryUrl() == null || instance.getEntryUrl().isBlank()) {
             instance.setEntryUrl(appClient.getDefaultEntryUrl());

@@ -25,13 +25,6 @@ public class CreateRealmRequest {
     @NotEmpty(message = "身份域名城不能为空")
     private String name;
 
-//    /**
-//     * 身份域类型
-//     */
-//    @NotEmpty(message = "身份域编号不能为空")
-//    private String typeCode;
-
-
     /**
      * 身份域类型id
      */

@@ -2,6 +2,7 @@ package com.authsphere.server.app.api;
 
 import com.authsphere.server.app.dto.AppClientPageRequest;
 import com.authsphere.server.app.dto.AppClientRequest;
+import com.authsphere.server.app.dto.AppClientResponse;
 import com.authsphere.server.app.model.AppClient;
 import com.authsphere.server.app.service.AppClientService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -21,18 +22,10 @@ public class AppClientController {
     private final AppClientService appClientService;
 
     /**
-     * 应用客户端分页列表。
-     */
-    @PostMapping("/api/app-clients/page")
-    public Page<AppClient> page(@Validated @RequestBody AppClientPageRequest request) {
-        return appClientService.page(request);
-    }
-
-    /**
      * 查询应用下的应用端列表。
      */
     @GetMapping("/api/apps/{appId}/clients")
-    public List<AppClient> listByApp(@PathVariable Long appId) {
+    public List<AppClientResponse> listByApp(@PathVariable Long appId) {
         return appClientService.listByApp(appId);
     }
 

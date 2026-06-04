@@ -1,11 +1,17 @@
 package com.authsphere.server.realm.domain;
 
+import com.authsphere.server.api.RealmApi;
+import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
+import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.common.model.R;
+import com.authsphere.server.realm.convert.RealmConvert;
+import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.Realm;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.ObjectUtils;
 
 import java.util.List;
 
@@ -17,7 +23,7 @@ import java.util.List;
  */
 @Service
 @RequiredArgsConstructor
-public class RealmDomain {
+public class RealmDomain implements RealmApi {
 
     private final RealmMapper realmMapper;
 
@@ -36,5 +42,28 @@ public class RealmDomain {
         return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
                 .eq(Realm::getTypeCategoryId, typeId)
         );
+    }
+
+    /**
+     * 获取身份域信息
+     *
+     * @param realmId
+     */
+    @Override
+    public RealmInfoResponse info(Long realmId) {
+        Realm byId = findById(realmId);
+        if (ObjectUtils.isEmpty(byId)) {
+            throw new BizException(RealmErrorCode.REALM_DATA_ERROR);
+        }
+        return RealmConvert.INSTANCE.toRealmInfoResponse(byId);
+    }
+
+    /**
+     * 获取身份域信息
+     */
+    @Override
+    public List<RealmInfoResponse> list(List<Long> realmIdList) {
+        List<Realm> realms = realmMapper.selectBatchIds(realmIdList);
+        return RealmConvert.INSTANCE.toRealmInfoResponse(realms);
     }
 }

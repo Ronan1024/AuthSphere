@@ -2,6 +2,8 @@ package com.authsphere.server.app.service;
 
 import com.authsphere.server.app.dto.AppClientPageRequest;
 import com.authsphere.server.app.dto.AppClientRequest;
+import com.authsphere.server.app.dto.AppClientResponse;
+import com.authsphere.server.app.model.App;
 import com.authsphere.server.app.model.AppClient;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -15,15 +17,17 @@ import java.util.List;
 */
 public interface AppClientService extends IService<AppClient> {
 
-    /**
-     * 分页查询应用客户端。
-     */
-    Page<AppClient> page(AppClientPageRequest request);
 
     /**
      * 查询指定应用下的应用端列表。
      */
-    List<AppClient> listByApp(Long appId);
+    List<AppClientResponse> listByApp(Long appId);
+
+    /**
+     * 同步应用保存时提交的客户端列表。
+     * 传入 ID 的客户端执行更新，未传 ID 的客户端执行新增；数据库中存在但本次未传的客户端保持不变。
+     */
+    void syncClientsForApp(App app, List<AppClientRequest> requests);
 
     /**
      * 查询应用客户端详情。

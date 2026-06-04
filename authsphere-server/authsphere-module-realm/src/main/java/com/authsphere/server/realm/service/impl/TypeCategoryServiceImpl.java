@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.Collections;
 import java.util.List;
 
 import static com.authsphere.server.realm.error.TypeCategoryErrorCode.TYPE_CATEGORY_BIND_REALM;
@@ -45,13 +44,7 @@ public class TypeCategoryServiceImpl extends ServiceImpl<TypeCategoryMapper, Typ
 
     @Override
     public List<TypeCategoryPageResponse> listAll() {
-        List<TypeCategory> allTypeCategories = typeCategoryMapper.selectList(new LambdaQueryWrapper<>());
-        if (allTypeCategories.isEmpty()) {
-            return Collections.emptyList();
-        }
-        return TypeCategoryConvert.INSTANCE.toTypeCategoryPageResponse(allTypeCategories);
-
-
+        return typeCategoryMapper.listAll();
     }
 
     /**
@@ -117,7 +110,6 @@ public class TypeCategoryServiceImpl extends ServiceImpl<TypeCategoryMapper, Typ
         }
     }
 }
-
 
 
 

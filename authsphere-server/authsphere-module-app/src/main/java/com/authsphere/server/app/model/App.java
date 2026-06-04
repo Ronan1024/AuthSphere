@@ -1,6 +1,7 @@
 package com.authsphere.server.app.model;
 
 import com.authsphere.server.common.model.BaseDataBaseModel;
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -8,16 +9,17 @@ import lombok.EqualsAndHashCode;
 
 /**
  * 应用定义表
+ *
  * @TableName app
  */
-@TableName(value ="app")
+@TableName(value = "app")
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class App extends BaseDataBaseModel {
     /**
      * 应用ID
      */
-    @TableId
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -36,11 +38,6 @@ public class App extends BaseDataBaseModel {
     private String appType;
 
     /**
-     * 应用默认入口。
-     */
-    private String entryUrl;
-
-    /**
      * 应用图标
      */
     private String icon;
@@ -51,12 +48,7 @@ public class App extends BaseDataBaseModel {
     private Integer status;
 
     /**
-     * 是否内置。
-     */
-    private Integer builtIn;
-
-    /**
-     * 
+     * 描述
      */
     private String description;
 }

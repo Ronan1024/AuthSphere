@@ -48,4 +48,20 @@
         order by create_time desc
     </select>
 
+    <select id="listAll" resultType="com.authsphere.server.realm.dto.TypeCategoryPageResponse">
+        select
+            id,
+            code,
+            name,
+            description,
+            system_builtin as systemBuiltin,
+            editable,
+            status,
+            create_time,
+            update_time
+        from type_category
+        where status = 1
+        order by create_time desc
+    </select>
+
 </mapper>

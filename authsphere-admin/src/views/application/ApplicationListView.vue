@@ -1,104 +1,58 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Download, ArrowDown, Monitor, Iphone, Coin, Platform } from '@element-plus/icons-vue'
+import { Plus, Monitor, Iphone, Coin, Platform } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { appApi, type AppPayload, type AppRecord } from '@/api/app'
+import { appClientApi, type AppClientRecord } from '@/api/appClient'
+import ApplicationFormDialog from './components/ApplicationFormDialog.vue'
 
 const router = useRouter()
 const query = reactive({
-  name: '',
-  code: '',
-  type: '',
-  status: '',
-  client: '',
-  dateRange: []
+  page: 1,
+  size: 10,
+  appName: '',
+  appCode: '',
+  appType: '',
+  status: undefined as number | undefined
 })
 
-const activeTab = ref('all')
-
 const loading = ref(false)
+const submitLoading = ref(false)
+const createDialogVisible = ref(false)
+const editDialogVisible = ref(false)
+const selectedApp = ref<AppRecord | null>(null)
+const selectedClients = ref<AppClientRecord[]>([])
+const tableData = ref<AppRecord[]>([])
+const total = ref(0)
 
-const mockTableData = [
-  {
-    id: '1',
-    name: '统一门户系统',
-    description: '企业统一门户与集成平台',
-    code: 'unified-portal',
-    type: 'Web应用',
-    typeClass: 'bg-blue',
-    client: 'Web浏览器',
-    status: 1, // 已启用
-    creator: '张管理员',
-    createTime: '2024-05-20 10:30:00'
-  },
-  {
-    id: '2',
-    name: '移动办公应用',
-    description: '移动办公与审批',
-    code: 'mobile-office',
-    type: '移动应用',
-    typeClass: 'bg-green',
-    client: 'iOS, Android',
-    status: 1, // 已启用
-    creator: '李管理员',
-    createTime: '2024-05-18 14:20:00'
-  },
-  {
-    id: '3',
-    name: '用户中心服务',
-    description: '用户管理与认证服务',
-    code: 'user-center',
-    type: 'API服务',
-    typeClass: 'bg-purple',
-    client: 'Web, 移动端',
-    status: 1, // 已启用
-    creator: '系统管理员',
-    createTime: '2024-05-15 09:15:00'
-  },
-  {
-    id: '4',
-    name: '数据分析平台',
-    description: '数据分析与报表平台',
-    code: 'data-analytics',
-    type: 'Web应用',
-    typeClass: 'bg-orange',
-    client: 'Web浏览器',
-    status: 2, // 停用
-    creator: '王管理员',
-    createTime: '2024-05-10 16:45:00'
-  },
-  {
-    id: '5',
-    name: '第三方集成服务',
-    description: '对接第三方系统服务',
-    code: 'third-party-api',
-    type: 'API服务',
-    typeClass: 'bg-teal',
-    client: 'Web, 移动端',
-    status: 1, // 已启用
-    creator: '赵管理员',
-    createTime: '2024-05-08 11:20:00'
-  },
-  {
-    id: '6',
-    name: '桌面管理工具',
-    description: '桌面端系统管理工具',
-    code: 'desktop-admin',
-    type: '桌面应用',
-    typeClass: 'bg-gray',
-    client: 'Windows, Mac',
-    status: 0, // 未启用
-    creator: '张管理员',
-    createTime: '2024-05-01 08:30:00'
-  }
+const appTypeOptions = [
+  { label: 'IAM', value: 'IAM' },
+  { label: '商城', value: 'MALL' },
+  { label: '支付', value: 'PAYMENT' },
+  { label: '仓储', value: 'WAREHOUSE' },
+  { label: '物流', value: 'LOGISTICS' },
+  { label: '自定义', value: 'CUSTOM' }
 ]
 
-const tableData = ref(mockTableData)
+const appTypeText = (type?: string) => appTypeOptions.find(item => item.value === type)?.label || type || '-'
 
-const getAppIcon = (type: string) => {
-  if (type === 'Web应用') return Monitor
-  if (type === '移动应用') return Iphone
-  if (type === 'API服务') return Coin
-  if (type === '桌面应用') return Platform
+const getTypeClass = (type?: string) => {
+  const classMap: Record<string, string> = {
+    IAM: 'bg-blue',
+    MALL: 'bg-green',
+    PAYMENT: 'bg-purple',
+    WAREHOUSE: 'bg-orange',
+    LOGISTICS: 'bg-teal',
+    CUSTOM: 'bg-gray'
+  }
+  return type ? classMap[type] || 'bg-gray' : 'bg-gray'
+}
+
+const getAppIcon = (type?: string) => {
+  if (type === 'MALL') return Iphone
+  if (type === 'PAYMENT') return Coin
+  if (type === 'WAREHOUSE' || type === 'LOGISTICS') return Platform
   return Monitor
 }
 
@@ -110,25 +64,109 @@ const getStatusClass = (status: number) => {
 
 const getStatusText = (status: number) => {
   if (status === 1) return '已启用'
-  if (status === 2) return '停用'
-  return '未启用'
+  if (status === 2) return '已禁用'
+  return '-'
+}
+
+const fetchData = async () => {
+  loading.value = true
+  try {
+    const result = await appApi.page({
+      page: query.page,
+      size: query.size,
+      appName: query.appName || undefined,
+      appCode: query.appCode || undefined,
+      appType: query.appType || undefined,
+      status: query.status
+    })
+    tableData.value = result.records || []
+    total.value = result.total || 0
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取应用列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 const handleReset = () => {
-  query.name = ''
-  query.code = ''
-  query.type = ''
-  query.status = ''
-  query.client = ''
-  query.dateRange = []
+  query.page = 1
+  query.appName = ''
+  query.appCode = ''
+  query.appType = ''
+  query.status = undefined
+  fetchData()
 }
 
 const handleSearch = () => {
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  query.page = 1
+  fetchData()
 }
+
+const handleOpenCreate = () => {
+  router.push('/applications/create')
+}
+
+const handleOpenEdit = async (row: AppRecord) => {
+  submitLoading.value = true
+  try {
+    selectedApp.value = await appApi.detail(row.id)
+    selectedClients.value = await appClientApi.listByApp(row.id)
+    editDialogVisible.value = true
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取应用编辑信息失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const submitCreateForm = async (payload: AppPayload) => {
+  submitLoading.value = true
+  try {
+    await appApi.create(payload)
+    ElMessage.success('应用创建成功')
+    createDialogVisible.value = false
+    handleSearch()
+  } catch (error: any) {
+    ElMessage.error(error.message || '创建应用失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const submitEditForm = async (payload: AppPayload) => {
+  if (!selectedApp.value) return
+  submitLoading.value = true
+  try {
+    await appApi.update(selectedApp.value.id, payload)
+    ElMessage.success('应用已更新')
+    editDialogVisible.value = false
+    await fetchData()
+  } catch (error: any) {
+    ElMessage.error(error.message || '更新应用失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
+const toggleStatus = async (row: AppRecord) => {
+  const enabled = row.status === 1
+  const action = enabled ? '禁用' : '启用'
+  try {
+    await ElMessageBox.confirm(`确认${action}应用「${row.appName}」？`, '提示', { type: 'warning' })
+    if (enabled) {
+      await appApi.disable(row.id)
+    } else {
+      await appApi.enable(row.id)
+    }
+    ElMessage.success(`应用已${action}`)
+    fetchData()
+  } catch (error: any) {
+    if (error === 'cancel' || error === 'close') return
+    ElMessage.error(error.message || `${action}应用失败`)
+  }
+}
+
+fetchData()
 </script>
 
 <template>
@@ -139,43 +177,28 @@ const handleSearch = () => {
         <p>管理身份域下的所有应用，支持应用的创建、配置与生命周期管理。</p>
       </div>
       <div class="header-right">
-        <el-button type="primary" :icon="Plus" @click="router.push('/applications/create')">新建应用</el-button>
-        <el-button :icon="Download">导出</el-button>
+        <el-button type="primary" :icon="Plus" @click="handleOpenCreate">新建应用</el-button>
       </div>
     </div>
 
     <el-card shadow="never" class="filter-card">
       <el-form :inline="true" :model="query" class="app-filter-form">
         <el-form-item label="应用名称">
-          <el-input v-model="query.name" placeholder="请输入应用名称" clearable />
+          <el-input v-model="query.appName" placeholder="请输入应用名称" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="应用编码">
-          <el-input v-model="query.code" placeholder="请输入应用编码" clearable />
+          <el-input v-model="query.appCode" placeholder="请输入应用编码" clearable @keyup.enter="handleSearch" />
         </el-form-item>
         <el-form-item label="应用类型">
-          <el-select v-model="query.type" placeholder="全部类型" clearable style="width: 160px">
-            <el-option label="Web应用" value="web" />
-            <el-option label="移动应用" value="mobile" />
-            <el-option label="API服务" value="api" />
-            <el-option label="桌面应用" value="desktop" />
+          <el-select v-model="query.appType" placeholder="全部类型" clearable style="width: 160px">
+            <el-option v-for="item in appTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="应用状态">
           <el-select v-model="query.status" placeholder="全部状态" clearable style="width: 120px">
-            <el-option label="已启用" value="1" />
-            <el-option label="停用" value="2" />
-            <el-option label="未启用" value="0" />
+            <el-option label="已启用" :value="1" />
+            <el-option label="已禁用" :value="2" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker
-            v-model="query.dateRange"
-            type="daterange"
-            range-separator="~"
-            start-placeholder="开始日期"
-            end-placeholder="结束日期"
-            style="width: 240px"
-          />
         </el-form-item>
         <el-form-item class="form-actions">
           <el-button @click="handleReset">重置</el-button>
@@ -189,23 +212,42 @@ const handleSearch = () => {
         <el-table-column label="应用名称" min-width="260">
           <template #default="{ row }">
             <div class="app-name-cell">
-              <div class="app-icon" :class="row.typeClass">
-                <el-icon><component :is="getAppIcon(row.type)" /></el-icon>
+              <div class="app-icon" :class="getTypeClass(row.appType)">
+                <el-icon><component :is="getAppIcon(row.appType)" /></el-icon>
               </div>
               <div class="app-info">
-                <strong>{{ row.name }}</strong>
-                <span>{{ row.description }}</span>
+                <strong>{{ row.appName }}</strong>
+                <span>{{ row.description || '-' }}</span>
               </div>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="code" label="应用编码" min-width="150" />
+        <el-table-column prop="appCode" label="应用编码" min-width="150" />
         <el-table-column label="应用类型" min-width="120">
           <template #default="{ row }">
-            <el-tag size="small" effect="plain" :class="'tag-' + row.typeClass">{{ row.type }}</el-tag>
+            <el-tag size="small" effect="plain" :class="'tag-' + getTypeClass(row.appType)">
+              {{ appTypeText(row.appType) }}
+            </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="client" label="应用客户端" min-width="150" />
+        <el-table-column label="应用客户端" min-width="180">
+          <template #default="{ row }">
+            <div class="client-tags-container">
+              <template v-if="row.clientName && row.clientName.length">
+                <el-tag
+                  v-for="name in row.clientName"
+                  :key="name"
+                  size="small"
+                  type="info"
+                  class="client-tag"
+                >
+                  {{ name }}
+                </el-tag>
+              </template>
+              <span v-else class="text-gray-muted">-</span>
+            </div>
+          </template>
+        </el-table-column>
         <el-table-column label="应用状态" width="100">
           <template #default="{ row }">
             <div class="status-cell" :class="getStatusClass(row.status)">
@@ -213,40 +255,50 @@ const handleSearch = () => {
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="creator" label="创建人" width="120" />
         <el-table-column prop="createTime" label="创建时间" width="170" />
+        <el-table-column prop="updateTime" label="更新时间" width="170" />
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
             <div class="row-actions">
               <el-button link type="primary" @click="router.push(`/applications/detail/${row.id}`)">详情</el-button>
-              <el-button link type="primary">编辑</el-button>
-              <el-dropdown trigger="click">
-                <el-button link type="primary">
-                  更多 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item>停用应用</el-dropdown-item>
-                    <el-dropdown-item>配置实例</el-dropdown-item>
-                    <el-dropdown-item divided type="danger">删除应用</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
+              <el-button link type="primary" @click="handleOpenEdit(row)">编辑</el-button>
+              <el-button link type="primary" @click="toggleStatus(row)">
+                {{ row.status === 1 ? '禁用' : '启用' }}
+              </el-button>
             </div>
           </template>
         </el-table-column>
       </el-table>
 
       <div class="pagination-container">
-        <span class="total-text">共 18 条</span>
+        <span class="total-text">共 {{ total }} 条</span>
         <el-pagination
+          v-model:current-page="query.page"
+          v-model:page-size="query.size"
           layout="sizes, prev, pager, next, jumper"
-          :total="18"
-          :page-sizes="[10, 20, 50]"
-          :default-page-size="10"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          background
+          @size-change="fetchData"
+          @current-change="fetchData"
         />
       </div>
     </el-card>
+
+    <ApplicationFormDialog
+      v-model:visible="createDialogVisible"
+      mode="create"
+      :loading="submitLoading"
+      @submit="submitCreateForm"
+    />
+    <ApplicationFormDialog
+      v-model:visible="editDialogVisible"
+      mode="edit"
+      :loading="submitLoading"
+      :initial-app="selectedApp"
+      :initial-clients="selectedClients"
+      @submit="submitEditForm"
+    />
   </div>
 </template>
 
@@ -407,6 +459,26 @@ const handleSearch = () => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.client-tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.client-tag {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+  font-weight: 500;
+  border-radius: 4px;
+}
+
+.text-gray-muted {
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 .pagination-container {
