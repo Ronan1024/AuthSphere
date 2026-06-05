@@ -34,6 +34,16 @@ public class AppPermissionRequest {
     private Integer permissionType;
 
     /**
+     * API 接口路径
+     */
+    private String apiPath;
+
+    /**
+     * HTTP 请求方法
+     */
+    private String method;
+
+    /**
      * 权限说明。
      */
     private String description;

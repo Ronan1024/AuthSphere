@@ -38,6 +38,9 @@ public final class TreeUtils {
         if (nodes == null || nodes.isEmpty()) {
             return Collections.emptyList();
         }
+        if (childrenSetter == null) {
+            return new ArrayList<>(nodes);
+        }
         Map<K, T> nodeMap = new LinkedHashMap<>();
         Map<K, List<T>> childrenMap = new LinkedHashMap<>();
         for (T node : nodes) {
@@ -55,5 +58,65 @@ public final class TreeUtils {
             }
         }
         return roots;
+    }
+
+    /**
+     * 查询指定父节点下的子树。
+     *
+     * @param nodes          扁平节点列表，输出顺序保持输入顺序
+     * @param idGetter       节点 ID 读取器
+     * @param parentIdGetter 父节点 ID 读取器
+     * @param childrenSetter 子节点写入器
+     * @param parentId       要查询的父节点 ID；传 null 表示查询根节点子树
+     * @param <T>            节点类型
+     * @param <K>            节点 ID 类型
+     * @return 指定父节点下的多级子树
+     */
+    public static <T, K> List<T> findSubTree(Collection<T> nodes,
+                                             Function<T, K> idGetter,
+                                             Function<T, K> parentIdGetter,
+                                             BiConsumer<T, List<T>> childrenSetter,
+                                             K parentId) {
+        if (nodes == null || nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<K, List<T>> childrenMap = new LinkedHashMap<>();
+        for (T node : nodes) {
+            childrenMap.computeIfAbsent(parentIdGetter.apply(node), ignored -> new ArrayList<>()).add(node);
+        }
+        if (childrenSetter == null) {
+            return collectDescendants(childrenMap.getOrDefault(parentId, Collections.emptyList()), idGetter, childrenMap);
+        }
+        return attachChildren(childrenMap.getOrDefault(parentId, Collections.emptyList()), idGetter, childrenSetter, childrenMap);
+    }
+
+    private static <T, K> List<T> collectDescendants(Collection<T> nodes,
+                                                     Function<T, K> idGetter,
+                                                     Map<K, List<T>> childrenMap) {
+        if (nodes == null || nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<T> result = new ArrayList<>();
+        for (T node : nodes) {
+            result.add(node);
+            result.addAll(collectDescendants(childrenMap.get(idGetter.apply(node)), idGetter, childrenMap));
+        }
+        return result;
+    }
+
+    private static <T, K> List<T> attachChildren(Collection<T> nodes,
+                                                 Function<T, K> idGetter,
+                                                 BiConsumer<T, List<T>> childrenSetter,
+                                                 Map<K, List<T>> childrenMap) {
+        if (nodes == null || nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<T> result = new ArrayList<>();
+        for (T node : nodes) {
+            List<T> children = attachChildren(childrenMap.get(idGetter.apply(node)), idGetter, childrenSetter, childrenMap);
+            childrenSetter.accept(node, children);
+            result.add(node);
+        }
+        return result;
     }
 }

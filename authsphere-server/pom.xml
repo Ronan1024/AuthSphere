@@ -13,6 +13,11 @@
         <module>authsphere-server-bootstrap</module>
         <module>authsphere-module-realm</module>
         <module>authsphere-server-common</module>
+        <module>authsphere-module-account</module>
+        <module>authsphere-server-api</module>
+        <module>authsphere-module-subject</module>
+        <module>authsphere-module-app</module>
+        <module>authsphere-module-role</module>
     </modules>
 
     <properties>
@@ -21,6 +26,10 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.6</spring-boot.version>
         <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <lombok.version>1.18.42</lombok.version>
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <mockito.version>5.17.0</mockito.version>
+        <argLine></argLine>
     </properties>
 
 
@@ -40,6 +49,11 @@
                 <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>com.authsphere.server.realm</groupId>
                 <artifactId>authsphere-module-realm</artifactId>
                 <version>${version}</version>
@@ -50,10 +64,61 @@
                 <version>${version}</version>
             </dependency>
             <dependency>
+                <groupId>com.authsphere.server</groupId>
+                <artifactId>authsphere-module-subject</artifactId>
+                <version>${version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.authsphere.server.app</groupId>
+                <artifactId>authsphere-module-app</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
-                <version>1.6.3</version>
+                <version>${mapstruct.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.authsphere.server.api</groupId>
+                <artifactId>authsphere-server-api</artifactId>
+                <version>${project.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <parameters>true</parameters>
+                        <proc>full</proc>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${mapstruct.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <configuration>
+                        <argLine>${argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar -Xshare:off</argLine>
+                        <failIfNoSpecifiedTests>false</failIfNoSpecifiedTests>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
 </project>

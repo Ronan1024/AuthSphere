@@ -89,7 +89,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     }
 
     @Override
-    public List<AppMenu> listMenus(Long roleId) {
+    public List<AppClientMenu> listMenus(Long roleId) {
         findById(roleId);
         List<RoleMenu> roleMenus = roleMenuMapper.selectList(new LambdaQueryWrapper<RoleMenu>()
                 .eq(RoleMenu::getRoleId, roleId));
@@ -107,11 +107,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
         if (CollectionUtils.isEmpty(request.getResourceIds())) {
             return Boolean.TRUE;
         }
-        List<AppMenu> menus = appMenuMapper.selectBatchIds(request.getResourceIds());
+        List<AppClientMenu> menus = appMenuMapper.selectBatchIds(request.getResourceIds());
         if (menus.size() != request.getResourceIds().size()) {
             throw new BizException(AppErrorCode.ROLE_RESOURCE_SCOPE_ERROR);
         }
-        for (AppMenu menu : menus) {
+        for (AppClientMenu menu : menus) {
             validateMenuScope(role, menu);
             RoleMenu roleMenu = new RoleMenu();
             roleMenu.setRoleId(roleId);
@@ -124,7 +124,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     }
 
     @Override
-    public List<AppPermission> listPermissions(Long roleId) {
+    public List<AppClientPermission> listPermissions(Long roleId) {
         findById(roleId);
         List<RolePermission> rolePermissions = rolePermissionMapper.selectList(new LambdaQueryWrapper<RolePermission>()
                 .eq(RolePermission::getRoleId, roleId));
@@ -142,11 +142,11 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
         if (CollectionUtils.isEmpty(request.getResourceIds())) {
             return Boolean.TRUE;
         }
-        List<AppPermission> permissions = appPermissionMapper.selectBatchIds(request.getResourceIds());
+        List<AppClientPermission> permissions = appPermissionMapper.selectBatchIds(request.getResourceIds());
         if (permissions.size() != request.getResourceIds().size()) {
             throw new BizException(AppErrorCode.ROLE_RESOURCE_SCOPE_ERROR);
         }
-        for (AppPermission permission : permissions) {
+        for (AppClientPermission permission : permissions) {
             validatePermissionScope(role, permission);
             RolePermission rolePermission = new RolePermission();
             rolePermission.setRoleId(roleId);
@@ -167,17 +167,19 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
         role.setOwnerSubjectId(clientInstance.getOwnerSubjectId());
     }
 
-    private void validateMenuScope(Role role, AppMenu menu) {
-        if (!Objects.equals(role.getAppCode(), menu.getAppCode())
-                || !Objects.equals(role.getClientCode(), menu.getClientCode())
+    private void validateMenuScope(Role role, AppClientMenu menu) {
+        AppClientInstance clientInstance = clientInstanceMapper.selectById(role.getClientInstanceId());
+        if (clientInstance == null
+                || !Objects.equals(clientInstance.getAppId(), menu.getAppId())
+                || !Objects.equals(clientInstance.getAppClientId(), menu.getClientId())
                 || !Objects.equals(menu.getStatus(), StatusEnum.NORMAL.getCode())) {
             throw new BizException(AppErrorCode.ROLE_RESOURCE_SCOPE_ERROR);
         }
     }
 
-    private void validatePermissionScope(Role role, AppPermission permission) {
-        if (!Objects.equals(role.getAppCode(), permission.getAppCode())
-                || !Objects.equals(role.getClientCode(), permission.getClientCode())
+    private void validatePermissionScope(Role role, AppClientPermission permission) {
+        if (!Objects.equals(role.getAppCode(), permission.getAppId())
+                || !Objects.equals(role.getClientCode(), permission.getClientId())
                 || !Objects.equals(permission.getStatus(), StatusEnum.NORMAL.getCode())) {
             throw new BizException(AppErrorCode.ROLE_RESOURCE_SCOPE_ERROR);
         }

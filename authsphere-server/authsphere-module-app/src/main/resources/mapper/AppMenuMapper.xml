@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.authsphere.server.app.mapper.AppMenuMapper">
 
-    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppMenu">
+    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppClientMenu">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
             <result property="clientCode" column="client_code" jdbcType="VARCHAR"/>

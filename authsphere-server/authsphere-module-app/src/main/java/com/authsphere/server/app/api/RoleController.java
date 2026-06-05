@@ -2,8 +2,8 @@ package com.authsphere.server.app.api;
 
 import com.authsphere.server.app.dto.RoleRequest;
 import com.authsphere.server.app.dto.RoleResourceAssignRequest;
-import com.authsphere.server.app.model.AppMenu;
-import com.authsphere.server.app.model.AppPermission;
+import com.authsphere.server.app.model.AppClientMenu;
+import com.authsphere.server.app.model.AppClientPermission;
 import com.authsphere.server.app.model.Role;
 import com.authsphere.server.app.service.RoleService;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +73,7 @@ public class RoleController {
      * 查询角色已授权菜单。
      */
     @GetMapping("/api/roles/{roleId}/menus")
-    public List<AppMenu> listMenus(@PathVariable Long roleId) {
+    public List<AppClientMenu> listMenus(@PathVariable Long roleId) {
         return roleService.listMenus(roleId);
     }
 
@@ -90,7 +90,7 @@ public class RoleController {
      * 查询角色已授权权限。
      */
     @GetMapping("/api/roles/{roleId}/permissions")
-    public List<AppPermission> listPermissions(@PathVariable Long roleId) {
+    public List<AppClientPermission> listPermissions(@PathVariable Long roleId) {
         return roleService.listPermissions(roleId);
     }
 

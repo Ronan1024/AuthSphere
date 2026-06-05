@@ -2,13 +2,14 @@ package com.authsphere.server.app.domain;
 
 import com.authsphere.server.app.error.AppErrorCode;
 import com.authsphere.server.app.mapper.AppMenuMapper;
-import com.authsphere.server.app.model.AppMenu;
+import com.authsphere.server.app.model.AppClientMenu;
 import com.authsphere.server.common.exception.BizException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -23,8 +24,8 @@ public class AppMenuDomain {
 
     private final AppMenuMapper appMenuMapper;
 
-    public Integer appMenuCount(Long appClientId) {
-        return appMenuMapper.selectCount(new LambdaQueryWrapper<AppMenu>()).intValue();
+    public Integer appClientMenuCount(Long appClientId) {
+        return appMenuMapper.selectCount(new LambdaQueryWrapper<AppClientMenu>()).intValue();
     }
 
 
@@ -32,11 +33,11 @@ public class AppMenuDomain {
      * 校验 菜单编号是否存在
      */
     public void checkCodeExists(Long currentId, Long appId, Long clientId, String menuCode) {
-        Long count = appMenuMapper.selectCount(new LambdaQueryWrapper<AppMenu>()
-                .eq(AppMenu::getAppId, appId)
-                .eq(AppMenu::getClientId, clientId)
-                .eq(AppMenu::getMenuCode, menuCode)
-                .ne(!ObjectUtils.isEmpty(currentId), AppMenu::getId, currentId));
+        Long count = appMenuMapper.selectCount(new LambdaQueryWrapper<AppClientMenu>()
+                .eq(AppClientMenu::getAppId, appId)
+                .eq(AppClientMenu::getClientId, clientId)
+                .eq(AppClientMenu::getMenuCode, menuCode)
+                .ne(!ObjectUtils.isEmpty(currentId), AppClientMenu::getId, currentId));
         if (count > 0) {
             throw new BizException(AppErrorCode.APP_MENU_CODE_EXISTS);
         }
@@ -46,12 +47,12 @@ public class AppMenuDomain {
     /**
      * 校验上级菜单是否存在
      */
-    public AppMenu validateParent(Long appId, Long clientId, Long parentId) {
-        if(ObjectUtils.isEmpty(parentId)){
+    public AppClientMenu validateParent(Long appId, Long clientId, Long parentId) {
+        if (ObjectUtils.isEmpty(parentId) || parentId.equals(0L)) {
             return null;
         }
 
-        AppMenu parent = findById(parentId);
+        AppClientMenu parent = findById(parentId);
         if (!Objects.equals(parent.getAppId(), appId) || !Objects.equals(parent.getClientId(), clientId)) {
             throw new BizException(AppErrorCode.APP_MENU_PARENT_ERROR);
         }
@@ -60,12 +61,19 @@ public class AppMenuDomain {
     }
 
 
-    public AppMenu findById(Long id) {
-        AppMenu menu = appMenuMapper.selectById(id);
+    public AppClientMenu findById(Long id) {
+        AppClientMenu menu = appMenuMapper.selectById(id);
         if (ObjectUtils.isEmpty(menu)) {
             throw new BizException(AppErrorCode.APP_MENU_DATA_ERROR);
         }
         return menu;
+    }
+
+    /**
+     * 根据源id 获取源菜单列表
+     */
+    public List<AppClientMenu> findListBySource(Long source) {
+        return appMenuMapper.selectList(new LambdaQueryWrapper<AppClientMenu>().eq(AppClientMenu::getSourceId, source));
     }
 }
 

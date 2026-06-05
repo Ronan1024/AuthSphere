@@ -1,8 +1,11 @@
 package com.authsphere.server.app.api;
 
+import com.authsphere.server.app.dto.AppClientPermissionResponse;
+import com.authsphere.server.app.dto.AppPermissionPageRequest;
 import com.authsphere.server.app.dto.AppPermissionRequest;
-import com.authsphere.server.app.model.AppPermission;
+import com.authsphere.server.app.model.AppClientPermission;
 import com.authsphere.server.app.service.AppPermissionService;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -22,8 +25,16 @@ public class AppPermissionController {
      * 查询应用端权限资源全集。
      */
     @GetMapping("/api/app-clients/{clientId}/permissions")
-    public List<AppPermission> list(@PathVariable Long clientId) {
+    public List<AppClientPermissionResponse> list(@PathVariable Long clientId) {
         return appPermissionService.listByClient(clientId);
+    }
+
+    /**
+     * 分页查询应用端权限资源。
+     */
+    @PostMapping("/api/app-clients/{clientId}/permissions/page")
+    public Page<AppClientPermissionResponse> page(@PathVariable Long clientId, @Validated @RequestBody AppPermissionPageRequest request) {
+        return appPermissionService.pageByClient(clientId, request);
     }
 
     /**
@@ -38,7 +49,7 @@ public class AppPermissionController {
      * 查询权限资源详情。
      */
     @GetMapping("/api/app-client-permissions/{permissionId}")
-    public AppPermission detail(@PathVariable Long permissionId) {
+    public AppClientPermission detail(@PathVariable Long permissionId) {
         return appPermissionService.detail(permissionId);
     }
 
@@ -64,5 +75,13 @@ public class AppPermissionController {
     @PostMapping("/api/app-client-permissions/{permissionId}/disable")
     public Boolean disable(@PathVariable Long permissionId) {
         return appPermissionService.disable(permissionId);
+    }
+
+    /**
+     * 删除权限资源。
+     */
+    @DeleteMapping("/api/app-client-permissions/{permissionId}")
+    public Boolean delete(@PathVariable Long permissionId) {
+        return appPermissionService.delete(permissionId);
     }
 }

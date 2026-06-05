@@ -1,6 +1,6 @@
 package com.authsphere.server.app.mapper;
 
-import com.authsphere.server.app.model.AppMenu;
+import com.authsphere.server.app.model.AppClientMenu;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 
@@ -11,7 +11,7 @@ import org.apache.ibatis.annotations.Mapper;
 * @Entity com.authsphere.server.app.model.AppMenu
 */
 @Mapper
-public interface AppMenuMapper extends BaseMapper<AppMenu> {
+public interface AppMenuMapper extends BaseMapper<AppClientMenu> {
 
 }
 

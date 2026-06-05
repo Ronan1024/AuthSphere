@@ -3,12 +3,12 @@ package com.authsphere.server.app.service.impl;
 import com.authsphere.server.app.error.AppErrorCode;
 import com.authsphere.server.app.mapper.AppInstanceMapper;
 import com.authsphere.server.app.mapper.AppMenuMapper;
+import com.authsphere.server.app.model.AppClientMenu;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.authsphere.server.app.model.AppInstanceMenu;
 import com.authsphere.server.app.service.AppInstanceMenuService;
 import com.authsphere.server.app.mapper.AppInstanceMenuMapper;
 import com.authsphere.server.app.model.AppInstance;
-import com.authsphere.server.app.model.AppMenu;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -43,9 +43,9 @@ public class AppInstanceMenuServiceImpl extends ServiceImpl<AppInstanceMenuMappe
     @Transactional(rollbackFor = Exception.class)
     public Boolean syncFromApp(Long instanceId) {
         AppInstance instance = ensureInstance(instanceId);
-        List<AppMenu> menus = appMenuMapper.selectList(new LambdaQueryWrapper<AppMenu>()
-                .eq(AppMenu::getAppCode, instance.getAppCode()));
-        for (AppMenu menu : menus) {
+        List<AppClientMenu> menus = appMenuMapper.selectList(new LambdaQueryWrapper<AppClientMenu>()
+                .eq(AppClientMenu::getAppId, instance.getAppId()));
+        for (AppClientMenu menu : menus) {
             upsertStatus(instanceId, menu.getId(), StatusEnum.NORMAL.getCode());
         }
         return Boolean.TRUE;
@@ -83,8 +83,8 @@ public class AppInstanceMenuServiceImpl extends ServiceImpl<AppInstanceMenuMappe
 
     private void validateInstanceMenu(Long instanceId, Long menuId) {
         AppInstance instance = ensureInstance(instanceId);
-        AppMenu menu = appMenuMapper.selectById(menuId);
-        if (menu == null || !Objects.equals(menu.getAppCode(), instance.getAppCode())) {
+        AppClientMenu menu = appMenuMapper.selectById(menuId);
+        if (menu == null || !Objects.equals(menu.getAppId(), instance.getAppId())) {
             throw new BizException(AppErrorCode.APP_INSTANCE_RESOURCE_ERROR);
         }
     }

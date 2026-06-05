@@ -43,7 +43,13 @@ public enum AppErrorCode implements BaseError {
     ROLE_CODE_EXISTS(APP + "031", "角色编码已存在"),
     ROLE_RESOURCE_SCOPE_ERROR(APP + "032", "角色授权资源必须属于同一应用端"),
     MEMBER_ROLE_MEMBER_ERROR(APP + "033", "主体成员数据异常或状态不可授权"),
-    MEMBER_ROLE_SCOPE_ERROR(APP + "034", "成员角色授权必须属于同一应用端实例");
+    MEMBER_ROLE_SCOPE_ERROR(APP + "034", "成员角色授权必须属于同一应用端实例"),
+    /**
+     * 存在下级菜单不能进行删除
+     */
+    APP_MENU_DELETE_ERROR(APP + "035", "存在下级菜单不能进行删除"),
+
+    ;
 
     private final String code;
 

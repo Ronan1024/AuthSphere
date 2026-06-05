@@ -2,8 +2,9 @@ package com.authsphere.server.app.api;
 
 import com.authsphere.server.app.dto.AppMenuRequest;
 import com.authsphere.server.app.dto.AppMenuResponse;
-import com.authsphere.server.app.model.AppMenu;
-import com.authsphere.server.app.service.AppMenuService;
+import com.authsphere.server.app.model.AppClientMenu;
+import com.authsphere.server.app.service.AppClientMenuService;
+import com.authsphere.server.common.enums.StatusEnum;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -17,14 +18,14 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AppMenuController {
 
-    private final AppMenuService appMenuService;
+    private final AppClientMenuService appClientMenuService;
 
     /**
      * 查询应用端菜单资源全集。
      */
     @GetMapping("/api/app-clients/{clientId}/menus")
     public List<AppMenuResponse> list(@PathVariable Long clientId) {
-        return appMenuService.listByClient(clientId);
+        return appClientMenuService.listByClient(clientId);
     }
 
     /**
@@ -32,15 +33,15 @@ public class AppMenuController {
      */
     @PostMapping("/api/app-clients/{clientId}/menus")
     public Boolean create(@PathVariable Long clientId, @Validated @RequestBody AppMenuRequest request) {
-        return appMenuService.create(clientId, request);
+        return appClientMenuService.create(clientId, request);
     }
 
     /**
      * 查询菜单资源详情。
      */
     @GetMapping("/api/app-client-menus/{menuId}")
-    public AppMenu detail(@PathVariable Long menuId) {
-        return appMenuService.detail(menuId);
+    public AppClientMenu detail(@PathVariable Long menuId) {
+        return appClientMenuService.detail(menuId);
     }
 
     /**
@@ -48,7 +49,7 @@ public class AppMenuController {
      */
     @PutMapping("/api/app-client-menus/{menuId}")
     public Boolean edit(@PathVariable Long menuId, @Validated @RequestBody AppMenuRequest request) {
-        return appMenuService.edit(menuId, request);
+        return appClientMenuService.edit(menuId, request);
     }
 
     /**
@@ -56,7 +57,7 @@ public class AppMenuController {
      */
     @PostMapping("/api/app-client-menus/{menuId}/enable")
     public Boolean enable(@PathVariable Long menuId) {
-        return appMenuService.enable(menuId);
+        return appClientMenuService.changeMenuStatus(menuId, StatusEnum.NORMAL);
     }
 
     /**
@@ -64,6 +65,14 @@ public class AppMenuController {
      */
     @PostMapping("/api/app-client-menus/{menuId}/disable")
     public Boolean disable(@PathVariable Long menuId) {
-        return appMenuService.disable(menuId);
+        return appClientMenuService.changeMenuStatus(menuId, StatusEnum.DISABLED);
+    }
+
+    /**
+     * 删除菜单资源。
+     */
+    @DeleteMapping("/api/app-client-menus/{menuId}")
+    public Boolean delete(@PathVariable Long menuId) {
+        return appClientMenuService.delete(menuId);
     }
 }

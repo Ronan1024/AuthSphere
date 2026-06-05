@@ -2,8 +2,8 @@ package com.authsphere.server.app.service;
 
 import com.authsphere.server.app.dto.RoleRequest;
 import com.authsphere.server.app.dto.RoleResourceAssignRequest;
-import com.authsphere.server.app.model.AppPermission;
-import com.authsphere.server.app.model.AppMenu;
+import com.authsphere.server.app.model.AppClientPermission;
+import com.authsphere.server.app.model.AppClientMenu;
 import com.authsphere.server.app.model.Role;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -26,11 +26,11 @@ public interface RoleService extends IService<Role> {
 
     Boolean disable(Long id);
 
-    List<AppMenu> listMenus(Long roleId);
+    List<AppClientMenu> listMenus(Long roleId);
 
     Boolean assignMenus(Long roleId, RoleResourceAssignRequest request);
 
-    List<AppPermission> listPermissions(Long roleId);
+    List<AppClientPermission> listPermissions(Long roleId);
 
     Boolean assignPermissions(Long roleId, RoleResourceAssignRequest request);
 }

@@ -1,6 +1,7 @@
 package com.authsphere.server.app.model;
 
 import com.authsphere.server.common.model.BaseDataBaseModel;
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -13,22 +14,22 @@ import lombok.EqualsAndHashCode;
 @TableName(value ="app_client_permission")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class AppPermission extends BaseDataBaseModel {
+public class AppClientPermission extends BaseDataBaseModel {
     /**
      * 权限ID
      */
-    @TableId
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
      * 所属应用编码
      */
-    private String appCode;
+    private Long appId;
 
     /**
      * 应用端编码
      */
-    private String clientCode;
+    private Long clientId;
 
     /**
      * 所属菜单ID
@@ -51,6 +52,16 @@ public class AppPermission extends BaseDataBaseModel {
     private Integer permissionType;
 
     /**
+     * API 接口路径
+     */
+    private String apiPath;
+
+    /**
+     * HTTP 请求方法
+     */
+    private String method;
+
+    /**
      * 
      */
     private String description;
@@ -59,9 +70,4 @@ public class AppPermission extends BaseDataBaseModel {
      * ENABLED/DISABLED
      */
     private Integer status;
-
-    /**
-     * 是否内置。
-     */
-    private Integer builtIn;
 }

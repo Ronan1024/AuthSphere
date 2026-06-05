@@ -2,7 +2,7 @@ package com.authsphere.server.app.convert;
 
 import com.authsphere.server.app.dto.AppMenuRequest;
 import com.authsphere.server.app.dto.AppMenuResponse;
-import com.authsphere.server.app.model.AppMenu;
+import com.authsphere.server.app.model.AppClientMenu;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
@@ -21,7 +21,7 @@ public interface AppMenuConvert {
 
     @Mapping(target = "sourceId", ignore = true)
     @Mapping(target = "children", ignore = true)
-    AppMenuResponse toMenuResponse(AppMenu appMenu);
+    AppMenuResponse toMenuResponse(AppClientMenu appMenu);
 
     @Mapping(target = "sourceId", ignore = true)
     @Mapping(target = "updateTime", ignore = true)
@@ -29,7 +29,7 @@ public interface AppMenuConvert {
     @Mapping(target = "createTime", ignore = true)
     @Mapping(target = "clientId", ignore = true)
     @Mapping(target = "appId", ignore = true)
-    AppMenu toAppMenu(AppMenuRequest request);
+    AppClientMenu toAppMenu(AppMenuRequest request);
 
     @Mapping(target = "updateTime", ignore = true)
     @Mapping(target = "sourceId", ignore = true)
@@ -37,5 +37,19 @@ public interface AppMenuConvert {
     @Mapping(target = "createTime", ignore = true)
     @Mapping(target = "clientId", ignore = true)
     @Mapping(target = "appId", ignore = true)
-    void copyAppMenu(@MappingTarget AppMenu menu, AppMenuRequest request);
+    void copyAppMenu(@MappingTarget AppClientMenu menu, AppMenuRequest request);
+
+    default Integer map(Boolean value) {
+        if (value == null) {
+            return null;
+        }
+        return value ? 1 : 0;
+    }
+
+    default Boolean map(Integer value) {
+        if (value == null) {
+            return null;
+        }
+        return value == 1;
+    }
 }

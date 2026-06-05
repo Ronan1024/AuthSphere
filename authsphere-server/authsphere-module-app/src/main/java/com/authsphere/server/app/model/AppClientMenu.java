@@ -3,6 +3,7 @@ package com.authsphere.server.app.model;
 import com.authsphere.server.common.model.BaseDataBaseModel;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName(value = "app_client_menu")
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class AppMenu extends BaseDataBaseModel {
+public class AppClientMenu extends BaseDataBaseModel {
     /**
      * 菜单ID
      */

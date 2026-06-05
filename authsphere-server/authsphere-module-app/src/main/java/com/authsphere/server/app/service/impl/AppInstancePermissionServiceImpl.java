@@ -3,12 +3,12 @@ package com.authsphere.server.app.service.impl;
 import com.authsphere.server.app.error.AppErrorCode;
 import com.authsphere.server.app.mapper.AppInstanceMapper;
 import com.authsphere.server.app.mapper.AppPermissionMapper;
+import com.authsphere.server.app.model.AppClientPermission;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.authsphere.server.app.model.AppInstancePermission;
 import com.authsphere.server.app.service.AppInstancePermissionService;
 import com.authsphere.server.app.mapper.AppInstancePermissionMapper;
 import com.authsphere.server.app.model.AppInstance;
-import com.authsphere.server.app.model.AppPermission;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -43,9 +43,9 @@ public class AppInstancePermissionServiceImpl extends ServiceImpl<AppInstancePer
     @Transactional(rollbackFor = Exception.class)
     public Boolean syncFromApp(Long instanceId) {
         AppInstance instance = ensureInstance(instanceId);
-        List<AppPermission> permissions = appPermissionMapper.selectList(new LambdaQueryWrapper<AppPermission>()
-                .eq(AppPermission::getAppCode, instance.getAppCode()));
-        for (AppPermission permission : permissions) {
+        List<AppClientPermission> permissions = appPermissionMapper.selectList(new LambdaQueryWrapper<AppClientPermission>()
+                .eq(AppClientPermission::getAppId, instance.getAppCode()));
+        for (AppClientPermission permission : permissions) {
             upsertStatus(instanceId, permission.getId(), StatusEnum.NORMAL.getCode());
         }
         return Boolean.TRUE;
@@ -83,8 +83,8 @@ public class AppInstancePermissionServiceImpl extends ServiceImpl<AppInstancePer
 
     private void validateInstancePermission(Long instanceId, Long permissionId) {
         AppInstance instance = ensureInstance(instanceId);
-        AppPermission permission = appPermissionMapper.selectById(permissionId);
-        if (permission == null || !Objects.equals(permission.getAppCode(), instance.getAppCode())) {
+        AppClientPermission permission = appPermissionMapper.selectById(permissionId);
+        if (permission == null || !Objects.equals(permission.getAppId(), instance.getAppCode())) {
             throw new BizException(AppErrorCode.APP_INSTANCE_RESOURCE_ERROR);
         }
     }
