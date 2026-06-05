@@ -34,6 +34,11 @@ public class AppClientRequest {
     private Integer clientType;
 
     /**
+     * 客户端密钥。新增时可不传，由服务端自动生成；编辑时为空表示保持原密钥不变。
+     */
+    private String clientSecret;
+
+    /**
      * 默认身份域 ID。
      */
     private Long realmId;

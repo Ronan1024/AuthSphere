@@ -4,6 +4,7 @@ import com.authsphere.server.common.model.BaseDataBaseModel;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -45,6 +46,12 @@ public class AppClient extends BaseDataBaseModel {
      * 应用端类型：1.ADMIN_WEB 2.MERCHANT_WEB 3.MINI_PROGRAM 4.H5 5.OPEN_API 6.SERVICE。
      */
     private Integer clientType;
+
+    /**
+     * 客户端密钥，存储时必须保护，接口响应不返回明文或密文。
+     */
+    @JsonIgnore
+    private String clientSecret;
 
     /**
      * 默认身份域 ID。

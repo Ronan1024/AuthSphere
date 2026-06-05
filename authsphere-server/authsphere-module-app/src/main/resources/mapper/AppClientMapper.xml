@@ -11,6 +11,7 @@
             <result property="clientCode" column="client_code" jdbcType="VARCHAR"/>
             <result property="clientName" column="client_name" jdbcType="VARCHAR"/>
             <result property="clientType" column="client_type" jdbcType="TINYINT"/>
+            <result property="clientSecret" column="client_secret" jdbcType="VARCHAR"/>
             <result property="defaultRealmId" column="default_realm_id" jdbcType="BIGINT"/>
             <result property="defaultEntryUrl" column="default_entry_url" jdbcType="VARCHAR"/>
             <result property="status" column="status" jdbcType="TINYINT"/>
@@ -23,8 +24,8 @@
     <sql id="Base_Column_List">
         id,app_id,app_code,
         client_code,client_name,client_type,
-        default_realm_id,default_entry_url,status,
-        built_in,description,create_time,
+        client_secret,default_realm_id,default_entry_url,
+        status,built_in,description,create_time,
         update_time
     </sql>
 </mapper>

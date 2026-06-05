@@ -18,13 +18,13 @@ public class AppMenuRequest {
     /**
      * 菜单编码，同一应用内唯一。
      */
-    @NotBlank
+    @NotBlank(message = "菜单编号不能为空")
     private String menuCode;
 
     /**
      * 菜单名称。
      */
-    @NotBlank
+    @NotBlank(message = "菜单名称不能为空")
     private String menuName;
 
     /**
@@ -50,16 +50,11 @@ public class AppMenuRequest {
     /**
      * 是否在菜单中可见，1 表示可见，0 表示隐藏。
      */
-    private Integer visible;
+    private Boolean visible;
 
     /**
      * 菜单状态，使用 {@code StatusEnum} 的状态值。
      */
-    @NotNull
+    @NotNull(message = "菜单状态不能为空")
     private Integer status;
-
-    /**
-     * 是否内置菜单，1 表示内置，0 表示非内置。
-     */
-    private Integer builtIn;
 }

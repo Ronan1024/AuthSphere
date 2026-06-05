@@ -25,7 +25,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -38,6 +41,10 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient> implements AppClientService {
+
+    private static final String PROTECTED_SECRET_PREFIX = "ENC:";
+
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final AppClientMapper appClientMapper;
     private final AppMapper appMapper;
@@ -145,14 +152,46 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
         BeanUtils.copyProperties(request, client, "id");
         client.setAppId(app.getId());
         client.setAppCode(app.getAppCode());
+        client.setClientSecret(resolveCreateClientSecret(request));
         appClientMapper.insert(client);
     }
 
     private void updateClientForApp(App app, AppClient client, AppClientRequest request) {
         validateClientRequest(client.getId(), app, request);
+        String originalClientSecret = client.getClientSecret();
         BeanUtils.copyProperties(request, client, "id", "appId", "appCode", "createTime", "updateTime");
         client.setAppCode(app.getAppCode());
+        client.setClientSecret(resolveUpdateClientSecret(originalClientSecret, request));
         appClientMapper.updateById(client);
+    }
+
+    private String resolveCreateClientSecret(AppClientRequest request) {
+        String rawSecret = StringUtils.hasText(request.getClientSecret())
+                ? request.getClientSecret()
+                : generateClientSecret();
+        return protectClientSecret(rawSecret);
+    }
+
+    private String resolveUpdateClientSecret(String originalClientSecret, AppClientRequest request) {
+        if (!StringUtils.hasText(request.getClientSecret())) {
+            return originalClientSecret;
+        }
+        return protectClientSecret(request.getClientSecret());
+    }
+
+    private String generateClientSecret() {
+        byte[] bytes = new byte[32];
+        SECURE_RANDOM.nextBytes(bytes);
+        return "sec_" + Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String protectClientSecret(String clientSecret) {
+        if (!StringUtils.hasText(clientSecret) || clientSecret.startsWith(PROTECTED_SECRET_PREFIX)) {
+            return clientSecret;
+        }
+        // 这里先保留统一保护入口，后续接入 KMS/AES 后只需要替换本方法实现。
+        return PROTECTED_SECRET_PREFIX + Base64.getEncoder()
+                .encodeToString(clientSecret.getBytes(StandardCharsets.UTF_8));
     }
 
     private void syncAppCodeSnapshot(App app, List<AppClient> existingClients) {
@@ -217,4 +256,3 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
     }
 
 }
-

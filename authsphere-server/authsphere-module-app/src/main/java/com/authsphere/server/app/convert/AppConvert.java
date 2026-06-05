@@ -28,9 +28,7 @@ public interface AppConvert {
     @Mapping(target = "createTime", ignore = true)
     void copyApp(AppRequest request, @MappingTarget App app);
 
-    @Mapping(target = "permissionSize", ignore = true)
-    @Mapping(target = "menuSize", ignore = true)
-    @Mapping(target = "instanceSize", ignore = true)
+    @Mapping(target = "appInstanceSize", ignore = true)
     @Mapping(target = "clientSize", ignore = true)
     AppInfoResponse toAppInfoResponse(App byId);
 }

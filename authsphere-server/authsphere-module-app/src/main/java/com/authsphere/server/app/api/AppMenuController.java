@@ -1,6 +1,7 @@
 package com.authsphere.server.app.api;
 
 import com.authsphere.server.app.dto.AppMenuRequest;
+import com.authsphere.server.app.dto.AppMenuResponse;
 import com.authsphere.server.app.model.AppMenu;
 import com.authsphere.server.app.service.AppMenuService;
 import lombok.RequiredArgsConstructor;
@@ -22,7 +23,7 @@ public class AppMenuController {
      * 查询应用端菜单资源全集。
      */
     @GetMapping("/api/app-clients/{clientId}/menus")
-    public List<AppMenu> list(@PathVariable Long clientId) {
+    public List<AppMenuResponse> list(@PathVariable Long clientId) {
         return appMenuService.listByClient(clientId);
     }
 

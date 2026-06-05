@@ -1,40 +1,42 @@
-package com.authsphere.server.app.model;
+package com.authsphere.server.app.dto;
 
-import com.authsphere.server.common.model.BaseDataBaseModel;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
+
+import java.util.List;
 
 /**
- * 应用端菜单资源表。
- *
- * @TableName app_client_menu
+ * @program: AuthSphere
+ * @description:
+ * @author: L.J.Ran
+ * @create: 2026/6/5
  */
-@TableName(value = "app_client_menu")
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class AppMenu extends BaseDataBaseModel {
+public class AppMenuResponse {
+
     /**
      * 菜单ID
      */
-    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
      * 所属应用编码
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long appId;
 
     /**
      * 应用端编码
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long clientId;
 
     /**
      * 父级菜单ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long parentId;
 
     /**
@@ -70,15 +72,20 @@ public class AppMenu extends BaseDataBaseModel {
     /**
      * 是否可见
      */
-    private Boolean visible;
+    private Integer visible;
 
     /**
      * ENABLED/DISABLED
      */
     private Integer status;
 
+
     /**
      * 源id
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long sourceId;
+
+    private List<AppMenuResponse> children;
+
 }

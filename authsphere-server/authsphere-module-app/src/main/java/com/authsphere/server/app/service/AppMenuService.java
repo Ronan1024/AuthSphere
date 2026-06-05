@@ -1,6 +1,7 @@
 package com.authsphere.server.app.service;
 
 import com.authsphere.server.app.dto.AppMenuRequest;
+import com.authsphere.server.app.dto.AppMenuResponse;
 import com.authsphere.server.app.model.AppMenu;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -16,7 +17,7 @@ public interface AppMenuService extends IService<AppMenu> {
     /**
      * 查询指定应用端的菜单资源全集。
      */
-    List<AppMenu> listByClient(Long appClientId);
+    List<AppMenuResponse> listByClient(Long appClientId);
 
     /**
      * 查询菜单资源详情。

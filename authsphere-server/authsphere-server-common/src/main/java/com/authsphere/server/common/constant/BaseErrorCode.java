@@ -16,4 +16,6 @@ public interface BaseErrorCode {
     String TYPE_CATEGORY = "1002";
 
     String SUBJECT = "1003";
+
+    String APP = "1004";
 }
