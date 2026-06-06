@@ -16,7 +16,25 @@ const routes: RouteRecordRaw[] = [
         path: 'realms',
         name: 'RealmList',
         component: () => import('@/views/realm/RealmListView.vue'),
-        meta: { title: '身份域列表', breadcrumb: ['身份域管理', '身份域列表'] },
+        meta: { title: '身份域管理', breadcrumb: ['身份域管理', '身份域列表'] },
+      },
+      {
+        path: 'realms/create',
+        name: 'RealmCreate',
+        component: () => import('@/views/realm/RealmListView.vue'),
+        meta: {
+          title: '添加身份域',
+          breadcrumb: ['身份域管理', '身份域列表', '添加身份域'],
+        },
+      },
+      {
+        path: 'realms/:id/edit',
+        name: 'RealmEdit',
+        component: () => import('@/views/realm/RealmListView.vue'),
+        meta: {
+          title: '编辑身份域',
+          breadcrumb: ['身份域管理', '身份域列表', '编辑身份域'],
+        },
       },
       {
         path: 'realm/type-categories',
@@ -119,6 +137,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'applications/detail/:id/clients/config/:clientId',
+        name: 'ClientConfig',
+        component: () => import('@/views/application/ClientConfigView.vue'),
+        meta: {
+          title: '客户端配置',
+          breadcrumb: ['应用管理', '应用列表', '应用详情', '应用客户端', '客户端配置'],
+          moduleDescription: '对应用下的具体访问客户端进行高级鉴权策略与资源权限配置。',
+        },
+      },
+      {
         path: 'applications/instances',
         name: 'ApplicationInstances',
         component: () => import('@/views/application/ApplicationInstanceListView.vue'),
@@ -161,7 +189,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'permission/roles',
         name: 'RoleManagement',
-        component: () => import('@/views/common/ModulePlaceholder.vue'),
+        component: () => import('@/views/permission/RoleListView.vue'),
         meta: {
           title: '角色管理',
           breadcrumb: ['权限中心', '角色管理'],

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { 
-  ArrowLeft, Edit,
+  ArrowLeft,
   Promotion, Monitor, Key, Link, Clock, Document,
   User, OfficeBuilding, Right, Lock, EditPen, UserFilled,
   Connection, Stamp
@@ -9,7 +9,7 @@ import {
 import type { RealmRecord } from '@/api/realm'
 import type { PasswordPolicyRecord } from '@/api/passwordPolicy'
 
-const props = defineProps<{
+defineProps<{
   realm: RealmRecord
   passwordPolicy?: PasswordPolicyRecord
 }>()
@@ -219,7 +219,7 @@ const mockAssociationObjects = [
                 <el-table-column prop="name" label="名称 / 标识" min-width="200" />
                 <el-table-column prop="realmCode" label="默认身份域" width="160" />
                 <el-table-column label="状态" width="100">
-                  <template #default="{ row }">
+                  <template #default>
                     <span class="status-green"><span class="dot"></span> 启用</span>
                   </template>
                 </el-table-column>

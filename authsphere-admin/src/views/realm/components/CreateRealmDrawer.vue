@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
-import { User, Goods, Monitor, DocumentCopy } from '@element-plus/icons-vue'
+import { User, Goods, Monitor } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 import { realmApi, type RealmPayload } from '@/api/realm'
