@@ -596,10 +596,6 @@ onMounted(init)
           <div class="filter-actions-row">
             <el-button type="primary" :icon="Search" class="search-action" @click="handleSearch">查询</el-button>
             <el-button @click="handleReset">重置</el-button>
-            <el-button link class="btn-toggle-expand">
-              展开
-              <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-            </el-button>
           </div>
         </div>
       </el-card>
@@ -839,13 +835,6 @@ onMounted(init)
   border-color: #1677ff;
 }
 
-.btn-toggle-expand {
-  padding-right: 4px !important;
-  padding-left: 16px !important;
-  color: #1677ff;
-  font-size: 14px;
-}
-
 .realm-table-card {
   border: 1px solid #eaecf0;
   border-radius: 4px;
@@ -1064,6 +1053,19 @@ onMounted(init)
 /* Full-page create realm view styling */
 .create-realm-page {
   min-height: 100%;
+  --realm-form-primary: #1677ff;
+  --realm-form-primary-hover: #4096ff;
+  --realm-form-primary-active: #0958d9;
+  --realm-form-text: #172033;
+  --realm-form-secondary: #667085;
+  --realm-form-border: #d9e1ec;
+  --el-color-primary: var(--realm-form-primary);
+  --el-color-primary-light-3: #5b9cff;
+  --el-color-primary-light-5: #8cbbff;
+  --el-color-primary-light-7: #bdd8ff;
+  --el-color-primary-light-8: #d6e7ff;
+  --el-color-primary-light-9: #edf5ff;
+  --el-color-primary-dark-2: var(--realm-form-primary-active);
 }
 
 .create-header {
@@ -1075,14 +1077,14 @@ onMounted(init)
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #111827;
+  color: var(--realm-form-text);
   font-size: 24px;
   font-weight: 700;
   transition: color 0.2s;
 }
 
 .back-action:hover {
-  color: #2563eb;
+  color: var(--realm-form-primary);
 }
 
 .back-icon {
@@ -1093,21 +1095,21 @@ onMounted(init)
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid #eaecf0;
+  border: 1px solid #e4eaf2;
   border-radius: 6px;
   background: #fff;
-  box-shadow: 0 2px 8px rgb(16 24 40 / 4%);
+  box-shadow: 0 2px 10px rgb(31 56 88 / 5%);
 }
 
 .form-section-card {
   padding: 18px 30px 16px;
-  border-bottom: 1px solid #eaecf0;
+  border-bottom: 1px solid #e8edf4;
   background: #fff;
 }
 
 .section-title {
   margin-bottom: 14px;
-  color: #172033;
+  color: var(--realm-form-text);
   font-size: 15px;
   font-weight: 600;
 }
@@ -1129,15 +1131,53 @@ onMounted(init)
 }
 
 .create-form :deep(.el-form-item__label) {
-  color: #344054;
-  font-weight: 500;
+  color: #26364d;
+  font-weight: 600;
 }
 
 .create-form :deep(.el-input__wrapper),
 .create-form :deep(.el-select__wrapper),
 .create-form :deep(.el-textarea__inner) {
   border-radius: 4px;
-  box-shadow: 0 0 0 1px #d0d5dd inset;
+  background: #fff;
+  box-shadow: 0 0 0 1px var(--realm-form-border) inset;
+  transition: box-shadow 0.18s ease;
+}
+
+.create-form :deep(.el-input__wrapper:hover),
+.create-form :deep(.el-select__wrapper:hover),
+.create-form :deep(.el-textarea__inner:hover) {
+  box-shadow: 0 0 0 1px #91bfff inset;
+}
+
+.create-form :deep(.el-input__wrapper.is-focus),
+.create-form :deep(.el-select__wrapper.is-focused),
+.create-form :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px var(--realm-form-primary) inset;
+}
+
+.create-form :deep(.el-input.is-disabled .el-input__wrapper) {
+  background: #f5f7fa;
+  box-shadow: 0 0 0 1px #e1e7ef inset;
+}
+
+.create-form :deep(.el-input__inner),
+.create-form :deep(.el-textarea__inner),
+.create-form :deep(.el-radio__label),
+.create-form :deep(.el-checkbox__label) {
+  color: #344054;
+}
+
+.create-form :deep(.el-input__inner::placeholder),
+.create-form :deep(.el-textarea__inner::placeholder) {
+  color: #a5afbd;
+}
+
+.create-form :deep(.el-radio__input.is-checked .el-radio__inner),
+.create-form :deep(.el-checkbox__input.is-checked .el-checkbox__inner),
+.create-form :deep(.el-switch.is-checked .el-switch__core) {
+  border-color: var(--realm-form-primary);
+  background: var(--realm-form-primary);
 }
 
 .create-form :deep(.el-checkbox) {
@@ -1146,7 +1186,7 @@ onMounted(init)
 
 .field-hint-text {
   font-size: 12px;
-  color: #6b7280;
+  color: #7b8798;
   margin-top: 4px;
   line-height: 1.4;
 }
@@ -1164,7 +1204,7 @@ onMounted(init)
 .inline-link {
   height: auto;
   padding: 0;
-  color: #1677ff;
+  color: var(--realm-form-primary);
   font-size: 13px;
 }
 
@@ -1179,6 +1219,22 @@ onMounted(init)
 .form-footer-actions :deep(.el-button) {
   height: 36px;
   border-radius: 4px;
+}
+
+.form-footer-actions :deep(.el-button--primary) {
+  border-color: var(--realm-form-primary);
+  background: var(--realm-form-primary);
+}
+
+.form-footer-actions :deep(.el-button--primary:hover) {
+  border-color: var(--realm-form-primary-hover);
+  background: var(--realm-form-primary-hover);
+}
+
+.form-footer-actions :deep(.el-button--primary.is-plain) {
+  color: var(--realm-form-primary);
+  border-color: #91bfff;
+  background: #f5f9ff;
 }
 
 .btn-save,

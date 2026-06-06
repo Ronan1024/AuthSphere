@@ -1,12 +1,12 @@
 :root {
-  /* Open Source Minimalist Overrides (Monochrome + Flat) */
-  --el-color-primary: #000000;
-  --el-color-primary-light-3: #262626;
-  --el-color-primary-light-5: #404040;
-  --el-color-primary-light-7: #737373;
-  --el-color-primary-light-8: #a3a3a3;
-  --el-color-primary-light-9: #e5e5e5;
-  --el-color-primary-dark-2: #000000;
+  /* AuthSphere enterprise blue */
+  --el-color-primary: #1677ff;
+  --el-color-primary-light-3: #5b9cff;
+  --el-color-primary-light-5: #8cbbff;
+  --el-color-primary-light-7: #bdd8ff;
+  --el-color-primary-light-8: #d6e7ff;
+  --el-color-primary-light-9: #edf5ff;
+  --el-color-primary-dark-2: #0958d9;
   
   --el-border-radius-base: 4px;
   --el-border-radius-small: 2px;
@@ -19,8 +19,8 @@
   --el-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --el-box-shadow-light: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 
-  color: #0a0a0a;
-  background: #fafafa;
+  color: #172033;
+  background: #f7f9fc;
   font-family:
     Inter, "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
   font-synthesis: none;
@@ -128,7 +128,7 @@ body {
   height: 100vh;
   min-height: 100vh;
   overflow: hidden;
-  background: #fafafa;
+  background: #f7f9fc;
 }
 
 .admin-shell > .el-container {
@@ -139,9 +139,9 @@ body {
 .admin-aside {
   position: relative;
   overflow: hidden auto;
-  color: #4b5563;
-  background: #ffffff;
-  border-right: 1px solid #eaeaea;
+  color: #c7d3e3;
+  background: linear-gradient(180deg, #142942 0%, #10243c 100%);
+  border-right: 1px solid #203a56;
   transition: width 0.18s ease;
 }
 
@@ -155,7 +155,7 @@ body {
   align-items: center;
   height: 64px;
   padding: 0 20px;
-  border-bottom: 1px solid #eaeaea;
+  border-bottom: 1px solid rgb(255 255 255 / 9%);
 }
 
 .admin-aside.collapsed .brand {
@@ -168,22 +168,33 @@ body {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 4px;
+  border-radius: 8px;
   color: #ffffff;
   font-size: 18px;
-  background: #000000;
+  background: linear-gradient(135deg, #4096ff 0%, #1677ff 100%);
+  box-shadow: 0 6px 16px rgb(22 119 255 / 32%);
 }
 
 .brand-name {
-  color: #111827;
+  color: #ffffff;
   font-size: 17px;
   font-weight: 700;
   line-height: 24px;
 }
 
 .admin-menu {
+  --el-menu-bg-color: transparent;
+  --el-menu-text-color: #c7d3e3;
+  --el-menu-hover-text-color: #ffffff;
+  --el-menu-active-color: #69a9ff;
+  --el-menu-hover-bg-color: rgb(255 255 255 / 7%);
   padding: 10px 8px 24px;
   border-right: 0;
+  background: transparent;
+}
+
+.admin-menu .el-menu {
+  background: transparent;
 }
 
 .admin-menu .el-menu-item,
@@ -191,23 +202,24 @@ body {
   height: 42px;
   margin: 4px 0;
   border-radius: 4px;
+  color: #c7d3e3;
   font-size: 14px;
 }
 
 .admin-menu .el-sub-menu__title:hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: rgb(255 255 255 / 7%);
+  color: #ffffff;
 }
 
 .admin-menu .el-menu-item.is-active {
-  background: #f5f5f5;
-  color: #000000;
+  background: rgb(22 119 255 / 20%);
+  color: #69a9ff;
   font-weight: 600;
 }
 
 .admin-menu .el-menu-item:not(.is-active):hover {
-  background: #f3f4f6;
-  color: #111827;
+  background: rgb(255 255 255 / 7%);
+  color: #ffffff;
 }
 
 .admin-aside.collapsed .admin-menu {
@@ -386,6 +398,50 @@ body {
   overflow: auto;
   padding: 24px;
   background: #f7f8fa;
+}
+
+/* Realm type page critical layout. Keep global to avoid HMR/scoped-style drift. */
+.realm-type-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.realm-type-filter-grid {
+  display: grid;
+  grid-template-columns:
+    minmax(220px, 1fr)
+    minmax(220px, 1fr)
+    minmax(180px, 0.8fr)
+    auto;
+  gap: 32px;
+  align-items: center;
+}
+
+.realm-type-filter-item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.realm-type-filter-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.realm-type-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (max-width: 1100px) {
+  .realm-type-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .dashboard {
