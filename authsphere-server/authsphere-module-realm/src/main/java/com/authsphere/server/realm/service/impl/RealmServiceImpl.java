@@ -2,12 +2,15 @@ package com.authsphere.server.realm.service.impl;
 
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.convert.RealmConvert;
+import com.authsphere.server.realm.domain.TypeCategoryDomain;
+import com.authsphere.server.realm.dto.AuthMethodInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.Realm;
+import com.authsphere.server.realm.model.TypeCategory;
 import com.authsphere.server.realm.service.RealmService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -15,7 +18,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.authsphere.server.common.enums.StatusEnum.DISABLED;
 import static com.authsphere.server.common.enums.StatusEnum.NORMAL;
@@ -30,6 +36,7 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 @RequiredArgsConstructor
 public class RealmServiceImpl implements RealmService {
     private final RealmMapper realmMapper;
+    private final TypeCategoryDomain typeCategoryDomain;
 
     /**
      * 创建身份域信息
@@ -82,7 +89,35 @@ public class RealmServiceImpl implements RealmService {
     @Override
     public Page<RealmPageResponse> page(RealmPageRequest realmPageRequest) {
         Page<RealmPageResponse> page = new Page<>(realmPageRequest.getPage(), realmPageRequest.getSize());
-        return realmMapper.page(page, realmPageRequest);
+        Page<RealmPageResponse> result = realmMapper.page(page, realmPageRequest);
+        List<RealmPageResponse> records = result.getRecords();
+        if (CollectionUtils.isEmpty(records)) {
+            return result;
+        }
+        List<Long> realmTypeIdList = records.stream().map(RealmPageResponse::getTypeCategoryId).toList();
+        List<TypeCategory> typeCategoryList = typeCategoryDomain.findByIdList(realmTypeIdList);
+        Map<Long, TypeCategory> typeCategoryMap = typeCategoryList.stream().collect(Collectors.toMap(TypeCategory::getId, e -> e));
+
+        records.forEach(e -> {
+            TypeCategory typeCategory = typeCategoryMap.get(e.getTypeCategoryId());
+            e.setTypeCategoryName(typeCategory.getName());
+            // TODO 登录页处理
+
+            // TODO 认证方式处理
+            AuthMethodInfoResponse authMethodInfoResponse = new AuthMethodInfoResponse();
+            authMethodInfoResponse.setId(1L);
+            authMethodInfoResponse.setName("密码");
+
+            AuthMethodInfoResponse authMethodInfoResponse2 = new AuthMethodInfoResponse();
+            authMethodInfoResponse.setId(2L);
+            authMethodInfoResponse.setName("短信");
+
+            List<AuthMethodInfoResponse> list = Arrays.asList(authMethodInfoResponse, authMethodInfoResponse2);
+            e.setAuthMethodList(list);
+        });
+
+
+        return result;
     }
 
 

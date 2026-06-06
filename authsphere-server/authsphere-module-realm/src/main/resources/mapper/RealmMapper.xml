@@ -10,13 +10,7 @@
         name,
         type_category_id as typeCategoryId,
         login_url as loginUrl,
-        realm.register_enabled as registerEnabled,
-        sso_enabled as ssoEnabled,
-        password_policy as passwordPolicy,
-        mfa_policy as mfaPolicy,
-        unique_policy as uniquePolicy,
         status,
-        description,
         create_time,
         update_time
         from realm
@@ -29,6 +23,9 @@
             </if>
             <if test="realmPageRequest.status != null">
                 and `status` = #{realmPageRequest.status}
+            </if>
+            <if test="realmPageRequest.typeCategoryId != null">
+                and type_category_id = #{realmPageRequest.typeCategoryId}
             </if>
         </where>
         order by update_time desc, create_time desc

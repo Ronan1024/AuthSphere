@@ -1,11 +1,14 @@
 package com.authsphere.server.realm.convert;
 
+import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
 import com.authsphere.server.realm.model.Realm;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import org.mapstruct.factory.Mappers;
+
+import java.util.List;
 
 /**
  * @program: AuthSphere
@@ -29,4 +32,8 @@ public interface RealmConvert {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     void copyByModel(CreateRealmRequest createRealmRequest, @MappingTarget Realm realm);
+
+    RealmInfoResponse toRealmInfoResponse(Realm byId);
+
+    List<RealmInfoResponse> toRealmInfoResponse(List<Realm> realms);
 }

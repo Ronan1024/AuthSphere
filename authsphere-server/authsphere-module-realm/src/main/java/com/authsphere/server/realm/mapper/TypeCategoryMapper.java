@@ -23,8 +23,9 @@ public interface TypeCategoryMapper extends BaseMapper<TypeCategory> {
     Page<TypeCategoryPageResponse> page(@Param("page") IPage<TypeCategoryPageResponse> page,
                                         @Param("request") TypeCategoryPageRequest request);
 
-}
+    List<TypeCategoryPageResponse> listAll();
 
+}
 
 
 

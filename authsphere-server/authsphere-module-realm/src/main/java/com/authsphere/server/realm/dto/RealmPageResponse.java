@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.util.List;
+
 /**
  * @program: AuthSphere
  * @description:
@@ -36,45 +38,25 @@ public class RealmPageResponse extends BaseDataBaseModel {
     private Long typeCategoryId;
 
     /**
-     * 是否允许注册
+     * 身份域类型名称
      */
-    private Boolean registerEnabled;
+    private String typeCategoryName;
 
     /**
      * 独立登录页
      */
     private String loginUrl;
 
-    /**
-     * 是否开启SSO
-     */
-    private Boolean ssoEnabled;
 
     /**
-     * 密码策略id。
+     * 认证方式列表
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long passwordPolicy;
+    private List<AuthMethodInfoResponse> authMethodList;
 
-    /**
-     * MFA 策略id。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long mfaPolicy;
-
-    /**
-     * 账号唯一性规则id。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long uniquePolicy;
 
     /**
      * 状态
      */
     private Integer status;
 
-    /**
-     * 描述
-     */
-    private String description;
 }

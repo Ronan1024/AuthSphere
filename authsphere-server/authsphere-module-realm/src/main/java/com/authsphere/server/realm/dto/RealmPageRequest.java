@@ -28,4 +28,9 @@ public class RealmPageRequest extends PageRequest {
      * 状态
      */
     private Integer status;
+
+    /**
+     * 身份域类型
+     */
+    private Integer typeCategoryId;
 }
