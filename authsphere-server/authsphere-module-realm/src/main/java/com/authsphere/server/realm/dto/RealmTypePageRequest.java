@@ -9,7 +9,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class TypeCategoryPageRequest extends PageRequest {
+public class RealmTypePageRequest extends PageRequest {
 
     /**
      * 分类编号。

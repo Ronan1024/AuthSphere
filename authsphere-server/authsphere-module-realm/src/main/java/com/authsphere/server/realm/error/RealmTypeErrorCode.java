@@ -14,18 +14,23 @@ import static com.authsphere.server.common.constant.BaseErrorCode.TYPE_CATEGORY;
  */
 
 @Getter
-public enum TypeCategoryErrorCode implements BaseError {
+public enum RealmTypeErrorCode implements BaseError {
     /**
      * 当前类型已存在身份域绑定
      */
     TYPE_CATEGORY_BIND_REALM(TYPE_CATEGORY + "011", "当前类型已存在身份域绑定"),
+
+    /**
+     * 类型为系统内置类型，不可删除
+     */
+    TYPE_CATEGORY_SYSTEM_BUILTIN(TYPE_CATEGORY + "012", "类型为系统内置类型，不可删除"),
     ;
 
 
-    private String code;
-    private String message;
+    private final String code;
+    private final String message;
 
-    TypeCategoryErrorCode(String code, String message) {
+    RealmTypeErrorCode(String code, String message) {
         this.code = code;
         this.message = message;
     }

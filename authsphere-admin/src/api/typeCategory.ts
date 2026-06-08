@@ -29,7 +29,9 @@ export interface TypeCategoryRecord extends TypeCategoryPayload {
   status: number
   createTime?: string
   updateTime?: string
+  referenceCount?: number
 }
+
 
 export const typeCategoryApi = {
   page(params: TypeCategoryQuery) {
@@ -47,4 +49,8 @@ export const typeCategoryApi = {
   toggleStatus(id: string) {
     return http.put<unknown, boolean>(`/admin/category/status/${id}`)
   },
+  delete(id: string) {
+    return http.delete<unknown, boolean>(`/admin/category/${id}`)
+  },
 }
+

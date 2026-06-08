@@ -11,12 +11,12 @@ import lombok.EqualsAndHashCode;
 /**
  * 类型项
  *
- * @TableName type_category
+ * @TableName realm_type
  */
 @Data
-@TableName(value = "type_category")
+@TableName(value = "realm_type")
 @EqualsAndHashCode(callSuper = true)
-public class TypeCategory extends BaseDataBaseModel {
+public class RealmType extends BaseDataBaseModel {
     /**
      *
      */

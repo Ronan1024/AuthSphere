@@ -28,7 +28,7 @@ public class CreateRealmRequest {
     /**
      * 身份域类型id
      */
-    private Long typeCategoryId;
+    private Long RealmTypeId;
 
     /**
      * 独立登录页

@@ -2,9 +2,9 @@
 <!DOCTYPE mapper
         PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.authsphere.server.realm.mapper.TypeCategoryMapper">
+<mapper namespace="com.authsphere.server.realm.mapper.RealmTypeMapper">
 
-    <resultMap id="BaseResultMap" type="com.authsphere.server.realm.model.TypeCategory">
+    <resultMap id="BaseResultMap" type="com.authsphere.server.realm.model.RealmType">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="code" column="code" jdbcType="VARCHAR"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>
@@ -22,7 +22,7 @@
         status,create_time,update_time
     </sql>
 
-    <select id="page" resultType="com.authsphere.server.realm.dto.TypeCategoryPageResponse">
+    <select id="page" resultType="com.authsphere.server.realm.dto.RealmTypePageResponse">
         select
             id,
             code,
@@ -33,7 +33,7 @@
             status,
             create_time,
             update_time
-        from type_category
+        from realm_type
         <where>
             <if test="request.name != null and request.name != ''">
                 and `name` like concat('%', #{request.name}, '%')
@@ -48,7 +48,7 @@
         order by create_time desc
     </select>
 
-    <select id="listAll" resultType="com.authsphere.server.realm.dto.TypeCategoryPageResponse">
+    <select id="listAll" resultType="com.authsphere.server.realm.dto.RealmTypePageResponse">
         select
             id,
             code,
@@ -59,7 +59,7 @@
             status,
             create_time,
             update_time
-        from type_category
+        from realm_type
         where status = 1
         order by create_time desc
     </select>

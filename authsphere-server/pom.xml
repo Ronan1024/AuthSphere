@@ -74,6 +74,11 @@
                 <version>${project.version}</version>
             </dependency>
             <dependency>
+                <groupId>com.authsphere.server.role</groupId>
+                <artifactId>authsphere-module-role</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
                 <version>${mapstruct.version}</version>

@@ -11,7 +11,7 @@ import lombok.Data;
  * @create: 2026/5/28
  */
 @Data
-public class CreateTypeCategoryRequest {
+public class CreateRealmTypeRequest {
     /**
      * 分类编号
      */

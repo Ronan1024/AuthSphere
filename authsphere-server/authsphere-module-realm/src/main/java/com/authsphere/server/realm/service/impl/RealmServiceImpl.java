@@ -2,7 +2,7 @@ package com.authsphere.server.realm.service.impl;
 
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.convert.RealmConvert;
-import com.authsphere.server.realm.domain.TypeCategoryDomain;
+import com.authsphere.server.realm.domain.RealmTypeDomain;
 import com.authsphere.server.realm.dto.AuthMethodInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
 import com.authsphere.server.realm.dto.RealmPageRequest;
@@ -10,7 +10,7 @@ import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.Realm;
-import com.authsphere.server.realm.model.TypeCategory;
+import com.authsphere.server.realm.model.RealmType;
 import com.authsphere.server.realm.service.RealmService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -36,7 +36,7 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 @RequiredArgsConstructor
 public class RealmServiceImpl implements RealmService {
     private final RealmMapper realmMapper;
-    private final TypeCategoryDomain typeCategoryDomain;
+    private final RealmTypeDomain realmTypeDomain;
 
     /**
      * 创建身份域信息
@@ -94,13 +94,13 @@ public class RealmServiceImpl implements RealmService {
         if (CollectionUtils.isEmpty(records)) {
             return result;
         }
-        List<Long> realmTypeIdList = records.stream().map(RealmPageResponse::getTypeCategoryId).toList();
-        List<TypeCategory> typeCategoryList = typeCategoryDomain.findByIdList(realmTypeIdList);
-        Map<Long, TypeCategory> typeCategoryMap = typeCategoryList.stream().collect(Collectors.toMap(TypeCategory::getId, e -> e));
+        List<Long> realmTypeIdList = records.stream().map(RealmPageResponse::getRealmTypeId).toList();
+        List<RealmType> typeCategoryList = realmTypeDomain.findByIdList(realmTypeIdList);
+        Map<Long, RealmType> typeCategoryMap = typeCategoryList.stream().collect(Collectors.toMap(RealmType::getId, e -> e));
 
         records.forEach(e -> {
-            TypeCategory typeCategory = typeCategoryMap.get(e.getTypeCategoryId());
-            e.setTypeCategoryName(typeCategory.getName());
+            RealmType typeCategory = typeCategoryMap.get(e.getRealmTypeId());
+            e.setRealmTypeName(typeCategory.getName());
             // TODO 登录页处理
 
             // TODO 认证方式处理

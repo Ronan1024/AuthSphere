@@ -7,42 +7,57 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
- * 类型分类响应。
+ * @program: AuthSphere
+ * @description:
+ * @author: L.J.Ran
+ * @create: 2026/5/29
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class TypeCategoryPageResponse extends BaseDataBaseModel {
+public class PasswordPolicyListResponse extends BaseDataBaseModel {
 
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
-
     /**
-     * 分类编号
+     * 策略编码。
      */
     private String code;
 
     /**
-     * 分类的名称
+     * 策略名称。
      */
     private String name;
 
     /**
-     * 分类描述
+     * 密码最小长度。
      */
-    private String description;
+    private Integer minLength;
 
     /**
-     * 是否系统内置
+     * 密码最大长度。
      */
-    private Boolean systemBuiltin;
+    private Integer maxLength;
+
 
     /**
-     * 是否可修改
+     * 有效期
      */
-    private Boolean editable;
+    private Integer expireDays;
+
 
     /**
-     * 分类状态
+     * 连续失败锁定阈值，0 表示不启用。
+     */
+    private Integer retryLimit;
+
+    /**
+     * 锁定分钟数，0 表示不自动解锁。
+     */
+    private Integer lockMinutes;
+
+
+    /**
+     * 状态
      */
     private Integer status;
 }

@@ -57,7 +57,10 @@ public enum RealmErrorCode implements BaseError {
      * 类型分类编码已存在
      */
     TYPE_CATEGORY_CODE_EXISTS(REALM + "021", "类型分类编码已存在"),
-    ;
+    /**
+     * 类型分类不可编辑
+     */
+    TYPE_CATEGORY_NOT_EDITABLE(REALM + "022", "类型分类不可编辑");
 
     private final String code;
 

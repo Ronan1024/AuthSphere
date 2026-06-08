@@ -6,57 +6,48 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
-import java.util.List;
-
 /**
- * @program: AuthSphere
- * @description:
- * @author: L.J.Ran
- * @create: 2026/5/28
+ * 类型分类响应。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class RealmPageResponse extends BaseDataBaseModel {
+public class RealmTypePageResponse extends BaseDataBaseModel {
 
     @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
-     * 身份域编码， 唯一
+     * 分类编号
      */
     private String code;
 
     /**
-     * 身份域名称
+     * 分类的名称
      */
     private String name;
 
     /**
-     * 身份域类型id。
+     * 分类描述
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long realmTypeId;
+    private String description;
 
     /**
-     * 身份域类型名称
+     * 是否系统内置
      */
-    private String realmTypeName;
+    private Boolean systemBuiltin;
 
     /**
-     * 独立登录页
+     * 是否可修改
      */
-    private String loginUrl;
-
+    private Boolean editable;
 
     /**
-     * 认证方式列表
-     */
-    private List<AuthMethodInfoResponse> authMethodList;
-
-
-    /**
-     * 状态
+     * 分类状态
      */
     private Integer status;
 
+    /**
+     * 引用身份域数
+     */
+    private Integer referenceCount;
 }

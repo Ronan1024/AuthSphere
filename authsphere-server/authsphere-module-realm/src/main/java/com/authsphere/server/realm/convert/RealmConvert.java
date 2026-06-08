@@ -2,6 +2,7 @@ package com.authsphere.server.realm.convert;
 
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.model.Realm;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -36,4 +37,6 @@ public interface RealmConvert {
     RealmInfoResponse toRealmInfoResponse(Realm byId);
 
     List<RealmInfoResponse> toRealmInfoResponse(List<Realm> realms);
+
+    List<RealmListResponse> toRealmListResponse(List<Realm> realms);
 }

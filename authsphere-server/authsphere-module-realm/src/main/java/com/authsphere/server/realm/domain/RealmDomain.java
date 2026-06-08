@@ -3,7 +3,6 @@ package com.authsphere.server.realm.domain;
 import com.authsphere.server.api.RealmApi;
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.common.exception.BizException;
-import com.authsphere.server.common.model.R;
 import com.authsphere.server.realm.convert.RealmConvert;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
@@ -40,7 +39,7 @@ public class RealmDomain implements RealmApi {
      */
     public List<Realm> findListByType(Long typeId) {
         return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
-                .eq(Realm::getTypeCategoryId, typeId)
+                .eq(Realm::getRealmTypeId, typeId)
         );
     }
 
@@ -65,5 +64,15 @@ public class RealmDomain implements RealmApi {
     public List<RealmInfoResponse> list(List<Long> realmIdList) {
         List<Realm> realms = realmMapper.selectBatchIds(realmIdList);
         return RealmConvert.INSTANCE.toRealmInfoResponse(realms);
+    }
+
+    /**
+     * 根据类型ID获取身份域列表
+     * @param typeIdList 身份域类型
+     */
+    public List<Realm> findListByType(List<Long> typeIdList) {
+        return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
+                .in(Realm::getRealmTypeId, typeIdList)
+        );
     }
 }
