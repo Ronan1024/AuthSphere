@@ -147,6 +147,8 @@ const menuItems = [
     children: [
       { index: '/realms', label: '身份域列表' },
       { index: '/realm/type-categories', label: '身份域类型' },
+      { index: '/realm/login-pages', label: '登录页管理' },
+      { index: '/realm/auth-policies', label: '认证策略' },
       { index: '/organizations', label: '组织管理' },
     ],
   },
