@@ -9,8 +9,14 @@ import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
+import com.authsphere.server.realm.mapper.AuthPolicyMapper;
+import com.authsphere.server.realm.mapper.LoginPageMapper;
+import com.authsphere.server.realm.model.AuthPolicy;
 import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.model.RealmType;
+import com.authsphere.server.realm.model.LoginPage;
+import com.authsphere.server.realm.service.LoginPageService;
+import com.authsphere.server.realm.service.AuthPolicyService;
 import com.authsphere.server.realm.service.RealmService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -37,6 +43,10 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 public class RealmServiceImpl implements RealmService {
     private final RealmMapper realmMapper;
     private final RealmTypeDomain realmTypeDomain;
+    private final LoginPageMapper loginPageMapper;
+    private final LoginPageService loginPageService;
+    private final AuthPolicyMapper authPolicyMapper;
+    private final AuthPolicyService authPolicyService;
 
     /**
      * 创建身份域信息
@@ -49,6 +59,8 @@ public class RealmServiceImpl implements RealmService {
         if (!CollectionUtils.isEmpty(realms)) {
             throw new BizException(RealmErrorCode.REALM_CODE_EXISTS);
         }
+        validateLoginPage(createRealmRequest.getLoginPageId());
+        validateAuthPolicy(createRealmRequest.getAuthPolicyId());
 
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
         realm.setStatus(NORMAL.getCode());
@@ -64,6 +76,8 @@ public class RealmServiceImpl implements RealmService {
     @Override
     public Boolean update(Long id, CreateRealmRequest createRealmRequest) {
         Realm realm = findById(id);
+        validateLoginPage(createRealmRequest.getLoginPageId());
+        validateAuthPolicy(createRealmRequest.getAuthPolicyId());
         RealmConvert.INSTANCE.copyByModel(createRealmRequest, realm);
         realmMapper.updateById(realm);
         return Boolean.TRUE;
@@ -95,13 +109,34 @@ public class RealmServiceImpl implements RealmService {
             return result;
         }
         List<Long> realmTypeIdList = records.stream().map(RealmPageResponse::getRealmTypeId).toList();
-        List<RealmType> typeCategoryList = realmTypeDomain.findByIdList(realmTypeIdList);
-        Map<Long, RealmType> typeCategoryMap = typeCategoryList.stream().collect(Collectors.toMap(RealmType::getId, e -> e));
+        List<RealmType> realmTypeList = realmTypeDomain.findByIdList(realmTypeIdList);
+        Map<Long, RealmType> realmTypeMap = realmTypeList.stream().collect(Collectors.toMap(RealmType::getId, e -> e));
+        List<Long> loginPageIds = records.stream()
+                .map(RealmPageResponse::getLoginPageId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, LoginPage> loginPageMap = CollectionUtils.isEmpty(loginPageIds)
+                ? java.util.Collections.emptyMap()
+                : loginPageMapper.selectBatchIds(loginPageIds).stream()
+                        .collect(Collectors.toMap(LoginPage::getId, e -> e));
+        List<Long> authPolicyIds = records.stream()
+                .map(RealmPageResponse::getAuthPolicyId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Long, AuthPolicy> authPolicyMap = CollectionUtils.isEmpty(authPolicyIds)
+                ? java.util.Collections.emptyMap()
+                : authPolicyMapper.selectBatchIds(authPolicyIds).stream()
+                        .collect(Collectors.toMap(AuthPolicy::getId, e -> e));
 
         records.forEach(e -> {
-            RealmType typeCategory = typeCategoryMap.get(e.getRealmTypeId());
-            e.setRealmTypeName(typeCategory.getName());
-            // TODO 登录页处理
+            RealmType realmType = realmTypeMap.get(e.getRealmTypeId());
+            e.setRealmTypeName(realmType.getName());
+            LoginPage loginPage = loginPageMap.get(e.getLoginPageId());
+            e.setLoginPageName(loginPage == null ? null : loginPage.getName());
+            AuthPolicy authPolicy = authPolicyMap.get(e.getAuthPolicyId());
+            e.setAuthPolicyName(authPolicy == null ? null : authPolicy.getName());
 
             // TODO 认证方式处理
             AuthMethodInfoResponse authMethodInfoResponse = new AuthMethodInfoResponse();
@@ -118,6 +153,18 @@ public class RealmServiceImpl implements RealmService {
 
 
         return result;
+    }
+
+    private void validateLoginPage(Long loginPageId) {
+        if (loginPageId != null) {
+            loginPageService.validateEnabled(loginPageId);
+        }
+    }
+
+    private void validateAuthPolicy(Long authPolicyId) {
+        if (authPolicyId != null) {
+            authPolicyService.validateEnabled(authPolicyId);
+        }
     }
 
 

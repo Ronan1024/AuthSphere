@@ -43,21 +43,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
     @Override
     public Page<RealmTypePageResponse> page(RealmTypePageRequest request) {
         Page<RealmTypePageResponse> page = new Page<>(request.getPage(), request.getSize());
-        Page<RealmTypePageResponse> result = realmTypeMapper.page(page, request);
-        List<RealmTypePageResponse> records = result.getRecords();
-        if (CollectionUtils.isEmpty(records)) {
-            return result;
-        }
-        List<Long> realmTypeIdList = records.stream().map(RealmTypePageResponse::getId).toList();
-        List<Realm> realmList = realmDomain.findListByType(realmTypeIdList);
-        if (!CollectionUtils.isEmpty(realmList)) {
-            Map<Long, List<Realm>> collect = realmList.stream().collect(Collectors.groupingBy(Realm::getRealmTypeId));
-            records.forEach(e -> {
-                List<Realm> realmList1 = collect.get(e.getId());
-                e.setReferenceCount(realmList1 == null ? 0 : realmList1.size());
-            });
-        }
-        return result;
+        return realmTypeMapper.page(page, request);
     }
 
     @Override
@@ -66,7 +52,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
         if (!CollectionUtils.isEmpty(list)) {
             list.forEach(record -> {
                 List<Realm> refs = realmDomain.findListByType(record.getId());
-                record.setReferenceCount(CollectionUtils.isEmpty(refs) ? 0 : refs.size());
+//                record.setReferenceCount(CollectionUtils.isEmpty(refs) ? 0 : refs.size());
             });
         }
         return list;
@@ -84,7 +70,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
         List<Realm> refs = realmDomain.findListByType(id);
         int referenceCount = CollectionUtils.isEmpty(refs) ? 0 : refs.size();
         int disabledCount = CollectionUtils.isEmpty(refs) ? 0 : Math.toIntExact(refs.stream().filter(realm -> DISABLED.getCode().equals(realm.getStatus())).count());
-        response.setReferenceCount(referenceCount);
+//        response.setReferenceCount(referenceCount);
         response.setDisabledCount(disabledCount);
         response.setRealmList(RealmConvert.INSTANCE.toRealmListResponse(refs));
         return response;

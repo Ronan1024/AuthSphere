@@ -40,6 +40,16 @@ public class Realm  extends BaseDataBaseModel {
     private String loginUrl;
 
     /**
+     * 默认登录页 ID。
+     */
+    private Long loginPageId;
+
+    /**
+     * 默认认证策略ID。
+     */
+    private Long authPolicyId;
+
+    /**
      * 是否允许注册
      */
     private Boolean registerEnabled;

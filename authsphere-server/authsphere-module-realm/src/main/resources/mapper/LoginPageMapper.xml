@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.realm.mapper.LoginPageMapper">
+    <select id="page" resultType="com.authsphere.server.realm.dto.LoginPageResponse">
+        select
+        id,
+        code,
+        name,
+        applicable_realm_type_id as applicableRealmTypeId,
+        auth_methods as authMethodsText,
+        default_page as defaultPage,
+        status,
+        create_time as createTime
+        from login_page
+        <where>
+            deleted = false
+            <if test="request.name != null and request.name != ''">
+                and `name` like concat('%', #{request.name}, '%')
+            </if>
+            <if test="request.code != null and request.code != ''">
+                and `code` like concat('%', #{request.code}, '%')
+            </if>
+            <if test="request.applicableRealmTypeId != null">
+                and applicable_realm_type_id = #{request.applicableRealmTypeId}
+            </if>
+            <if test="request.status != null">
+                and status = #{request.status}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="listEnabled" resultType="com.authsphere.server.realm.dto.LoginPageOptionResponse">
+        select
+            id,
+            code,
+            name,
+            default_page as defaultPage
+        from login_page
+        where deleted = 0
+          and status = 1
+        order by default_page desc, create_time desc
+    </select>
+
+    <select id="countRealmReferences" resultType="java.lang.Integer">
+        select count(1)
+        from realm
+        where login_page_id = #{loginPageId}
+    </select>
+
+    <select id="countClientReferences" resultType="java.lang.Integer">
+        select count(1)
+        from app_client
+        where login_page_id = #{loginPageId}
+    </select>
+
+    <select id="countByCode" resultType="java.lang.Integer">
+        select count(1)
+        from login_page
+        where code = #{code}
+        <if test="currentId != null">
+            and id != #{currentId}
+        </if>
+    </select>
+</mapper>

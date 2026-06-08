@@ -33,7 +33,6 @@ public interface RealmTypeConvert {
 
     RealmTypePageResponse response(RealmType typeCategory);
 
-    @Mapping(target = "referenceCount", ignore = true)
     @Mapping(target = "disabledCount", ignore = true)
     @Mapping(target = "realmList", ignore = true)
     RealmTypeInfoResponse infoResponse(RealmType realmType);

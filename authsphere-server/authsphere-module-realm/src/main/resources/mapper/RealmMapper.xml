@@ -8,8 +8,10 @@
         id,
         code,
         name,
-        type_category_id as typeCategoryId,
+        realm_type_id as realmTypeId,
         login_url as loginUrl,
+        login_page_id as loginPageId,
+        auth_policy_id as authPolicyId,
         status,
         create_time,
         update_time
@@ -24,8 +26,8 @@
             <if test="realmPageRequest.status != null">
                 and `status` = #{realmPageRequest.status}
             </if>
-            <if test="realmPageRequest.typeCategoryId != null">
-                and type_category_id = #{realmPageRequest.typeCategoryId}
+            <if test="realmPageRequest.realmTypeId != null">
+                and realm_type_id = #{realmPageRequest.realmTypeId}
             </if>
         </where>
         order by update_time desc, create_time desc
