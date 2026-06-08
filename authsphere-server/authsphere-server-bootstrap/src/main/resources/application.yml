@@ -13,3 +13,5 @@ mybatis-plus:
   mapper-locations: classpath*:mapper/**/*.xml
   configuration:
     map-underscore-to-camel-case: true
+    # 默认在控制台打印SQL及参数；生产环境可配置为 org.apache.ibatis.logging.nologging.NoLoggingImpl。
+    log-impl: ${AUTHSPHERE_MYBATIS_LOG_IMPL:org.apache.ibatis.logging.stdout.StdOutImpl}

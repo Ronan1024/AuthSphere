@@ -22,6 +22,18 @@
             <groupId>com.authsphere.server.realm</groupId>
             <artifactId>authsphere-module-realm</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.authsphere.server</groupId>
+            <artifactId>authsphere-module-subject</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.authsphere.server.app</groupId>
+            <artifactId>authsphere-module-app</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.authsphere.server.role</groupId>
+            <artifactId>authsphere-module-role</artifactId>
+        </dependency>
     </dependencies>
 
 </project>
