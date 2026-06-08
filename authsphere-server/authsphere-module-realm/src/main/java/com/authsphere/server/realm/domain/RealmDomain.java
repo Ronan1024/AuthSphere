@@ -44,6 +44,15 @@ public class RealmDomain implements RealmApi {
     }
 
     /**
+     * 根据登录页ID获取身份域列表
+     */
+    public List<Realm> findListByLoginPage(List<Long> loginPageIdList) {
+        return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
+                .eq(Realm::getLoginPageId, loginPageIdList)
+        );
+    }
+
+    /**
      * 获取身份域信息
      *
      * @param realmId
@@ -68,6 +77,7 @@ public class RealmDomain implements RealmApi {
 
     /**
      * 根据类型ID获取身份域列表
+     *
      * @param typeIdList 身份域类型
      */
     public List<Realm> findListByType(List<Long> typeIdList) {
@@ -75,4 +85,5 @@ public class RealmDomain implements RealmApi {
                 .in(Realm::getRealmTypeId, typeIdList)
         );
     }
+
 }

@@ -36,6 +36,16 @@ public class CreateRealmRequest {
     private String loginUrl;
 
     /**
+     * 默认登录页 ID。
+     */
+    private Long loginPageId;
+
+    /**
+     * 默认认证策略ID。
+     */
+    private Long authPolicyId;
+
+    /**
      * 是否允许注册
      */
     @NotNull(message = "是否允许注册不能为空")

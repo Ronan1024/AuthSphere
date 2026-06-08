@@ -47,6 +47,28 @@ public class RealmPageResponse extends BaseDataBaseModel {
      */
     private String loginUrl;
 
+    /**
+     * 默认登录页 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long loginPageId;
+
+    /**
+     * 默认登录页名称。
+     */
+    private String loginPageName;
+
+    /**
+     * 默认认证策略ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long authPolicyId;
+
+    /**
+     * 默认认证策略名称。
+     */
+    private String authPolicyName;
+
 
     /**
      * 认证方式列表

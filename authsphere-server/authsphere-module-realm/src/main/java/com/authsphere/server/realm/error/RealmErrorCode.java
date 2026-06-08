@@ -60,7 +60,63 @@ public enum RealmErrorCode implements BaseError {
     /**
      * 类型分类不可编辑
      */
-    TYPE_CATEGORY_NOT_EDITABLE(REALM + "022", "类型分类不可编辑");
+    TYPE_CATEGORY_NOT_EDITABLE(REALM + "022", "类型分类不可编辑"),
+    /**
+     * 登录页数据不存在
+     */
+    LOGIN_PAGE_DATA_ERROR(REALM + "023", "登录页数据不存在"),
+    /**
+     * 登录页编码已存在
+     */
+    LOGIN_PAGE_CODE_EXISTS(REALM + "024", "登录页编码已存在"),
+    /**
+     * 默认登录方式不在已选登录方式中
+     */
+    LOGIN_PAGE_AUTH_METHOD_ERROR(REALM + "025", "默认登录方式必须属于已选登录方式"),
+    /**
+     * 登录页状态异常
+     */
+    LOGIN_PAGE_STATUS_ERROR(REALM + "026", "登录页状态异常"),
+    /**
+     * 登录页已被身份域引用
+     */
+    LOGIN_PAGE_REALM_REFERENCED(REALM + "027", "登录页已被身份域引用，请先解除绑定"),
+    /**
+     * 登录页已被客户端引用
+     */
+    LOGIN_PAGE_CLIENT_REFERENCED(REALM + "028", "登录页已被客户端引用，请先解除绑定"),
+    /**
+     * 系统内置登录页不能删除
+     */
+    LOGIN_PAGE_SYSTEM_BUILTIN(REALM + "029", "系统内置登录页不能删除"),
+    /**
+     * 禁用登录页不能被绑定
+     */
+    LOGIN_PAGE_DISABLED(REALM + "030", "禁用登录页不能被绑定"),
+    /**
+     * 认证策略不存在
+     */
+    AUTH_POLICY_DATA_ERROR(REALM + "031", "认证策略不存在"),
+    /**
+     * 认证策略编码已存在
+     */
+    AUTH_POLICY_CODE_EXISTS(REALM + "032", "认证策略编码已存在"),
+    /**
+     * 认证策略参数异常
+     */
+    AUTH_POLICY_PARAM_ERROR(REALM + "033", "认证策略参数异常"),
+    /**
+     * 认证策略已被引用
+     */
+    AUTH_POLICY_REFERENCED(REALM + "034", "认证策略已被身份域或客户端引用，请先解除绑定"),
+    /**
+     * 系统内置认证策略不能删除
+     */
+    AUTH_POLICY_SYSTEM_BUILTIN(REALM + "035", "系统内置认证策略不能删除"),
+    /**
+     * 禁用认证策略不能被绑定
+     */
+    AUTH_POLICY_DISABLED(REALM + "036", "禁用认证策略不能被绑定");
 
     private final String code;
 
