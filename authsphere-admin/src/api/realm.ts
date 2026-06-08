@@ -14,7 +14,9 @@ export interface RealmQuery {
   code?: string
   name?: string
   status?: number
+  typeCategoryId?: string | number | null
 }
+
 
 export interface RealmPayload {
   code: string

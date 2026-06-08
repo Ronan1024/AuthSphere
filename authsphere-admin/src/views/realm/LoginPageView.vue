@@ -218,6 +218,8 @@ const openDetail = async (row: LoginPageRecord) => {
 const openEditDrawer = async (row: LoginPageRecord) => {
   try {
     const detail = await loginPageApi.detail(row.id)
+    selectedPage.value = detail
+    currentView.value = 'detail'
     Object.assign(drawerForm, {
       id: String(detail.id),
       name: detail.name,
@@ -360,6 +362,18 @@ const submitCopyForm = async () => {
 }
 
 const saveDrawerEdit = async () => {
+  if (!drawerForm.name.trim() || !drawerForm.pageTitle.trim()) {
+    ElMessage.error('请填写登录页名称和页面标题')
+    return
+  }
+  if (!drawerForm.authMethods.length) {
+    ElMessage.error('请至少选择一种登录方式')
+    return
+  }
+  if (!drawerForm.authMethods.includes(drawerForm.defaultAuthMethod)) {
+    ElMessage.error('默认登录方式必须包含在支持的登录方式中')
+    return
+  }
   saveLoading.value = true
   try {
     const payload: LoginPagePayload = {
@@ -384,7 +398,9 @@ const saveDrawerEdit = async () => {
     await loginPageApi.update(drawerForm.id, payload)
     ElMessage.success('保存修改成功')
     isEditDrawerOpen.value = false
-    loadData()
+    const detail = await loginPageApi.detail(drawerForm.id)
+    selectedPage.value = detail
+    await loadData()
   } catch (e: any) {
     ElMessage.error(e?.message || '保存修改失败')
   } finally {
@@ -504,7 +520,6 @@ onMounted(() => {
               <div class="row-actions">
                 <span class="link-btn" @click="openDetail(row)">预览</span>
                 <span class="link-btn" @click="openDetail(row)">详情</span>
-                <span class="link-btn" @click="openEditDrawer(row)">编辑</span>
                 <el-dropdown trigger="click">
                   <span class="link-more-btn">更多 <el-icon><ArrowDown /></el-icon></span>
                   <template #dropdown>
@@ -915,11 +930,12 @@ onMounted(() => {
     <el-drawer
       v-model="isEditDrawerOpen"
       title="编辑登录页"
-      size="540px"
+      size="680px"
       class="custom-edit-drawer"
+      destroy-on-close
     >
       <div class="drawer-body-wrap">
-        <p class="drawer-subtitle">登录页基本属性编辑维护。</p>
+        <p class="drawer-subtitle">在详情页内修改登录页配置，保存后将原地刷新详情数据。</p>
         
         <!-- Warning alert if referenced -->
         <div v-if="drawerForm.referencesCount > 0" class="drawer-referenced-alert">
@@ -929,87 +945,130 @@ onMounted(() => {
           </p>
         </div>
 
-        <div class="form-item-mock">
-          <label>登录页名称 *</label>
-          <el-input v-model="drawerForm.name" />
-        </div>
-        <div class="form-item-mock">
-          <label>登录页编码</label>
-          <el-input v-model="drawerForm.code" disabled class="disabled-field" />
-          <div class="hint-msg">不可直接修改此编码。</div>
-        </div>
-        <div class="form-item-mock">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-            <label style="margin-bottom: 0;">适用域类型</label>
-            <el-button link type="primary" size="small" style="font-weight: normal; padding: 0; height: auto;" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">基础信息</div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>登录页名称 *</label>
+              <el-input v-model="drawerForm.name" />
+            </div>
+            <div class="form-item-mock">
+              <label>登录页编码</label>
+              <el-input v-model="drawerForm.code" disabled class="disabled-field" />
+              <div class="hint-msg">登录页编码不可修改。</div>
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <div class="drawer-label-line">
+                <label>适用身份域类型</label>
+                <el-button link type="primary" size="small" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
+              </div>
+              <el-select
+                v-model="drawerForm.applicableRealmTypeId"
+                placeholder="请选择身份域类型"
+                clearable
+                :loading="realmTypeOptionsLoading"
+                no-data-text="暂无可用身份域类型"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in realmTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>状态</label>
+              <el-select v-model="drawerForm.status">
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="2" />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>默认登录页</label>
+              <el-switch v-model="drawerForm.defaultPage" />
+            </div>
           </div>
-          <el-select
-            v-model="drawerForm.applicableRealmTypeId"
-            placeholder="请选择身份域类型"
-            clearable
-            :loading="realmTypeOptionsLoading"
-            no-data-text="暂无可用身份域类型"
-            style="width: 100%"
-          >
-            <el-option
-              v-for="item in realmTypeOptions"
-              :key="item.value"
-              :label="item.label"
-              :value="item.value"
-            />
-          </el-select>
-        </div>
-        <div class="form-item-mock">
-          <label>页面标题 *</label>
-          <el-input v-model="drawerForm.pageTitle" />
-        </div>
-        <div class="form-item-mock">
-          <label>页面副标题</label>
-          <el-input v-model="drawerForm.pageSubtitle" />
-        </div>
-        <div class="form-item-mock">
-          <label>Logo 地址</label>
-          <el-input v-model="drawerForm.logoUrl" />
-        </div>
-        <div class="form-item-mock">
-          <label>背景图地址</label>
-          <el-input v-model="drawerForm.backgroundUrl" />
-        </div>
-        <div class="form-item-mock">
-          <label>支持的登录方式</label>
-          <el-checkbox-group v-model="drawerForm.authMethods">
-            <el-checkbox label="password">账号密码</el-checkbox>
-            <el-checkbox label="sms">短信验证码</el-checkbox>
-            <el-checkbox label="email">邮箱验证码</el-checkbox>
-            <el-checkbox label="qr">扫码登录</el-checkbox>
-            <el-checkbox label="third_party">第三方登录</el-checkbox>
-            <el-checkbox label="mfa">MFA 认证</el-checkbox>
-          </el-checkbox-group>
-        </div>
-        <div class="form-item-mock">
-          <label>默认登录方式</label>
-          <el-select v-model="drawerForm.defaultAuthMethod">
-            <el-option label="账号密码" value="password" />
-            <el-option label="短信验证码" value="sms" />
-            <el-option label="邮箱验证码" value="email" />
-            <el-option label="扫码登录" value="qr" />
-          </el-select>
-        </div>
-        <div class="form-item-mock">
-          <label>辅助入口选项</label>
-          <div class="checkbox-list">
-            <el-checkbox v-model="drawerForm.showForgotPassword">显示忘记密码</el-checkbox>
-            <el-checkbox v-model="drawerForm.showRegister">显示注册入口</el-checkbox>
-            <el-checkbox v-model="drawerForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">页面展示</div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>页面标题 *</label>
+              <el-input v-model="drawerForm.pageTitle" />
+            </div>
+            <div class="form-item-mock">
+              <label>页面副标题</label>
+              <el-input v-model="drawerForm.pageSubtitle" />
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <label>Logo 地址</label>
+              <el-input v-model="drawerForm.logoUrl" />
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <label>背景图地址</label>
+              <el-input v-model="drawerForm.backgroundUrl" />
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <label>登录成功跳转地址</label>
+              <el-input v-model="drawerForm.successRedirectUrl" />
+            </div>
           </div>
-        </div>
-        <div class="form-item-mock">
-          <label>状态</label>
-          <el-select v-model="drawerForm.status">
-            <el-option label="启用" :value="1" />
-            <el-option label="禁用" :value="3" />
-          </el-select>
-        </div>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">认证与交互</div>
+          <div class="form-item-mock">
+            <label>支持的登录方式 *</label>
+            <el-checkbox-group v-model="drawerForm.authMethods" class="drawer-checkbox-grid">
+              <el-checkbox label="password">账号密码</el-checkbox>
+              <el-checkbox label="sms">短信验证码</el-checkbox>
+              <el-checkbox label="email">邮箱验证码</el-checkbox>
+              <el-checkbox label="qr">扫码登录</el-checkbox>
+              <el-checkbox label="third_party">第三方登录</el-checkbox>
+              <el-checkbox label="mfa">MFA 认证</el-checkbox>
+            </el-checkbox-group>
+          </div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>默认登录方式 *</label>
+              <el-select v-model="drawerForm.defaultAuthMethod">
+                <el-option
+                  v-for="method in drawerForm.authMethods"
+                  :key="method"
+                  :label="getAuthMethodName(method)"
+                  :value="method"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>登录失败提示模式 *</label>
+              <el-select v-model="drawerForm.failurePromptMode">
+                <el-option label="消息提示" value="message" />
+                <el-option label="弹窗提示" value="dialog" />
+                <el-option label="结果页提示" value="page" />
+              </el-select>
+            </div>
+          </div>
+          <div class="form-item-mock">
+            <label>辅助入口选项</label>
+            <div class="checkbox-list">
+              <el-checkbox v-model="drawerForm.showForgotPassword">显示忘记密码</el-checkbox>
+              <el-checkbox v-model="drawerForm.showRegister">显示注册入口</el-checkbox>
+              <el-checkbox v-model="drawerForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">备注信息</div>
+          <div class="form-item-mock">
+            <label>备注</label>
+            <el-input v-model="drawerForm.description" type="textarea" :rows="3" maxlength="512" show-word-limit />
+          </div>
+        </section>
       </div>
       <template #footer>
         <div class="drawer-footer-buttons">
@@ -1811,7 +1870,49 @@ onMounted(() => {
 .drawer-body-wrap {
   display: flex;
   flex-direction: column;
+  gap: 20px;
+}
+.drawer-form-section {
+  padding: 16px;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  background-color: #FFFFFF;
+}
+.drawer-section-title {
+  margin-bottom: 14px;
+  color: #0F172A;
+  font-size: 14px;
+  font-weight: 700;
+}
+.drawer-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 16px;
+}
+.drawer-grid-full {
+  grid-column: 1 / -1;
+}
+.drawer-label-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.drawer-label-line :deep(.el-button) {
+  height: auto;
+  padding: 0;
+  font-weight: 500;
+}
+.drawer-checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 12px;
+}
+.drawer-checkbox-grid :deep(.el-checkbox) {
+  margin-right: 0;
+}
+.drawer-form-section .checkbox-list {
+  flex-direction: row;
+  flex-wrap: wrap;
 }
 .drawer-footer-buttons {
   display: flex;
@@ -1948,6 +2049,13 @@ onMounted(() => {
   .login-preview-panel {
     height: auto;
     grid-template-columns: 1fr;
+  }
+  .drawer-form-grid,
+  .drawer-checkbox-grid {
+    grid-template-columns: 1fr;
+  }
+  .drawer-grid-full {
+    grid-column: auto;
   }
 }
 </style>

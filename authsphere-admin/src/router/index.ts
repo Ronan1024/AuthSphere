@@ -47,6 +47,26 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'realm/login-pages',
+        name: 'RealmLoginPage',
+        component: () => import('@/views/realm/LoginPageView.vue'),
+        meta: {
+          title: '登录页管理',
+          breadcrumb: ['身份域管理', '登录页管理'],
+          moduleDescription: '维护身份域或客户端未登录时展示的登录入口页面。',
+        },
+      },
+      {
+        path: 'realm/auth-policies',
+        name: 'RealmAuthPolicy',
+        component: () => import('@/views/realm/AuthPolicyView.vue'),
+        meta: {
+          title: '认证策略',
+          breadcrumb: ['身份域管理', '认证策略'],
+          moduleDescription: '认证策略用于定义用户登录时如何验证用户，包括登录方式、验证码、失败锁定、MFA 与风险校验。',
+        },
+      },
+      {
         path: 'accounts',
         name: 'UserManagement',
         component: () => import('@/views/account/AccountListView.vue'),

@@ -253,7 +253,11 @@ const closeDetail = () => {
 }
 
 const navigateToRealms = () => {
-  router.push('/realms')
+  if (selectedCategory.value) {
+    router.push({ path: '/realms', query: { typeCategoryId: selectedCategory.value.id } })
+  } else {
+    router.push('/realms')
+  }
 }
 
 onMounted(() => {
