@@ -35,7 +35,9 @@ export interface LoginPagePayload {
   authMethods: string[]
   defaultAuthMethod: string
   showForgotPassword: boolean
+  forgotPasswordUrl?: string
   showRegister: boolean
+  registerUrl?: string
   showThirdPartyLogin: boolean
   successRedirectUrl?: string
   failurePromptMode: string
@@ -61,7 +63,9 @@ export interface LoginPageRecord {
   backgroundUrl?: string
   defaultAuthMethod?: string
   showForgotPassword?: boolean
+  forgotPasswordUrl?: string
   showRegister?: boolean
+  registerUrl?: string
   showThirdPartyLogin?: boolean
   successRedirectUrl?: string
   failurePromptMode?: string
@@ -81,7 +85,9 @@ export interface LoginPagePreview {
   authMethods: string[]
   defaultAuthMethod: string
   showForgotPassword: boolean
+  forgotPasswordUrl?: string
   showRegister: boolean
+  registerUrl?: string
   showThirdPartyLogin: boolean
   failurePromptMode: string
 }

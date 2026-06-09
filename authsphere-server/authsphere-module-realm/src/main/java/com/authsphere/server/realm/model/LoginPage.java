@@ -73,9 +73,20 @@ public class LoginPage extends BaseDataBaseModel {
     private Boolean showForgotPassword;
 
     /**
+     * 忘记密码入口跳转地址。
+     */
+    private String forgotPasswordUrl;
+
+    /**
      * 是否展示注册入口。
      */
     private Boolean showRegister;
+
+    /**
+     * 注册入口跳转地址。
+     */
+    private String registerUrl;
+
     /**
      * 是否展示第三方登录入口。
      */

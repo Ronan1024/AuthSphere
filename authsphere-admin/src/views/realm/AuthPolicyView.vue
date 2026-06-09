@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Plus, Search, Refresh, ArrowDown, ArrowLeft, Warning,
   InfoFilled, View, Edit, CopyDocument, Delete, Check, Connection, TopRight
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { authPolicyApi } from '@/api/authPolicy'
+import { typeCategoryApi, type TypeCategoryRecord } from '@/api/typeCategory'
 
 const router = useRouter()
 
@@ -13,7 +15,8 @@ interface AuthPolicyRecord {
   id: string
   name: string
   code: string
-  realmTypeName: string // 适用身份域类型
+  applicableRealmId: string | null
+  realmTypeName: string // resolved via category lookup
   status: number // 1: 启用, 2: 待配置, 3: 禁用
   authMethods: string[]
   defaultAuthMethod: string
@@ -85,7 +88,7 @@ const formModel = reactive({
   id: '',
   name: '',
   code: '',
-  realmTypeName: '租户域',
+  applicableRealmId: null as string | null,
   status: 1,
   authMethods: ['password', 'sms', 'mfa'] as string[],
   defaultAuthMethod: 'password',
@@ -125,6 +128,8 @@ const copyForm = reactive({
 
 // Query filters
 const query = reactive({
+  page: 1,
+  size: 10,
   name: '',
   code: '',
   authMethod: '',
@@ -132,150 +137,85 @@ const query = reactive({
   status: undefined as number | undefined
 })
 
-const policies = ref<AuthPolicyRecord[]>([
-  {
-    id: '1',
-    name: '租户默认认证策略',
-    code: 'tenant_auth',
-    realmTypeName: '租户域',
-    status: 1,
-    authMethods: ['password', 'sms', 'mfa'],
-    defaultAuthMethod: 'password',
-    successAction: '返回来源客户端',
-    captchaType: '失败后启用',
-    captchaFailCount: 3,
-    captchaValidity: 120,
-    captchaRefreshLimit: 5,
-    maxFailures: 5,
-    statPeriod: 10,
-    lockoutDuration: 30,
-    recordRiskLog: '开启',
-    mfaEnabled: '开启',
-    mfaTrigger: '新设备登录',
-    mfaMethods: ['sms', 'email'],
-    mfaDefaultMethod: 'sms',
-    mfaValidity: 300,
-    mfaFailCount: 5,
-    mfaRememberDevice: '允许',
-    mfaRememberDuration: 30,
-    riskIpLimit: '关闭',
-    riskNewDeviceAlert: '开启',
-    riskAbnormalTime: '仅记录日志',
-    riskHighRiskAction: '触发 MFA',
-    realmRefs: ['租户身份域', '商户身份域'],
-    clientRefs: ['租户A管理端'],
-    description: '租户后台默认登录认证规则'
-  },
-  {
-    id: '2',
-    name: '平台强认证策略',
-    code: 'platform_strong',
-    realmTypeName: '平台域',
-    status: 1,
-    authMethods: ['password', 'mfa'],
-    defaultAuthMethod: 'password',
-    successAction: '返回来源客户端',
-    captchaType: '每次登录',
-    captchaFailCount: 0,
-    captchaValidity: 120,
-    captchaRefreshLimit: 5,
-    maxFailures: 3,
-    statPeriod: 10,
-    lockoutDuration: 60,
-    recordRiskLog: '开启',
-    mfaEnabled: '开启',
-    mfaTrigger: '每次登录',
-    mfaMethods: ['sms'],
-    mfaDefaultMethod: 'sms',
-    mfaValidity: 300,
-    mfaFailCount: 5,
-    mfaRememberDevice: '不允许',
-    mfaRememberDuration: 0,
-    riskIpLimit: '关闭',
-    riskNewDeviceAlert: '开启',
-    riskAbnormalTime: '仅记录日志',
-    riskHighRiskAction: '触发 MFA',
-    realmRefs: ['平台身份域'],
-    clientRefs: [],
-    description: '平台关键组件强鉴权策略'
-  },
-  {
-    id: '3',
-    name: '消费者快捷认证',
-    code: 'consumer_quick',
-    realmTypeName: '消费者域',
-    status: 2,
-    authMethods: ['sms', 'email'],
-    defaultAuthMethod: 'sms',
-    successAction: '返回来源客户端',
-    captchaType: '未启用',
-    captchaFailCount: 0,
-    captchaValidity: 120,
-    captchaRefreshLimit: 5,
-    maxFailures: 10,
-    statPeriod: 10,
-    lockoutDuration: 15,
-    recordRiskLog: '关闭',
-    mfaEnabled: '关闭',
-    mfaTrigger: '未启用',
-    mfaMethods: [],
-    mfaDefaultMethod: '',
-    mfaValidity: 300,
-    mfaFailCount: 5,
-    mfaRememberDevice: '不允许',
-    mfaRememberDuration: 0,
-    riskIpLimit: '关闭',
-    riskNewDeviceAlert: '关闭',
-    riskAbnormalTime: '仅记录日志',
-    riskHighRiskAction: '触发 MFA',
-    realmRefs: [],
-    clientRefs: [],
-    description: '移动端C端用户快捷验证'
-  },
-  {
-    id: '4',
-    name: '商户默认认证策略',
-    code: 'merchant_auth',
-    realmTypeName: '商户域',
-    status: 3,
-    authMethods: ['password', 'email'],
-    defaultAuthMethod: 'password',
-    successAction: '返回来源客户端',
-    captchaType: '失败后启用',
-    captchaFailCount: 3,
-    captchaValidity: 120,
-    captchaRefreshLimit: 5,
-    maxFailures: 5,
-    statPeriod: 10,
-    lockoutDuration: 30,
-    recordRiskLog: '开启',
-    mfaEnabled: '开启',
-    mfaTrigger: '管理员账号',
-    mfaMethods: ['email'],
-    mfaDefaultMethod: 'email',
-    mfaValidity: 300,
-    mfaFailCount: 5,
-    mfaRememberDevice: '允许',
-    mfaRememberDuration: 30,
-    riskIpLimit: '关闭',
-    riskNewDeviceAlert: '开启',
-    riskAbnormalTime: '仅记录日志',
-    riskHighRiskAction: '触发 MFA',
-    realmRefs: ['租户身份域', '商户身份域'],
-    clientRefs: [],
-    description: '商户管理后台通用策略'
+const policies = ref<AuthPolicyRecord[]>([])
+const total = ref(0)
+const categories = ref<TypeCategoryRecord[]>([])
+
+const getCategoryName = (id: string | number | null | undefined) => {
+  if (!id) return '不限定'
+  const cat = categories.value.find(c => String(c.id) === String(id))
+  return cat ? cat.name : '不限定'
+}
+
+const loadCategories = async () => {
+  try {
+    const list = await typeCategoryApi.list()
+    categories.value = list || []
+  } catch (err) {
+    console.error('加载身份域类型失败:', err)
   }
-])
+}
+
+const loadPolicies = async () => {
+  try {
+    const params: any = {
+      page: query.page,
+      size: query.size,
+      name: query.name || undefined,
+      code: query.code || undefined,
+      authMethod: query.authMethod || undefined,
+      status: query.status !== undefined ? query.status : undefined
+    }
+    const res = await authPolicyApi.page(params)
+    policies.value = (res.records || []).map(record => {
+      return {
+        id: String(record.id),
+        name: record.name,
+        code: record.code,
+        applicableRealmId: (record as any).applicableRealmId || null,
+        realmTypeName: getCategoryName((record as any).applicableRealmId),
+        status: record.status,
+        authMethods: record.authMethods || [],
+        defaultAuthMethod: (record as any).defaultAuthMethod || 'password',
+        successAction: '返回来源客户端',
+        captchaType: record.captchaEnabled ? '失败后启用' : '未启用',
+        captchaFailCount: (record as any).captchaFailureThreshold || 3,
+        captchaValidity: (record as any).captchaTtlSeconds || 120,
+        captchaRefreshLimit: (record as any).captchaErrorLimit || 5,
+        maxFailures: record.maxFailureCount || 5,
+        statPeriod: (record as any).failureWindowMinutes || 10,
+        lockoutDuration: record.lockMinutes || 30,
+        recordRiskLog: (record as any).riskLogEnabled ? '开启' : '关闭',
+        mfaEnabled: record.mfaEnabled ? '开启' : '关闭',
+        mfaTrigger: record.mfaEnabled ? '新设备登录' : '未启用',
+        mfaMethods: (record as any).mfaMethods || [],
+        mfaDefaultMethod: (record as any).defaultAuthMethod || '',
+        mfaValidity: 300,
+        mfaFailCount: 5,
+        mfaRememberDevice: '允许',
+        mfaRememberDuration: 30,
+        riskIpLimit: '关闭',
+        riskNewDeviceAlert: '开启',
+        riskAbnormalTime: '仅记录日志',
+        riskHighRiskAction: '触发 MFA',
+        realmRefs: [],
+        clientRefs: [],
+        description: (record as any).description || ''
+      }
+    })
+    total.value = res.total || 0
+  } catch (err) {
+    ElMessage.error('加载认证策略失败')
+  }
+}
+
+onMounted(async () => {
+  await loadCategories()
+  await loadPolicies()
+})
 
 const filteredPolicies = computed(() => {
-  return policies.value.filter(item => {
-    if (query.name && !item.name.includes(query.name)) return false
-    if (query.code && !item.code.includes(query.code)) return false
-    if (query.authMethod && !item.authMethods.includes(query.authMethod)) return false
-    if (query.mfa && (query.mfa === 'enabled' ? item.mfaTrigger === '未启用' : item.mfaTrigger !== '未启用')) return false
-    if (query.status !== undefined && item.status !== query.status) return false
-    return true
-  })
+  return policies.value
 })
 
 const getAuthText = (methods: string[]) => {
@@ -287,7 +227,7 @@ const getAuthText = (methods: string[]) => {
     third_party: '第三方',
     mfa: 'MFA'
   }
-  return methods.map(m => map[m] || m).join(' / ')
+  return (methods || []).map(m => map[m] || m).join(' / ')
 }
 
 const toggleMethod = (method: string) => {
@@ -318,6 +258,8 @@ const handleReset = () => {
   query.authMethod = ''
   query.mfa = ''
   query.status = undefined
+  query.page = 1
+  loadPolicies()
 }
 
 const openCreateView = () => {
@@ -325,7 +267,8 @@ const openCreateView = () => {
     id: '',
     name: '',
     code: '',
-    realmTypeName: '租户域',
+    applicableRealmId: null,
+    status: 1,
     authMethods: ['password', 'sms', 'mfa'],
     defaultAuthMethod: 'password',
     successAction: '返回来源客户端',
@@ -354,23 +297,28 @@ const openCreateView = () => {
   currentView.value = 'create'
 }
 
-const openEditDrawer = (row: AuthPolicyRecord) => {
-  Object.assign(drawerForm, {
-    id: row.id,
-    name: row.name,
-    code: row.code,
-    applicableRealmTypeName: row.realmTypeName,
-    status: row.status,
-    authMethodsText: getAuthText(row.authMethods),
-    captchaType: row.captchaType === '失败后启用' ? `失败 ${row.captchaFailCount} 次后启用` : row.captchaType,
-    maxFailures: row.maxFailures,
-    lockoutDuration: row.lockoutDuration,
-    mfaTrigger: row.mfaTrigger,
-    mfaMethodsText: row.mfaMethods.map(m => m === 'sms' ? '短信验证码' : '邮箱验证码').join(' / ') || '未启用',
-    mfaRememberDevice: row.mfaRememberDevice === '允许' ? `允许, ${row.mfaRememberDuration} 天` : '不允许'
-  })
-  currentView.value = 'edit-summary'
-  isEditDrawerOpen.value = true
+const openEditDrawer = async (row: any) => {
+  try {
+    const detail = await authPolicyApi.detail(row.id)
+    Object.assign(drawerForm, {
+      id: String(detail.id),
+      name: detail.name,
+      code: detail.code,
+      applicableRealmTypeName: getCategoryName(detail.applicableRealmId),
+      status: detail.status,
+      authMethodsText: getAuthText(detail.authMethods || []),
+      captchaType: detail.captchaEnabled ? `失败 ${detail.captchaFailureThreshold} 次后启用` : '未启用',
+      maxFailures: detail.maxFailureCount || 5,
+      lockoutDuration: detail.lockMinutes || 30,
+      mfaTrigger: detail.mfaTriggers && detail.mfaTriggers.length > 0 ? detail.mfaTriggers[0] : '未启用',
+      mfaMethodsText: (detail.mfaMethods || []).map(m => m === 'sms' ? '短信验证码' : '邮箱验证码').join(' / ') || '未启用',
+      mfaRememberDevice: detail.rememberDeviceEnabled ? `允许, ${detail.rememberDeviceDays} 天` : '不允许'
+    })
+    currentView.value = 'edit-summary'
+    isEditDrawerOpen.value = true
+  } catch (err) {
+    ElMessage.error('加载策略配置摘要失败')
+  }
 }
 
 watch(isEditDrawerOpen, (newVal) => {
@@ -392,10 +340,48 @@ const openCopyView = (row: AuthPolicyRecord) => {
   currentView.value = 'copy'
 }
 
-const openDetail = (row: AuthPolicyRecord) => {
-  selectedPolicy.value = row
-  activeDetailTab.value = 'basic'
-  currentView.value = 'detail'
+const openDetail = async (row: AuthPolicyRecord) => {
+  try {
+    const detail = await authPolicyApi.detail(row.id)
+    selectedPolicy.value = {
+      id: String(detail.id),
+      name: detail.name,
+      code: detail.code,
+      applicableRealmId: detail.applicableRealmId || null,
+      realmTypeName: getCategoryName(detail.applicableRealmId),
+      status: detail.status,
+      authMethods: detail.authMethods || [],
+      defaultAuthMethod: detail.defaultAuthMethod || 'password',
+      successAction: '返回来源客户端',
+      captchaType: detail.captchaEnabled ? `失败 ${detail.captchaFailureThreshold} 次后启用` : '未启用',
+      captchaFailCount: detail.captchaFailureThreshold || 3,
+      captchaValidity: detail.captchaTtlSeconds || 120,
+      captchaRefreshLimit: detail.captchaErrorLimit || 5,
+      maxFailures: detail.maxFailureCount || 5,
+      statPeriod: detail.failureWindowMinutes || 10,
+      lockoutDuration: detail.lockMinutes || 30,
+      recordRiskLog: detail.riskLogEnabled ? '开启' : '关闭',
+      mfaEnabled: detail.mfaEnabled ? '开启' : '关闭',
+      mfaTrigger: detail.mfaTriggers && detail.mfaTriggers.length > 0 ? detail.mfaTriggers[0] : '未启用',
+      mfaMethods: detail.mfaMethods || [],
+      mfaDefaultMethod: detail.defaultAuthMethod || '',
+      mfaValidity: 300,
+      mfaFailCount: 5,
+      mfaRememberDevice: detail.rememberDeviceEnabled ? '允许' : '不允许',
+      mfaRememberDuration: detail.rememberDeviceDays || 30,
+      riskIpLimit: detail.ipRestrictionEnabled ? '开启' : '关闭',
+      riskNewDeviceAlert: detail.deviceCheckEnabled ? '开启' : '关闭',
+      riskAbnormalTime: detail.abnormalTimeCheckEnabled ? '阻止登录' : '仅记录日志',
+      riskHighRiskAction: '触发 MFA',
+      realmRefs: (detail.references || []).filter(r => r.referenceType === 'REALM').map(r => r.name),
+      clientRefs: (detail.references || []).filter(r => r.referenceType === 'CLIENT').map(r => r.name),
+      description: detail.description || ''
+    }
+    activeDetailTab.value = 'basic'
+    currentView.value = 'detail'
+  } catch (err) {
+    ElMessage.error('获取策略详情失败')
+  }
 }
 
 const handleDisableOrDelete = (row: AuthPolicyRecord, action: 'disable' | 'delete') => {
@@ -408,139 +394,138 @@ const handleDisableOrDelete = (row: AuthPolicyRecord, action: 'disable' | 'delet
     }
   } else {
     const actionName = action === 'disable' ? '禁用' : '删除'
-    ElMessageBox.confirm(`确认${actionName}该认证策略？`, '提示', { type: 'warning' }).then(() => {
-      if (action === 'disable') {
-        row.status = 3
-        ElMessage.success('认证策略已成功禁用')
-      } else {
-        policies.value = policies.value.filter(item => item.id !== row.id)
-        ElMessage.success('认证策略已成功删除')
+    ElMessageBox.confirm(`确认${actionName}该认证策略？`, '提示', { type: 'warning' }).then(async () => {
+      try {
+        if (action === 'disable') {
+          await authPolicyApi.disable(row.id)
+          ElMessage.success('认证策略已成功禁用')
+        } else {
+          await authPolicyApi.delete(row.id)
+          ElMessage.success('认证策略已成功删除')
+        }
+        await loadPolicies()
+      } catch (err) {
+        ElMessage.error(`${actionName}失败`)
       }
     }).catch(() => {})
   }
 }
 
-const submitForm = () => {
+const submitForm = async () => {
   if (!formModel.name || !formModel.code) {
     ElMessage.error('请填写必填项')
     return
   }
   saveLoading.value = true
-  setTimeout(() => {
+  try {
+    const payload: any = {
+      code: formModel.code,
+      name: formModel.name,
+      applicableRealmId: formModel.applicableRealmId ? String(formModel.applicableRealmId) : null,
+      authMethods: formModel.authMethods,
+      defaultAuthMethod: formModel.defaultAuthMethod,
+      captchaEnabled: formModel.captchaType !== '未启用',
+      captchaFailureThreshold: formModel.captchaFailCount || 0,
+      captchaTtlSeconds: formModel.captchaValidity || 60,
+      captchaErrorLimit: formModel.captchaRefreshLimit || 1,
+      maxFailureCount: formModel.maxFailures || 5,
+      failureWindowMinutes: formModel.statPeriod || 10,
+      lockMinutes: formModel.lockoutDuration || 30,
+      notifyUser: formModel.recordRiskLog === '开启',
+      riskLogEnabled: formModel.recordRiskLog === '开启',
+      mfaEnabled: formModel.mfaEnabled === '开启',
+      mfaTriggers: formModel.mfaEnabled === '开启' ? [formModel.mfaTrigger] : [],
+      mfaMethods: formModel.mfaMethods,
+      rememberDeviceEnabled: formModel.mfaRememberDevice === '允许',
+      rememberDeviceDays: formModel.mfaRememberDuration || 0,
+      ipRestrictionEnabled: formModel.riskIpLimit === '开启',
+      deviceCheckEnabled: formModel.riskNewDeviceAlert === '开启',
+      remoteLoginCheckEnabled: formModel.riskNewDeviceAlert === '开启',
+      abnormalTimeCheckEnabled: formModel.riskAbnormalTime === '阻止登录' || formModel.riskAbnormalTime === '仅记录日志',
+      status: formModel.status,
+      description: formModel.description
+    }
+    
     if (formModel.id) {
-      const match = policies.value.find(item => item.id === formModel.id)
-      if (match) {
-        Object.assign(match, {
-          name: formModel.name,
-          code: formModel.code,
-          realmTypeName: formModel.realmTypeName,
-          authMethods: [...formModel.authMethods],
-          defaultAuthMethod: formModel.defaultAuthMethod,
-          successAction: formModel.successAction,
-          captchaType: formModel.captchaType,
-          captchaFailCount: formModel.captchaFailCount,
-          captchaValidity: formModel.captchaValidity,
-          captchaRefreshLimit: formModel.captchaRefreshLimit,
-          maxFailures: formModel.maxFailures,
-          statPeriod: formModel.statPeriod,
-          lockoutDuration: formModel.lockoutDuration,
-          recordRiskLog: formModel.recordRiskLog,
-          mfaEnabled: formModel.mfaEnabled,
-          mfaTrigger: formModel.mfaEnabled === '开启' ? formModel.mfaTrigger : '未启用',
-          mfaMethods: [...formModel.mfaMethods],
-          mfaDefaultMethod: formModel.mfaDefaultMethod,
-          mfaValidity: formModel.mfaValidity,
-          mfaFailCount: formModel.mfaFailCount,
-          mfaRememberDevice: formModel.mfaRememberDevice,
-          mfaRememberDuration: formModel.mfaRememberDuration,
-          riskIpLimit: formModel.riskIpLimit,
-          riskNewDeviceAlert: formModel.riskNewDeviceAlert,
-          riskAbnormalTime: formModel.riskAbnormalTime,
-          riskHighRiskAction: formModel.riskHighRiskAction,
-          description: formModel.description
-        })
-        ElMessage.success('更新认证策略成功')
-      }
+      await authPolicyApi.update(formModel.id, payload)
+      ElMessage.success('更新认证策略成功')
     } else {
-      if (policies.value.some(item => item.code === formModel.code)) {
-        ElMessage.error('策略编码重复，不允许保存')
-        saveLoading.value = false
-        return
-      }
-      policies.value.push({
-        id: String(Date.now()),
-        name: formModel.name,
-        code: formModel.code,
-        realmTypeName: formModel.realmTypeName,
-        status: 1,
-        authMethods: [...formModel.authMethods],
-        defaultAuthMethod: formModel.defaultAuthMethod,
-        successAction: formModel.successAction,
-        captchaType: formModel.captchaType,
-        captchaFailCount: formModel.captchaFailCount,
-        captchaValidity: formModel.captchaValidity,
-        captchaRefreshLimit: formModel.captchaRefreshLimit,
-        maxFailures: formModel.maxFailures,
-        statPeriod: formModel.statPeriod,
-        lockoutDuration: formModel.lockoutDuration,
-        recordRiskLog: formModel.recordRiskLog,
-        mfaEnabled: formModel.mfaEnabled,
-        mfaTrigger: formModel.mfaEnabled === '开启' ? formModel.mfaTrigger : '未启用',
-        mfaMethods: [...formModel.mfaMethods],
-        mfaDefaultMethod: formModel.mfaDefaultMethod,
-        mfaValidity: formModel.mfaValidity,
-        mfaFailCount: formModel.mfaFailCount,
-        mfaRememberDevice: formModel.mfaRememberDevice,
-        mfaRememberDuration: formModel.mfaRememberDuration,
-        riskIpLimit: formModel.riskIpLimit,
-        riskNewDeviceAlert: formModel.riskNewDeviceAlert,
-        riskAbnormalTime: formModel.riskAbnormalTime,
-        riskHighRiskAction: formModel.riskHighRiskAction,
-        realmRefs: [],
-        clientRefs: [],
-        description: formModel.description
-      })
+      await authPolicyApi.create(payload)
       ElMessage.success('新增认证策略成功')
     }
-    saveLoading.value = false
     currentView.value = 'list'
-  }, 400)
-}
-
-const saveDrawerEdit = () => {
-  const match = policies.value.find(item => item.id === drawerForm.id)
-  if (match) {
-    match.name = drawerForm.name
-    match.status = drawerForm.status
-    match.maxFailures = drawerForm.maxFailures
-    match.lockoutDuration = drawerForm.lockoutDuration
-    ElMessage.success('保存修改成功')
+    await loadPolicies()
+  } catch (err) {
+    ElMessage.error('保存失败')
+  } finally {
+    saveLoading.value = false
   }
-  isEditDrawerOpen.value = false
 }
 
-const submitCopyForm = () => {
+const saveDrawerEdit = async () => {
+  if (!drawerForm.name) {
+    ElMessage.error('请输入策略名称')
+    return
+  }
+  try {
+    const detail = await authPolicyApi.detail(drawerForm.id)
+    const payload: any = {
+      code: detail.code,
+      name: drawerForm.name,
+      applicableRealmId: detail.applicableRealmId ? String(detail.applicableRealmId) : null,
+      authMethods: detail.authMethods || [],
+      defaultAuthMethod: detail.defaultAuthMethod || 'password',
+      captchaEnabled: detail.captchaEnabled,
+      captchaFailureThreshold: detail.captchaFailureThreshold,
+      captchaTtlSeconds: detail.captchaTtlSeconds,
+      captchaErrorLimit: detail.captchaErrorLimit,
+      maxFailureCount: drawerForm.maxFailures,
+      failureWindowMinutes: detail.failureWindowMinutes,
+      lockMinutes: drawerForm.lockoutDuration,
+      notifyUser: detail.notifyUser,
+      riskLogEnabled: detail.riskLogEnabled,
+      mfaEnabled: detail.mfaEnabled,
+      mfaTriggers: detail.mfaTriggers,
+      mfaMethods: detail.mfaMethods,
+      rememberDeviceEnabled: detail.rememberDeviceEnabled,
+      rememberDeviceDays: detail.rememberDeviceDays,
+      ipRestrictionEnabled: detail.ipRestrictionEnabled,
+      deviceCheckEnabled: detail.deviceCheckEnabled,
+      remoteLoginCheckEnabled: detail.remoteLoginCheckEnabled,
+      abnormalTimeCheckEnabled: detail.abnormalTimeCheckEnabled,
+      status: drawerForm.status,
+      description: detail.description
+    }
+    await authPolicyApi.update(drawerForm.id, payload)
+    ElMessage.success('保存修改成功')
+    isEditDrawerOpen.value = false
+    await loadPolicies()
+  } catch (err) {
+    ElMessage.error('保存修改失败')
+  }
+}
+
+const submitCopyForm = async () => {
   if (!copyForm.name || !copyForm.code) {
     ElMessage.error('请填写副本信息')
     return
   }
   saveLoading.value = true
-  setTimeout(() => {
+  try {
     if (policyToCopy.value) {
-      policies.value.push({
-        ...policyToCopy.value,
-        id: String(Date.now()),
-        name: copyForm.name,
+      await authPolicyApi.copy(policyToCopy.value.id, {
         code: copyForm.code,
-        status: copyForm.status,
-        realmRefs: [],
-        clientRefs: []
+        name: copyForm.name
       })
       ElMessage.success('副本复制成功，默认状态为禁用')
+      currentView.value = 'list'
+      await loadPolicies()
     }
+  } catch (err) {
+    ElMessage.error('复制失败')
+  } finally {
     saveLoading.value = false
-    currentView.value = 'list'
-  }, 400)
+  }
 }
 
 const handleTabClick = (tabName: string) => {
@@ -562,7 +547,6 @@ const getMfaBadgeClass = (trigger: string) => {
   if (trigger === '未启用') return 'gray'
   return 'blue'
 }
-
 </script>
 
 <template>
@@ -580,12 +564,6 @@ const getMfaBadgeClass = (trigger: string) => {
         </div>
       </div>
 
-      <!-- Navigation Tabs -->
-      <div class="premium-tabs-bar">
-        <span class="tab-item" @click="handleTabClick('login-page')">登录页配置</span>
-        <span class="tab-item active">认证策略</span>
-        <span class="tab-item" @click="handleTabClick('client-secret')">客户端密钥</span>
-      </div>
 
       <!-- Search Filter -->
       <el-card shadow="never" class="filter-card">
@@ -623,7 +601,7 @@ const getMfaBadgeClass = (trigger: string) => {
             </el-select>
           </div>
           <div class="filter-buttons">
-            <el-button type="primary" @click="() => {}">查询</el-button>
+            <el-button type="primary" @click="loadPolicies">查询</el-button>
             <el-button @click="handleReset">重置</el-button>
           </div>
         </div>
@@ -679,7 +657,7 @@ const getMfaBadgeClass = (trigger: string) => {
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="180" fixed="right">
+          <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <div class="row-actions">
                 <span class="link-btn" @click="openDetail(row)">详情</span>
@@ -698,6 +676,19 @@ const getMfaBadgeClass = (trigger: string) => {
             </template>
           </el-table-column>
         </el-table>
+
+        <!-- Table Footer Pagination -->
+        <div class="table-pagination-footer">
+          <span class="total-text">共 {{ total }} 条</span>
+          <el-pagination
+            v-model:current-page="query.page"
+            v-model:page-size="query.size"
+            :total="total"
+            :page-sizes="[10, 20, 50]"
+            layout="sizes, prev, pager, next, jumper"
+            @change="loadPolicies"
+          />
+        </div>
       </el-card>
     </div>
 
@@ -739,11 +730,8 @@ const getMfaBadgeClass = (trigger: string) => {
                 </div>
                 <div class="control-item">
                   <label>适用身份域类型</label>
-                  <el-select v-model="formModel.realmTypeName" placeholder="选择类型">
-                    <el-option label="租户域" value="租户域" />
-                    <el-option label="平台域" value="平台域" />
-                    <el-option label="商户域" value="商户域" />
-                    <el-option label="消费者域" value="消费者域" />
+                  <el-select v-model="formModel.applicableRealmId" placeholder="选择类型" clearable>
+                    <el-option v-for="cat in categories" :key="cat.id" :label="cat.name" :value="cat.id" />
                   </el-select>
                 </div>
                 <div class="control-item">
@@ -815,15 +803,15 @@ const getMfaBadgeClass = (trigger: string) => {
                     <el-option label="未启用" value="未启用" />
                   </el-select>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.captchaType === '失败后启用'">
                   <label>失败几次后启用</label>
                   <el-input v-model.number="formModel.captchaFailCount"><template #append>次</template></el-input>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.captchaType !== '未启用'">
                   <label>验证码有效期</label>
                   <el-input v-model.number="formModel.captchaValidity"><template #append>秒</template></el-input>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.captchaType !== '未启用'">
                   <label>验证码错误限制</label>
                   <el-input v-model.number="formModel.captchaRefreshLimit"><template #append>次后刷新</template></el-input>
                 </div>
@@ -864,7 +852,7 @@ const getMfaBadgeClass = (trigger: string) => {
                     <el-option label="关闭" value="关闭" />
                   </el-select>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启'">
                   <label>触发条件</label>
                   <el-select v-model="formModel.mfaTrigger">
                     <el-option label="新设备登录" value="新设备登录" />
@@ -872,41 +860,41 @@ const getMfaBadgeClass = (trigger: string) => {
                     <el-option label="管理员账号" value="管理员账号" />
                   </el-select>
                 </div>
-                <div class="control-item span-full">
+                <div class="control-item span-full" v-if="formModel.mfaEnabled === '开启'">
                   <label>验证方式</label>
                   <el-checkbox-group v-model="formModel.mfaMethods">
                     <el-checkbox label="sms">短信验证码</el-checkbox>
                     <el-checkbox label="email">邮箱验证码</el-checkbox>
                   </el-checkbox-group>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启'">
                   <label>默认验证方式</label>
                   <el-select v-model="formModel.mfaDefaultMethod">
                     <el-option label="短信验证码" value="sms" />
                     <el-option label="邮箱验证码" value="email" />
                   </el-select>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启'">
                   <label>验证码有效期</label>
                   <el-input v-model.number="formModel.mfaValidity"><template #append>秒</template></el-input>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启'">
                   <label>验证失败次数</label>
                   <el-input v-model.number="formModel.mfaFailCount"><template #append>次</template></el-input>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启'">
                   <label>允许记住设备</label>
                   <el-select v-model="formModel.mfaRememberDevice">
                     <el-option label="允许" value="允许" />
                     <el-option label="不允许" value="不允许" />
                   </el-select>
                 </div>
-                <div class="control-item">
+                <div class="control-item" v-if="formModel.mfaEnabled === '开启' && formModel.mfaRememberDevice === '允许'">
                   <label>记住设备有效期</label>
                   <el-input v-model.number="formModel.mfaRememberDuration"><template #append>天</template></el-input>
                 </div>
               </div>
-              <div class="warn-msg-block" style="margin-top: 12px;">
+              <div class="warn-msg-block" style="margin-top: 12px;" v-if="formModel.mfaEnabled === '开启'">
                 如果启用 MFA，至少选择一种验证方式；默认验证方式必须包含在已选方式中。
               </div>
             </div>
@@ -2032,5 +2020,13 @@ const getMfaBadgeClass = (trigger: string) => {
   .detail-split-grid {
     grid-template-columns: 1fr;
   }
+}
+.table-pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  color: #64748b;
+  font-size: 13px;
 }
 </style>

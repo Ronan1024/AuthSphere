@@ -116,7 +116,43 @@ public enum RealmErrorCode implements BaseError {
     /**
      * 禁用认证策略不能被绑定
      */
-    AUTH_POLICY_DISABLED(REALM + "036", "禁用认证策略不能被绑定");
+    AUTH_POLICY_DISABLED(REALM + "036", "禁用认证策略不能被绑定"),
+    /**
+     * 展示忘记密码入口时未配置跳转地址
+     */
+    LOGIN_PAGE_FORGOT_PASSWORD_URL_REQUIRED(REALM + "037", "显示忘记密码入口时必须配置跳转地址"),
+    /**
+     * 展示注册入口时未配置跳转地址
+     */
+    LOGIN_PAGE_REGISTER_URL_REQUIRED(REALM + "038", "显示注册入口时必须配置跳转地址"),
+    /**
+     * 认证方式不存在
+     */
+    AUTH_METHOD_DATA_ERROR(REALM + "039", "认证方式不存在"),
+    /**
+     * 认证方式编码已存在
+     */
+    AUTH_METHOD_CODE_EXISTS(REALM + "040", "认证方式编码已存在"),
+    /**
+     * 认证方式参数异常
+     */
+    AUTH_METHOD_PARAM_ERROR(REALM + "041", "认证方式参数异常"),
+    /**
+     * 认证方式已被认证策略引用
+     */
+    AUTH_METHOD_REFERENCED(REALM + "042", "认证方式已被认证策略引用，请先解除绑定"),
+    /**
+     * 系统内置认证方式不能删除
+     */
+    AUTH_METHOD_SYSTEM_BUILTIN(REALM + "043", "系统内置认证方式不能删除"),
+    /**
+     * 禁用认证方式不能用于新配置
+     */
+    AUTH_METHOD_DISABLED(REALM + "044", "认证方式不存在或未启用"),
+    /**
+     * 认证方式编码保存后不可修改
+     */
+    AUTH_METHOD_CODE_IMMUTABLE(REALM + "045", "认证方式编码保存后不可修改");
 
     private final String code;
 

@@ -77,10 +77,22 @@ public class LoginPageRequest {
     private Boolean showForgotPassword;
 
     /**
+     * 忘记密码入口跳转地址，展示入口时必填。
+     */
+    @Size(max = 512, message = "忘记密码跳转地址不能超过512个字符")
+    private String forgotPasswordUrl;
+
+    /**
      * 是否展示注册入口。
      */
     @NotNull(message = "是否显示注册入口不能为空")
     private Boolean showRegister;
+
+    /**
+     * 注册入口跳转地址，展示入口时必填。
+     */
+    @Size(max = 512, message = "注册入口跳转地址不能超过512个字符")
+    private String registerUrl;
 
     /**
      * 是否展示第三方登录入口。

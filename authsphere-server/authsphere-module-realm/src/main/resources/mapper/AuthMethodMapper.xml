@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.realm.mapper.AuthMethodMapper">
+    <select id="page" resultType="com.authsphere.server.realm.dto.AuthMethodResponse">
+        select
+            am.id,
+            am.code,
+            am.name,
+            am.positions as positionsText,
+            am.applicable_range as applicableRange,
+            am.status,
+            (
+                select count(1)
+                from auth_policy ap
+                where ap.deleted = 0
+                  and (find_in_set(am.code, ap.auth_methods) > 0 or find_in_set(am.code, ap.mfa_methods) > 0)
+            ) as referenceCount,
+            am.sort_no as sortNo,
+            am.description,
+            am.create_time as createTime,
+            am.update_time as updateTime
+        from auth_method am
+        <where>
+            am.deleted = 0
+            <if test="request.name != null and request.name != ''">
+                and am.name like concat('%', #{request.name}, '%')
+            </if>
+            <if test="request.code != null and request.code != ''">
+                and am.code like concat('%', #{request.code}, '%')
+            </if>
+            <if test="request.position != null and request.position != ''">
+                and find_in_set(#{request.position}, am.positions) > 0
+            </if>
+            <if test="request.status != null">
+                and am.status = #{request.status}
+            </if>
+        </where>
+        order by am.sort_no asc, am.create_time desc
+    </select>
+
+    <select id="listEnabled" resultType="com.authsphere.server.realm.dto.AuthMethodOptionResponse">
+        select id, code, name, positions as positionsText
+        from auth_method
+        where deleted = 0
+          and status = 1
+        <if test="position != null and position != ''">
+            and find_in_set(#{position}, positions) > 0
+        </if>
+        order by sort_no asc, create_time desc
+    </select>
+
+    <select id="listReferences" resultType="com.authsphere.server.realm.dto.AuthMethodReferenceResponse">
+        select
+            ap.id,
+            ap.code,
+            ap.name,
+            case
+                when find_in_set(#{code}, ap.auth_methods) > 0 and find_in_set(#{code}, ap.mfa_methods) > 0 then '主登录 / MFA'
+                when find_in_set(#{code}, ap.mfa_methods) > 0 then 'MFA'
+                else '主登录'
+            end as role,
+            coalesce(r.name, '通用认证策略') as `usage`,
+            ap.status
+        from auth_policy ap
+        left join realm r on r.id = ap.applicable_realm_id
+        where ap.deleted = 0
+          and (find_in_set(#{code}, ap.auth_methods) > 0 or find_in_set(#{code}, ap.mfa_methods) > 0)
+        order by ap.create_time desc
+    </select>
+
+    <select id="countReferences" resultType="java.lang.Integer">
+        select count(1)
+        from auth_policy
+        where deleted = 0
+          and (find_in_set(#{code}, auth_methods) > 0 or find_in_set(#{code}, mfa_methods) > 0)
+    </select>
+
+    <select id="countByCode" resultType="java.lang.Integer">
+        select count(1)
+        from auth_method
+        where code = #{code}
+          and deleted = 0
+        <if test="currentId != null">
+            and id != #{currentId}
+        </if>
+    </select>
+</mapper>

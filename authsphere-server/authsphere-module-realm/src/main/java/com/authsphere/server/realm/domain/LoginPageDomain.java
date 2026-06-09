@@ -15,6 +15,7 @@ import com.authsphere.server.realm.model.LoginPage;
 import com.authsphere.server.realm.model.RealmType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -75,6 +76,14 @@ public class LoginPageDomain {
         if (!StatusEnum.NORMAL.getCode().equals(request.getStatus())
                 && !StatusEnum.DISABLED.getCode().equals(request.getStatus())) {
             throw new BizException(RealmErrorCode.LOGIN_PAGE_STATUS_ERROR);
+        }
+        if (Boolean.TRUE.equals(request.getShowForgotPassword())
+                && !StringUtils.hasText(request.getForgotPasswordUrl())) {
+            throw new BizException(RealmErrorCode.LOGIN_PAGE_FORGOT_PASSWORD_URL_REQUIRED);
+        }
+        if (Boolean.TRUE.equals(request.getShowRegister())
+                && !StringUtils.hasText(request.getRegisterUrl())) {
+            throw new BizException(RealmErrorCode.LOGIN_PAGE_REGISTER_URL_REQUIRED);
         }
         request.setAuthMethods(authMethods);
     }

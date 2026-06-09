@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { 
   Plus, Search, Refresh, ArrowDown, ArrowLeft, Warning,
@@ -18,9 +18,9 @@ const currentView = ref<'list' | 'create' | 'copy' | 'detail'>('list')
 const selectedPage = ref<LoginPageRecord | null>(null)
 const pageToCopy = ref<LoginPageRecord | null>(null)
 
-// Edit drawer state
-const isEditDrawerOpen = ref(false)
-const drawerForm = reactive({
+// 详情页编辑状态与表单
+const isDetailEditing = ref(false)
+const editForm = reactive({
   id: '',
   name: '',
   code: '',
@@ -32,7 +32,9 @@ const drawerForm = reactive({
   authMethods: [] as string[],
   defaultAuthMethod: 'password',
   showForgotPassword: true,
+  forgotPasswordUrl: '',
   showRegister: false,
+  registerUrl: '',
   showThirdPartyLogin: false,
   successRedirectUrl: '',
   failurePromptMode: 'message',
@@ -109,7 +111,6 @@ const loadData = async () => {
 
 const getStatusBadge = (status: number) => {
   if (status === 1) return { text: '启用', class: 'green' }
-  if (status === 2) return { text: '待配置', class: 'orange' }
   return { text: '禁用', class: 'red' }
 }
 
@@ -148,6 +149,14 @@ const getDisplayText = (value?: string | number | null) => {
   return value === undefined || value === null || value === '' ? '-' : value
 }
 
+const getPreviewBackgroundStyle = (backgroundUrl?: string) => {
+  const url = backgroundUrl?.trim()
+  if (!url) return undefined
+  return {
+    backgroundImage: `linear-gradient(145deg, rgba(15, 27, 45, 0.72), rgba(30, 58, 138, 0.58)), url(${JSON.stringify(url)})`
+  }
+}
+
 const handleReset = () => {
   query.name = ''
   query.code = ''
@@ -163,6 +172,7 @@ const addForm = reactive({
   code: '',
   applicableRealmTypeId: null as string | number | null,
   status: 1,
+  defaultPage: false,
   pageTitle: '',
   pageSubtitle: '',
   logoUrl: '',
@@ -171,8 +181,11 @@ const addForm = reactive({
   authMethods: ['password'] as string[],
   defaultAuthMethod: 'password',
   showForgotPassword: true,
+  forgotPasswordUrl: '',
   showRegister: false,
+  registerUrl: '',
   showThirdPartyLogin: false,
+  failurePromptMode: 'message',
   description: ''
 })
 
@@ -181,7 +194,7 @@ const copyForm = reactive({
   name: '',
   code: '',
   applicableRealmTypeId: null as string | number | null,
-  status: 3
+  status: 2
 })
 
 const openCreateView = () => {
@@ -190,6 +203,7 @@ const openCreateView = () => {
     code: '',
     applicableRealmTypeId: null,
     status: 1,
+    defaultPage: false,
     pageTitle: '',
     pageSubtitle: '',
     logoUrl: '',
@@ -198,8 +212,11 @@ const openCreateView = () => {
     authMethods: ['password'],
     defaultAuthMethod: 'password',
     showForgotPassword: true,
+    forgotPasswordUrl: '',
     showRegister: false,
+    registerUrl: '',
     showThirdPartyLogin: false,
+    failurePromptMode: 'message',
     description: ''
   })
   currentView.value = 'create'
@@ -209,18 +226,19 @@ const openDetail = async (row: LoginPageRecord) => {
   try {
     const detail = await loginPageApi.detail(row.id)
     selectedPage.value = detail
+    isDetailEditing.value = false
     currentView.value = 'detail'
   } catch (e: any) {
     ElMessage.error(e?.message || '获取登录页详情失败')
   }
 }
 
-const openEditDrawer = async (row: LoginPageRecord) => {
+const startDetailEdit = async (row: LoginPageRecord) => {
   try {
     const detail = await loginPageApi.detail(row.id)
     selectedPage.value = detail
     currentView.value = 'detail'
-    Object.assign(drawerForm, {
+    Object.assign(editForm, {
       id: String(detail.id),
       name: detail.name,
       code: detail.code,
@@ -232,7 +250,9 @@ const openEditDrawer = async (row: LoginPageRecord) => {
       authMethods: detail.authMethod?.map(m => m.description || m.id) || ['password'],
       defaultAuthMethod: detail.defaultAuthMethod || 'password',
       showForgotPassword: detail.showForgotPassword ?? true,
+      forgotPasswordUrl: detail.forgotPasswordUrl || '',
       showRegister: detail.showRegister ?? false,
+      registerUrl: detail.registerUrl || '',
       showThirdPartyLogin: detail.showThirdPartyLogin ?? false,
       successRedirectUrl: detail.successRedirectUrl || '',
       failurePromptMode: detail.failurePromptMode || 'message',
@@ -241,7 +261,7 @@ const openEditDrawer = async (row: LoginPageRecord) => {
       referencesCount: detail.referenceCount || 0,
       description: detail.description || ''
     })
-    isEditDrawerOpen.value = true
+    isDetailEditing.value = true
   } catch (e: any) {
     ElMessage.error(e?.message || '获取登录页详情失败')
   }
@@ -255,7 +275,7 @@ const openCopyView = async (row: LoginPageRecord) => {
       name: detail.name + '_副本',
       code: detail.code + '_copy',
       applicableRealmTypeId: detail.applicableRealmTypeId,
-      status: 3
+      status: 2
     })
     currentView.value = 'copy'
   } catch (e: any) {
@@ -287,8 +307,24 @@ const handleDisableOrDelete = async (row: LoginPageRecord, action: 'disable' | '
 }
 
 const submitCreateForm = async () => {
-  if (!addForm.name || !addForm.code) {
-    ElMessage.error('请填写必填项')
+  if (!addForm.name.trim() || !addForm.code.trim() || !addForm.pageTitle.trim()) {
+    ElMessage.error('请填写登录页名称、编码和页面标题')
+    return
+  }
+  if (!addForm.authMethods.length) {
+    ElMessage.error('请至少选择一种登录方式')
+    return
+  }
+  if (!addForm.authMethods.includes(addForm.defaultAuthMethod)) {
+    ElMessage.error('默认登录方式必须包含在支持的登录方式中')
+    return
+  }
+  if (addForm.showForgotPassword && !addForm.forgotPasswordUrl.trim()) {
+    ElMessage.error('显示忘记密码入口时必须配置跳转地址')
+    return
+  }
+  if (addForm.showRegister && !addForm.registerUrl.trim()) {
+    ElMessage.error('显示注册入口时必须配置跳转地址')
     return
   }
   saveLoading.value = true
@@ -306,10 +342,12 @@ const submitCreateForm = async () => {
       authMethods: addForm.authMethods,
       defaultAuthMethod: addForm.defaultAuthMethod,
       showForgotPassword: addForm.showForgotPassword,
+      forgotPasswordUrl: addForm.forgotPasswordUrl,
       showRegister: addForm.showRegister,
+      registerUrl: addForm.registerUrl,
       showThirdPartyLogin: addForm.showThirdPartyLogin,
-      failurePromptMode: 'message',
-      defaultPage: false,
+      failurePromptMode: addForm.failurePromptMode,
+      defaultPage: addForm.defaultPage,
       description: addForm.description
     }
     await loginPageApi.create(payload)
@@ -344,7 +382,9 @@ const submitCopyForm = async () => {
       authMethods: pageToCopy.value.authMethod?.map(m => m.description || m.id) || ['password'],
       defaultAuthMethod: pageToCopy.value.defaultAuthMethod || 'password',
       showForgotPassword: pageToCopy.value.showForgotPassword ?? true,
+      forgotPasswordUrl: pageToCopy.value.forgotPasswordUrl || '',
       showRegister: pageToCopy.value.showRegister ?? false,
+      registerUrl: pageToCopy.value.registerUrl || '',
       showThirdPartyLogin: pageToCopy.value.showThirdPartyLogin ?? false,
       failurePromptMode: pageToCopy.value.failurePromptMode || 'message',
       defaultPage: false,
@@ -361,44 +401,54 @@ const submitCopyForm = async () => {
   }
 }
 
-const saveDrawerEdit = async () => {
-  if (!drawerForm.name.trim() || !drawerForm.pageTitle.trim()) {
+const saveDetailEdit = async () => {
+  if (!editForm.name.trim() || !editForm.pageTitle.trim()) {
     ElMessage.error('请填写登录页名称和页面标题')
     return
   }
-  if (!drawerForm.authMethods.length) {
+  if (!editForm.authMethods.length) {
     ElMessage.error('请至少选择一种登录方式')
     return
   }
-  if (!drawerForm.authMethods.includes(drawerForm.defaultAuthMethod)) {
+  if (!editForm.authMethods.includes(editForm.defaultAuthMethod)) {
     ElMessage.error('默认登录方式必须包含在支持的登录方式中')
+    return
+  }
+  if (editForm.showForgotPassword && !editForm.forgotPasswordUrl.trim()) {
+    ElMessage.error('显示忘记密码入口时必须配置跳转地址')
+    return
+  }
+  if (editForm.showRegister && !editForm.registerUrl.trim()) {
+    ElMessage.error('显示注册入口时必须配置跳转地址')
     return
   }
   saveLoading.value = true
   try {
     const payload: LoginPagePayload = {
-      name: drawerForm.name,
-      code: drawerForm.code,
-      applicableRealmTypeId: drawerForm.applicableRealmTypeId,
-      pageTitle: drawerForm.pageTitle,
-      pageSubtitle: drawerForm.pageSubtitle,
-      logoUrl: drawerForm.logoUrl,
-      backgroundUrl: drawerForm.backgroundUrl,
-      authMethods: drawerForm.authMethods,
-      defaultAuthMethod: drawerForm.defaultAuthMethod,
-      showForgotPassword: drawerForm.showForgotPassword,
-      showRegister: drawerForm.showRegister,
-      showThirdPartyLogin: drawerForm.showThirdPartyLogin,
-      successRedirectUrl: drawerForm.successRedirectUrl,
-      failurePromptMode: drawerForm.failurePromptMode,
-      defaultPage: drawerForm.defaultPage,
-      status: drawerForm.status,
-      description: drawerForm.description
+      name: editForm.name,
+      code: editForm.code,
+      applicableRealmTypeId: editForm.applicableRealmTypeId,
+      pageTitle: editForm.pageTitle,
+      pageSubtitle: editForm.pageSubtitle,
+      logoUrl: editForm.logoUrl,
+      backgroundUrl: editForm.backgroundUrl,
+      authMethods: editForm.authMethods,
+      defaultAuthMethod: editForm.defaultAuthMethod,
+      showForgotPassword: editForm.showForgotPassword,
+      forgotPasswordUrl: editForm.forgotPasswordUrl,
+      showRegister: editForm.showRegister,
+      registerUrl: editForm.registerUrl,
+      showThirdPartyLogin: editForm.showThirdPartyLogin,
+      successRedirectUrl: editForm.successRedirectUrl,
+      failurePromptMode: editForm.failurePromptMode,
+      defaultPage: editForm.defaultPage,
+      status: editForm.status,
+      description: editForm.description
     }
-    await loginPageApi.update(drawerForm.id, payload)
+    await loginPageApi.update(editForm.id, payload)
     ElMessage.success('保存修改成功')
-    isEditDrawerOpen.value = false
-    const detail = await loginPageApi.detail(drawerForm.id)
+    isDetailEditing.value = false
+    const detail = await loginPageApi.detail(editForm.id)
     selectedPage.value = detail
     await loadData()
   } catch (e: any) {
@@ -466,7 +516,7 @@ onMounted(() => {
             <label>状态</label>
             <el-select v-model="query.status" placeholder="全部状态" clearable>
               <el-option label="启用" :value="1" />
-              <el-option label="禁用" :value="3" />
+              <el-option label="禁用" :value="2" />
             </el-select>
           </div>
           <div class="filter-buttons">
@@ -525,7 +575,7 @@ onMounted(() => {
                   <template #dropdown>
                     <el-dropdown-menu>
                       <el-dropdown-item @click="openCopyView(row)">复制配置</el-dropdown-item>
-                      <el-dropdown-item @click="handleDisableOrDelete(row, 'disable')" :disabled="row.status === 3">禁用页面</el-dropdown-item>
+                      <el-dropdown-item @click="handleDisableOrDelete(row, 'disable')" :disabled="row.status === 2">禁用页面</el-dropdown-item>
                       <el-dropdown-item @click="handleDisableOrDelete(row, 'delete')" class="danger-item">删除页面</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
@@ -562,115 +612,185 @@ onMounted(() => {
         </div>
       </div>
 
-      <el-card shadow="never" class="form-card-box">
-        <div class="card-header-title">
-          <h3>登录页表单</h3>
-          <p>配置基础参数与页面布局内容，不做复杂的可视化装修，保留必要核心入口及展示内容。</p>
-        </div>
-
-        <el-form label-position="top" class="form-body-container">
-          <!-- Section 1 -->
-          <div class="form-section">
-            <div class="section-title">基础信息</div>
-            <p class="section-subtext">登录页编码保存后不建议修改。</p>
-            <div class="grid-row-3">
-              <el-form-item label="登录页名称 *">
-                <el-input v-model="addForm.name" placeholder="请输入名称" />
-              </el-form-item>
-              <el-form-item label="登录页编码 *">
-                <el-input v-model="addForm.code" placeholder="请输入编码" />
-              </el-form-item>
-              <el-form-item>
-                <template #label>
-                  <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <span>适用域类型</span>
-                    <el-button link type="primary" size="small" style="font-weight: normal; padding: 0; height: auto;" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
-                  </div>
-                </template>
-                <el-select
-                  v-model="addForm.applicableRealmTypeId"
-                  placeholder="请选择身份域类型"
-                  clearable
-                  :loading="realmTypeOptionsLoading"
-                  no-data-text="暂无可用身份域类型"
-                  style="width: 100%"
-                >
-                  <el-option
-                    v-for="item in realmTypeOptions"
-                    :key="item.value"
-                    :label="item.label"
-                    :value="item.value"
-                  />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="状态">
-                <el-select v-model="addForm.status">
-                  <el-option label="启用" :value="1" />
-                  <el-option label="禁用" :value="3" />
-                </el-select>
-              </el-form-item>
+      <div class="detail-inline-editor create-inline-editor">
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">基础信息</div>
+          <p class="edit-section-description">配置登录页标识、适用范围和启用状态，登录页编码保存后不可修改。</p>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>登录页名称 *</label>
+              <el-input v-model="addForm.name" placeholder="请输入登录页名称" maxlength="128" show-word-limit />
+            </div>
+            <div class="form-item-mock">
+              <label>登录页编码 *</label>
+              <el-input v-model="addForm.code" placeholder="请输入登录页编码" maxlength="64" show-word-limit />
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <div class="drawer-label-line">
+                <label>适用身份域类型</label>
+                <el-button link type="primary" size="small" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
+              </div>
+              <el-select
+                v-model="addForm.applicableRealmTypeId"
+                placeholder="请选择身份域类型"
+                clearable
+                :loading="realmTypeOptionsLoading"
+                no-data-text="暂无可用身份域类型"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in realmTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>状态</label>
+              <el-select v-model="addForm.status">
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="2" />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>默认登录页</label>
+              <el-switch v-model="addForm.defaultPage" />
             </div>
           </div>
+        </section>
 
-          <!-- Section 2 -->
-          <div class="form-section" style="margin-top:24px;">
-            <div class="section-title">页面展示</div>
-            <p class="section-subtext">配置展示的文本信息、Logo 资源和跳转重定向路径。</p>
-            <div class="grid-row-3">
-              <el-form-item label="页面标题 *">
-                <el-input v-model="addForm.pageTitle" placeholder="如: 租户管理后台" />
-              </el-form-item>
-              <el-form-item label="页面副标题">
-                <el-input v-model="addForm.pageSubtitle" placeholder="统一登录入口，请完成身份认证" />
-              </el-form-item>
-              <el-form-item label="Logo 地址">
-                <el-input v-model="addForm.logoUrl" placeholder="如: /static/logo.png" />
-              </el-form-item>
-              <el-form-item label="背景图地址" class="span-2">
-                <el-input v-model="addForm.bgUrl" placeholder="可选，不配置则使用系统默认背景" />
-              </el-form-item>
-              <el-form-item label="登录成功跳转地址">
-                <el-input v-model="addForm.redirectUrl" placeholder="默认返回来源客户端" />
-              </el-form-item>
+        <section class="drawer-form-section display-live-section">
+          <div class="drawer-section-title">页面展示设置</div>
+          <p class="edit-section-description">修改页面文案或资源地址时，右侧预览将实时更新。</p>
+          <div class="display-live-grid">
+            <div class="display-editor-fields">
+              <div class="form-item-mock">
+                <label>页面标题 *</label>
+                <el-input v-model="addForm.pageTitle" placeholder="如：租户管理后台" maxlength="128" show-word-limit />
+              </div>
+              <div class="form-item-mock">
+                <label>页面副标题</label>
+                <el-input v-model="addForm.pageSubtitle" placeholder="统一登录入口，请完成身份认证" maxlength="255" show-word-limit />
+              </div>
+              <div class="form-item-mock">
+                <label>Logo 地址</label>
+                <el-input v-model="addForm.logoUrl" placeholder="如：/static/logo.png" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>背景图地址</label>
+                <el-input v-model="addForm.bgUrl" placeholder="可选，不配置则使用系统默认背景" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>登录成功跳转地址</label>
+                <el-input v-model="addForm.redirectUrl" placeholder="默认返回来源客户端" clearable />
+              </div>
             </div>
-          </div>
 
-          <!-- Section 3 -->
-          <div class="form-section" style="margin-top:24px;">
-            <div class="section-title">登录方式与辅助项</div>
-            <p class="section-subtext">控制默认及支持的鉴权方式与界面辅助选项。</p>
-            <div class="grid-row-3">
-              <el-form-item label="支持的登录方式 *">
-                <el-checkbox-group v-model="addForm.authMethods">
-                  <div class="checkbox-list">
-                    <el-checkbox label="password">账号密码</el-checkbox>
-                    <el-checkbox label="sms">短信验证码</el-checkbox>
-                    <el-checkbox label="email">邮箱验证码</el-checkbox>
-                    <el-checkbox label="qr">扫码登录</el-checkbox>
-                    <el-checkbox label="third_party">第三方登录</el-checkbox>
-                    <el-checkbox label="mfa">MFA 认证</el-checkbox>
-                  </div>
-                </el-checkbox-group>
-              </el-form-item>
-              <el-form-item label="默认登录方式">
-                <el-select v-model="addForm.defaultAuthMethod">
-                  <el-option label="账号密码" value="password" />
-                  <el-option label="短信验证码" value="sms" />
-                  <el-option label="邮箱验证码" value="email" />
-                  <el-option label="扫码登录" value="qr" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="辅助入口选项">
-                <div class="checkbox-list" style="margin-top: 6px;">
-                  <el-checkbox v-model="addForm.showForgotPassword">显示忘记密码</el-checkbox>
-                  <el-checkbox v-model="addForm.showRegister">显示注册入口</el-checkbox>
-                  <el-checkbox v-model="addForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
+            <div class="live-edit-preview">
+              <div class="live-edit-preview-header">
+                <div>
+                  <strong>实时预览</strong>
+                  <span>未保存内容仅用于当前预览</span>
                 </div>
-              </el-form-item>
+                <span class="live-indicator"><i></i>实时更新</span>
+              </div>
+              <div class="live-simulator">
+                <div class="login-preview-panel edit-preview-panel">
+                  <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(addForm.bgUrl)">
+                    <img v-if="addForm.logoUrl" :src="addForm.logoUrl" alt="登录页 Logo 预览" class="preview-logo" />
+                    <div v-else class="preview-logo-placeholder"><el-icon><View /></el-icon></div>
+                    <h3>{{ addForm.pageTitle || '登录页标题' }}</h3>
+                    <p>{{ addForm.pageSubtitle || '请输入页面副标题' }}</p>
+                    <span class="center-brand-logo">{{ addForm.name || '登录页名称' }}</span>
+                  </div>
+                  <div class="login-panel-right">
+                    <div class="portal-login-box">
+                      <h4>欢迎登录</h4>
+                      <p>请选择支持的认证方式完成身份认证</p>
+                      <div class="portal-input-field">用户名 / 手机号</div>
+                      <div v-if="addForm.defaultAuthMethod === 'password'" class="portal-input-field">请输入登录密码</div>
+                      <div v-else class="portal-input-field">请输入验证码</div>
+                      <button class="portal-submit-btn">登录</button>
+                      <div class="portal-footer-links">
+                        <span v-if="addForm.showForgotPassword" class="footer-link" :title="addForm.forgotPasswordUrl">忘记密码？</span>
+                        <span v-if="addForm.showRegister" class="footer-link" :title="addForm.registerUrl">立即注册</span>
+                        <span v-if="addForm.showThirdPartyLogin" class="footer-link">第三方登录</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-redirect-hint">
+                登录成功跳转：<span>{{ addForm.redirectUrl || '未配置' }}</span>
+              </div>
             </div>
           </div>
-        </el-form>
-      </el-card>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">认证与交互</div>
+          <p class="edit-section-description">配置支持的认证方式、默认登录方式和辅助入口。</p>
+          <div class="form-item-mock">
+            <label>支持的登录方式 *</label>
+            <el-checkbox-group v-model="addForm.authMethods" class="drawer-checkbox-grid">
+              <el-checkbox label="password">账号密码</el-checkbox>
+              <el-checkbox label="sms">短信验证码</el-checkbox>
+              <el-checkbox label="email">邮箱验证码</el-checkbox>
+              <el-checkbox label="qr">扫码登录</el-checkbox>
+              <el-checkbox label="third_party">第三方登录</el-checkbox>
+              <el-checkbox label="mfa">MFA 认证</el-checkbox>
+            </el-checkbox-group>
+          </div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>默认登录方式 *</label>
+              <el-select v-model="addForm.defaultAuthMethod">
+                <el-option
+                  v-for="method in addForm.authMethods"
+                  :key="method"
+                  :label="getAuthMethodName(method)"
+                  :value="method"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>登录失败提示模式 *</label>
+              <el-select v-model="addForm.failurePromptMode">
+                <el-option label="消息提示" value="message" />
+                <el-option label="弹窗提示" value="dialog" />
+                <el-option label="结果页提示" value="page" />
+              </el-select>
+            </div>
+          </div>
+          <div class="form-item-mock">
+            <label>辅助入口选项</label>
+            <div class="checkbox-list">
+              <el-checkbox v-model="addForm.showForgotPassword">显示忘记密码</el-checkbox>
+              <el-checkbox v-model="addForm.showRegister">显示注册入口</el-checkbox>
+              <el-checkbox v-model="addForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
+            </div>
+          </div>
+          <div class="drawer-form-grid auxiliary-url-grid">
+            <div v-if="addForm.showForgotPassword" class="form-item-mock">
+              <label>忘记密码跳转地址 *</label>
+              <el-input v-model="addForm.forgotPasswordUrl" placeholder="如：/forgot-password" clearable />
+            </div>
+            <div v-if="addForm.showRegister" class="form-item-mock">
+              <label>注册入口跳转地址 *</label>
+              <el-input v-model="addForm.registerUrl" placeholder="如：/register" clearable />
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">备注信息</div>
+          <div class="form-item-mock">
+            <label>备注</label>
+            <el-input v-model="addForm.description" type="textarea" :rows="3" maxlength="512" show-word-limit />
+          </div>
+        </section>
+      </div>
     </div>
 
     <!-- View 3: Copy / Clone View -->
@@ -733,7 +853,7 @@ onMounted(() => {
             <div class="form-item-mock">
               <label>状态</label>
               <el-select v-model="copyForm.status" disabled>
-                <el-option label="禁用" :value="3" />
+                <el-option label="禁用" :value="2" />
               </el-select>
             </div>
           </div>
@@ -776,17 +896,212 @@ onMounted(() => {
     <!-- View 4: Detail & Interactive Live Preview View -->
     <div v-else-if="currentView === 'detail'" class="detail-layout">
       <div class="view-header">
-        <div class="header-back-wrap" @click="currentView = 'list'">
+        <div class="header-back-wrap" @click="isDetailEditing ? isDetailEditing = false : currentView = 'list'">
           <el-icon class="back-icon"><ArrowLeft /></el-icon>
-          <h2>{{ selectedPage?.name }}</h2>
+          <h2>{{ isDetailEditing ? '编辑登录页' : selectedPage?.name }}</h2>
         </div>
         <div class="action-buttons">
-          <el-button @click="currentView = 'list'">返回</el-button>
-          <el-button type="primary" @click="openEditDrawer(selectedPage!)">编辑</el-button>
+          <template v-if="isDetailEditing">
+            <el-button @click="isDetailEditing = false">取消</el-button>
+            <el-button type="primary" :loading="saveLoading" @click="saveDetailEdit">保存</el-button>
+          </template>
+          <template v-else>
+            <el-button @click="currentView = 'list'">返回</el-button>
+            <el-button type="primary" @click="startDetailEdit(selectedPage!)">编辑</el-button>
+          </template>
         </div>
       </div>
 
-      <section class="detail-summary-card">
+      <div v-if="isDetailEditing" class="detail-inline-editor">
+        <div v-if="editForm.referencesCount > 0" class="drawer-referenced-alert">
+          <el-icon class="warning-icon"><Warning /></el-icon>
+          <p>
+            <strong>联动提示：</strong>该页面已被 <strong>{{ editForm.referencesCount }}</strong>
+            个对象引用，修改后可能影响现有登录入口。
+          </p>
+        </div>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">基础信息</div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>登录页名称 *</label>
+              <el-input v-model="editForm.name" />
+            </div>
+            <div class="form-item-mock">
+              <label>登录页编码</label>
+              <el-input v-model="editForm.code" disabled class="disabled-field" />
+              <div class="hint-msg">登录页编码不可修改。</div>
+            </div>
+            <div class="form-item-mock drawer-grid-full">
+              <div class="drawer-label-line">
+                <label>适用身份域类型</label>
+                <el-button link type="primary" size="small" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
+              </div>
+              <el-select
+                v-model="editForm.applicableRealmTypeId"
+                placeholder="请选择身份域类型"
+                clearable
+                :loading="realmTypeOptionsLoading"
+                no-data-text="暂无可用身份域类型"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in realmTypeOptions"
+                  :key="item.value"
+                  :label="item.label"
+                  :value="item.value"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>状态</label>
+              <el-select v-model="editForm.status">
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="2" />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>默认登录页</label>
+              <el-switch v-model="editForm.defaultPage" />
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-form-section display-live-section">
+          <div class="drawer-section-title">页面展示设置</div>
+          <p class="edit-section-description">修改页面文案或资源地址时，右侧预览将实时更新。</p>
+          <div class="display-live-grid">
+            <div class="display-editor-fields">
+              <div class="form-item-mock">
+                <label>页面标题 *</label>
+                <el-input v-model="editForm.pageTitle" maxlength="128" show-word-limit />
+              </div>
+              <div class="form-item-mock">
+                <label>页面副标题</label>
+                <el-input v-model="editForm.pageSubtitle" maxlength="255" show-word-limit />
+              </div>
+              <div class="form-item-mock">
+                <label>Logo 地址</label>
+                <el-input v-model="editForm.logoUrl" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>背景图地址</label>
+                <el-input v-model="editForm.backgroundUrl" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>登录成功跳转地址</label>
+                <el-input v-model="editForm.successRedirectUrl" clearable />
+              </div>
+            </div>
+
+            <div class="live-edit-preview">
+              <div class="live-edit-preview-header">
+                <div>
+                  <strong>实时预览</strong>
+                  <span>未保存内容仅用于当前预览</span>
+                </div>
+                <span class="live-indicator"><i></i>实时更新</span>
+              </div>
+              <div class="live-simulator">
+                <div
+                  class="login-preview-panel edit-preview-panel"
+                >
+                  <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(editForm.backgroundUrl)">
+                    <img v-if="editForm.logoUrl" :src="editForm.logoUrl" alt="登录页 Logo 预览" class="preview-logo" />
+                    <div v-else class="preview-logo-placeholder"><el-icon><View /></el-icon></div>
+                    <h3>{{ editForm.pageTitle || '登录页标题' }}</h3>
+                    <p>{{ editForm.pageSubtitle || '请输入页面副标题' }}</p>
+                    <span class="center-brand-logo">{{ editForm.name || '登录页名称' }}</span>
+                  </div>
+                  <div class="login-panel-right">
+                    <div class="portal-login-box">
+                      <h4>欢迎登录</h4>
+                      <p>请选择支持的认证方式完成身份认证</p>
+                      <div class="portal-input-field">用户名 / 手机号</div>
+                      <div class="portal-input-field" v-if="editForm.defaultAuthMethod === 'password'">请输入登录密码</div>
+                      <div class="portal-input-field" v-else>请输入验证码</div>
+                      <button class="portal-submit-btn">登录</button>
+                      <div class="portal-footer-links">
+                        <span v-if="editForm.showForgotPassword" class="footer-link" :title="editForm.forgotPasswordUrl">忘记密码？</span>
+                        <span v-if="editForm.showRegister" class="footer-link" :title="editForm.registerUrl">立即注册</span>
+                        <span v-if="editForm.showThirdPartyLogin" class="footer-link">第三方登录</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="preview-redirect-hint">
+                登录成功跳转：<span>{{ editForm.successRedirectUrl || '未配置' }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">认证与交互</div>
+          <div class="form-item-mock">
+            <label>支持的登录方式 *</label>
+            <el-checkbox-group v-model="editForm.authMethods" class="drawer-checkbox-grid">
+              <el-checkbox label="password">账号密码</el-checkbox>
+              <el-checkbox label="sms">短信验证码</el-checkbox>
+              <el-checkbox label="email">邮箱验证码</el-checkbox>
+              <el-checkbox label="qr">扫码登录</el-checkbox>
+              <el-checkbox label="third_party">第三方登录</el-checkbox>
+              <el-checkbox label="mfa">MFA 认证</el-checkbox>
+            </el-checkbox-group>
+          </div>
+          <div class="drawer-form-grid">
+            <div class="form-item-mock">
+              <label>默认登录方式 *</label>
+              <el-select v-model="editForm.defaultAuthMethod">
+                <el-option
+                  v-for="method in editForm.authMethods"
+                  :key="method"
+                  :label="getAuthMethodName(method)"
+                  :value="method"
+                />
+              </el-select>
+            </div>
+            <div class="form-item-mock">
+              <label>登录失败提示模式 *</label>
+              <el-select v-model="editForm.failurePromptMode">
+                <el-option label="消息提示" value="message" />
+                <el-option label="弹窗提示" value="dialog" />
+                <el-option label="结果页提示" value="page" />
+              </el-select>
+            </div>
+          </div>
+          <div class="form-item-mock">
+            <label>辅助入口选项</label>
+            <div class="checkbox-list">
+              <el-checkbox v-model="editForm.showForgotPassword">显示忘记密码</el-checkbox>
+              <el-checkbox v-model="editForm.showRegister">显示注册入口</el-checkbox>
+              <el-checkbox v-model="editForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
+            </div>
+          </div>
+          <div class="drawer-form-grid auxiliary-url-grid">
+            <div v-if="editForm.showForgotPassword" class="form-item-mock">
+              <label>忘记密码跳转地址 *</label>
+              <el-input v-model="editForm.forgotPasswordUrl" placeholder="如: /forgot-password" clearable />
+            </div>
+            <div v-if="editForm.showRegister" class="form-item-mock">
+              <label>注册入口跳转地址 *</label>
+              <el-input v-model="editForm.registerUrl" placeholder="如: /register" clearable />
+            </div>
+          </div>
+        </section>
+
+        <section class="drawer-form-section">
+          <div class="drawer-section-title">备注信息</div>
+          <div class="form-item-mock">
+            <label>备注</label>
+            <el-input v-model="editForm.description" type="textarea" :rows="3" maxlength="512" show-word-limit />
+          </div>
+        </section>
+      </div>
+
+      <section v-if="!isDetailEditing" class="detail-summary-card">
         <div class="detail-summary-main">
           <div class="detail-summary-icon"><el-icon><View /></el-icon></div>
           <div class="hero-content">
@@ -813,7 +1128,7 @@ onMounted(() => {
         </div>
       </section>
 
-      <div class="detail-content-grid">
+      <div v-if="!isDetailEditing" class="detail-content-grid">
         <section class="pane-card-box preview-card">
           <div class="pane-header">
             <h4>页面预览</h4>
@@ -822,9 +1137,8 @@ onMounted(() => {
           <div class="live-simulator">
             <div
               class="login-preview-panel"
-              :style="selectedPage?.backgroundUrl ? { backgroundImage: `url(${selectedPage.backgroundUrl})` } : undefined"
             >
-              <div class="login-panel-left preview-overlay">
+              <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(selectedPage?.backgroundUrl)">
                 <img v-if="selectedPage?.logoUrl" :src="selectedPage.logoUrl" alt="登录页 Logo" class="preview-logo" />
                 <h3>{{ selectedPage?.pageTitle }}</h3>
                 <p>{{ selectedPage?.pageSubtitle }}</p>
@@ -842,8 +1156,8 @@ onMounted(() => {
                   <button class="portal-submit-btn">登录</button>
                   
                   <div class="portal-footer-links">
-                    <span v-if="selectedPage?.showForgotPassword" class="footer-link">忘记密码？</span>
-                    <span v-if="selectedPage?.showRegister" class="footer-link">立即注册</span>
+                    <span v-if="selectedPage?.showForgotPassword" class="footer-link" :title="selectedPage?.forgotPasswordUrl">忘记密码？</span>
+                    <span v-if="selectedPage?.showRegister" class="footer-link" :title="selectedPage?.registerUrl">立即注册</span>
                     <span v-if="selectedPage?.showThirdPartyLogin" class="footer-link">第三方登录</span>
                   </div>
                 </div>
@@ -872,7 +1186,7 @@ onMounted(() => {
         </section>
       </div>
 
-      <div class="detail-section-grid">
+      <div v-if="!isDetailEditing" class="detail-section-grid">
         <section class="pane-card-box">
           <div class="pane-header">
             <h4>页面展示配置</h4>
@@ -884,6 +1198,8 @@ onMounted(() => {
             <div class="description-item full-width"><span>Logo 资源地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.logoUrl) }}</strong></div>
             <div class="description-item full-width"><span>背景图资源地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.backgroundUrl) }}</strong></div>
             <div class="description-item full-width"><span>登录成功跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.successRedirectUrl) }}</strong></div>
+            <div class="description-item full-width"><span>忘记密码跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.forgotPasswordUrl) }}</strong></div>
+            <div class="description-item full-width"><span>注册入口跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.registerUrl) }}</strong></div>
             <div class="description-item full-width"><span>备注</span><strong>{{ getDisplayText(selectedPage?.description) }}</strong></div>
           </div>
         </section>
@@ -909,7 +1225,7 @@ onMounted(() => {
         </section>
       </div>
 
-      <section class="pane-card-box reference-card">
+      <section v-if="!isDetailEditing" class="pane-card-box reference-card">
         <div class="pane-header">
           <h4>引用影响范围</h4>
           <p>详情接口返回的身份域、客户端及总引用数量。</p>
@@ -925,158 +1241,6 @@ onMounted(() => {
         </div>
       </section>
     </div>
-
-    <!-- Drawer: Edit Overlay Drawer -->
-    <el-drawer
-      v-model="isEditDrawerOpen"
-      title="编辑登录页"
-      size="680px"
-      class="custom-edit-drawer"
-      destroy-on-close
-    >
-      <div class="drawer-body-wrap">
-        <p class="drawer-subtitle">在详情页内修改登录页配置，保存后将原地刷新详情数据。</p>
-        
-        <!-- Warning alert if referenced -->
-        <div v-if="drawerForm.referencesCount > 0" class="drawer-referenced-alert">
-          <el-icon class="warning-icon"><Warning /></el-icon>
-          <p>
-            <strong>联动提示：</strong>该页面已经被 <strong>{{ drawerForm.referencesCount }}</strong> 个活跃的身份域引用。更改可能会影响用户的正常访问。
-          </p>
-        </div>
-
-        <section class="drawer-form-section">
-          <div class="drawer-section-title">基础信息</div>
-          <div class="drawer-form-grid">
-            <div class="form-item-mock">
-              <label>登录页名称 *</label>
-              <el-input v-model="drawerForm.name" />
-            </div>
-            <div class="form-item-mock">
-              <label>登录页编码</label>
-              <el-input v-model="drawerForm.code" disabled class="disabled-field" />
-              <div class="hint-msg">登录页编码不可修改。</div>
-            </div>
-            <div class="form-item-mock drawer-grid-full">
-              <div class="drawer-label-line">
-                <label>适用身份域类型</label>
-                <el-button link type="primary" size="small" @click="router.push('/realm/type-categories')">管理类型 ↗</el-button>
-              </div>
-              <el-select
-                v-model="drawerForm.applicableRealmTypeId"
-                placeholder="请选择身份域类型"
-                clearable
-                :loading="realmTypeOptionsLoading"
-                no-data-text="暂无可用身份域类型"
-                style="width: 100%"
-              >
-                <el-option
-                  v-for="item in realmTypeOptions"
-                  :key="item.value"
-                  :label="item.label"
-                  :value="item.value"
-                />
-              </el-select>
-            </div>
-            <div class="form-item-mock">
-              <label>状态</label>
-              <el-select v-model="drawerForm.status">
-                <el-option label="启用" :value="1" />
-                <el-option label="禁用" :value="2" />
-              </el-select>
-            </div>
-            <div class="form-item-mock">
-              <label>默认登录页</label>
-              <el-switch v-model="drawerForm.defaultPage" />
-            </div>
-          </div>
-        </section>
-
-        <section class="drawer-form-section">
-          <div class="drawer-section-title">页面展示</div>
-          <div class="drawer-form-grid">
-            <div class="form-item-mock">
-              <label>页面标题 *</label>
-              <el-input v-model="drawerForm.pageTitle" />
-            </div>
-            <div class="form-item-mock">
-              <label>页面副标题</label>
-              <el-input v-model="drawerForm.pageSubtitle" />
-            </div>
-            <div class="form-item-mock drawer-grid-full">
-              <label>Logo 地址</label>
-              <el-input v-model="drawerForm.logoUrl" />
-            </div>
-            <div class="form-item-mock drawer-grid-full">
-              <label>背景图地址</label>
-              <el-input v-model="drawerForm.backgroundUrl" />
-            </div>
-            <div class="form-item-mock drawer-grid-full">
-              <label>登录成功跳转地址</label>
-              <el-input v-model="drawerForm.successRedirectUrl" />
-            </div>
-          </div>
-        </section>
-
-        <section class="drawer-form-section">
-          <div class="drawer-section-title">认证与交互</div>
-          <div class="form-item-mock">
-            <label>支持的登录方式 *</label>
-            <el-checkbox-group v-model="drawerForm.authMethods" class="drawer-checkbox-grid">
-              <el-checkbox label="password">账号密码</el-checkbox>
-              <el-checkbox label="sms">短信验证码</el-checkbox>
-              <el-checkbox label="email">邮箱验证码</el-checkbox>
-              <el-checkbox label="qr">扫码登录</el-checkbox>
-              <el-checkbox label="third_party">第三方登录</el-checkbox>
-              <el-checkbox label="mfa">MFA 认证</el-checkbox>
-            </el-checkbox-group>
-          </div>
-          <div class="drawer-form-grid">
-            <div class="form-item-mock">
-              <label>默认登录方式 *</label>
-              <el-select v-model="drawerForm.defaultAuthMethod">
-                <el-option
-                  v-for="method in drawerForm.authMethods"
-                  :key="method"
-                  :label="getAuthMethodName(method)"
-                  :value="method"
-                />
-              </el-select>
-            </div>
-            <div class="form-item-mock">
-              <label>登录失败提示模式 *</label>
-              <el-select v-model="drawerForm.failurePromptMode">
-                <el-option label="消息提示" value="message" />
-                <el-option label="弹窗提示" value="dialog" />
-                <el-option label="结果页提示" value="page" />
-              </el-select>
-            </div>
-          </div>
-          <div class="form-item-mock">
-            <label>辅助入口选项</label>
-            <div class="checkbox-list">
-              <el-checkbox v-model="drawerForm.showForgotPassword">显示忘记密码</el-checkbox>
-              <el-checkbox v-model="drawerForm.showRegister">显示注册入口</el-checkbox>
-              <el-checkbox v-model="drawerForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
-            </div>
-          </div>
-        </section>
-
-        <section class="drawer-form-section">
-          <div class="drawer-section-title">备注信息</div>
-          <div class="form-item-mock">
-            <label>备注</label>
-            <el-input v-model="drawerForm.description" type="textarea" :rows="3" maxlength="512" show-word-limit />
-          </div>
-        </section>
-      </div>
-      <template #footer>
-        <div class="drawer-footer-buttons">
-          <el-button @click="isEditDrawerOpen = false">取消</el-button>
-          <el-button type="primary" :loading="saveLoading" @click="saveDrawerEdit">保存</el-button>
-        </div>
-      </template>
-    </el-drawer>
 
     <!-- Modal: Referenced/Conflict modal that blocks Delete -->
     <el-dialog
@@ -1612,6 +1776,9 @@ onMounted(() => {
 }
 .login-panel-left {
   background: linear-gradient(135deg, #0F1B2D, #1E3A8A);
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   color: #fff;
   padding: 28px;
   display: flex;
@@ -1619,7 +1786,7 @@ onMounted(() => {
   justify-content: center;
 }
 .preview-overlay {
-  background: linear-gradient(145deg, rgba(15, 27, 45, 0.96), rgba(30, 58, 138, 0.9));
+  background-image: linear-gradient(145deg, rgba(15, 27, 45, 0.92), rgba(30, 58, 138, 0.82));
 }
 .preview-logo {
   width: 42px;
@@ -1841,11 +2008,98 @@ onMounted(() => {
   line-height: 1.6;
 }
 
-/* Drawer formatting overrides */
-.drawer-subtitle {
-  font-size: 13px;
+/* Detail inline editor */
+.detail-inline-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.edit-section-description {
+  margin: -6px 0 16px;
   color: #64748B;
-  margin: 0 0 16px 0;
+  font-size: 13px;
+}
+.display-live-grid {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(520px, 1.4fr);
+  gap: 24px;
+  align-items: start;
+}
+.display-editor-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.live-edit-preview {
+  position: sticky;
+  top: 16px;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid #D7E3F4;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #F8FAFC, #EFF6FF);
+}
+.live-edit-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+.live-edit-preview-header div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.live-edit-preview-header strong {
+  color: #0F172A;
+  font-size: 14px;
+}
+.live-edit-preview-header span {
+  color: #64748B;
+  font-size: 12px;
+}
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.live-indicator i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: #22C55E;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);
+}
+.edit-preview-panel {
+  max-width: none;
+  height: 360px;
+}
+.preview-logo-placeholder {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #BFDBFE;
+  font-size: 20px;
+  border: 1px dashed rgba(191, 219, 254, 0.6);
+  border-radius: 8px;
+}
+.preview-redirect-hint {
+  margin-top: 12px;
+  padding: 9px 11px;
+  color: #64748B;
+  font-size: 12px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.86);
+}
+.preview-redirect-hint span {
+  color: #334155;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 .drawer-referenced-alert {
   background-color: #FEF2F2;
@@ -1867,13 +2121,8 @@ onMounted(() => {
 .drawer-referenced-alert p {
   margin: 0;
 }
-.drawer-body-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
 .drawer-form-section {
-  padding: 16px;
+  padding: 22px 24px;
   border: 1px solid #E5E7EB;
   border-radius: 8px;
   background-color: #FFFFFF;
@@ -1914,12 +2163,6 @@ onMounted(() => {
   flex-direction: row;
   flex-wrap: wrap;
 }
-.drawer-footer-buttons {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
 /* Dialog style overrides */
 .dialog-body-container {
   display: flex;
@@ -2022,6 +2265,12 @@ onMounted(() => {
   }
   .reference-metrics .info-alert-panel {
     grid-column: 1 / -1;
+  }
+  .display-live-grid {
+    grid-template-columns: 1fr;
+  }
+  .live-edit-preview {
+    position: static;
   }
 }
 

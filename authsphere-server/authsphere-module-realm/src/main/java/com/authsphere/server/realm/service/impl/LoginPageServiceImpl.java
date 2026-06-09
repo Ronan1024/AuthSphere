@@ -58,9 +58,6 @@ public class LoginPageServiceImpl implements LoginPageService {
                 e.setReferenceCount(realmList1 == null ? 0 : realmList1.size());
             });
         }
-
-
-//        loginPageDomain.enrichListResponses(result.getRecords());
         return result;
     }
 
