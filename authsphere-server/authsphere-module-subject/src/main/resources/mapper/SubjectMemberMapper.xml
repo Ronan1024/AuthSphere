@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.subject.mapper.SubjectMemberMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.subject.model.SubjectMember">
+        <id property="id" column="id" jdbcType="BIGINT"/>
+        <result property="subjectId" column="subject_id" jdbcType="BIGINT"/>
+        <result property="accountId" column="account_id" jdbcType="BIGINT"/>
+        <result property="memberType" column="member_type" jdbcType="TINYINT"/>
+        <result property="displayName" column="display_name" jdbcType="VARCHAR"/>
+        <result property="remark" column="remark" jdbcType="VARCHAR"/>
+        <result property="status" column="status" jdbcType="TINYINT"/>
+        <result property="joinedAt" column="joined_at" jdbcType="TIMESTAMP"/>
+        <result property="joinedByAccountId" column="joined_by_account_id" jdbcType="BIGINT"/>
+        <result property="disabledAt" column="disabled_at" jdbcType="TIMESTAMP"/>
+        <result property="disabledByAccountId" column="disabled_by_account_id" jdbcType="BIGINT"/>
+        <result property="removedAt" column="removed_at" jdbcType="TIMESTAMP"/>
+        <result property="removedByAccountId" column="removed_by_account_id" jdbcType="BIGINT"/>
+        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectMemberResponse">
+        select
+        sm.id,
+        sm.subject_id as subjectId,
+        s.code as subjectCode,
+        s.name as subjectName,
+        sm.account_id as accountId,
+        a.realm_id as realmId,
+        r.code as realmCode,
+        r.name as realmName,
+        a.username,
+        a.mobile,
+        a.email,
+        sm.member_type as memberType,
+        case sm.member_type
+        when 1 then 'OWNER'
+        when 2 then 'ADMIN'
+        when 3 then 'MEMBER'
+        when 4 then 'STAFF'
+        else 'UNKNOWN'
+        end as memberTypeName,
+        sm.display_name as displayName,
+        sm.remark,
+        sm.status as memberStatus,
+        a.status as accountStatus,
+        sm.joined_at as joinedAt,
+        sm.joined_by_account_id as joinedByAccountId,
+        joined_by.username as joinedByUsername,
+        sm.disabled_at as disabledAt,
+        sm.removed_at as removedAt,
+        sm.create_time,
+        sm.update_time
+        from subject_member sm
+        inner join subject s on s.id = sm.subject_id
+        inner join account a on a.id = sm.account_id
+        left join realm r on r.id = a.realm_id
+        left join account joined_by on joined_by.id = sm.joined_by_account_id
+        <where>
+            <if test="request.subjectId != null">
+                and sm.subject_id = #{request.subjectId}
+            </if>
+            <if test="request.accountId != null">
+                and sm.account_id = #{request.accountId}
+            </if>
+            <if test="request.keyword != null and request.keyword != ''">
+                and (
+                a.username like concat('%', #{request.keyword}, '%')
+                or a.mobile like concat('%', #{request.keyword}, '%')
+                or a.email like concat('%', #{request.keyword}, '%')
+                or sm.display_name like concat('%', #{request.keyword}, '%')
+                )
+            </if>
+            <if test="request.memberType != null">
+                and sm.member_type = #{request.memberType}
+            </if>
+            <if test="request.memberStatus != null">
+                and sm.status = #{request.memberStatus}
+            </if>
+            <if test="request.accountStatus != null">
+                and a.status = #{request.accountStatus}
+            </if>
+            <if test="request.realmId != null">
+                and a.realm_id = #{request.realmId}
+            </if>
+            <if test="request.joinedStartAt != null">
+                and sm.joined_at &gt;= #{request.joinedStartAt}
+            </if>
+            <if test="request.joinedEndAt != null">
+                and sm.joined_at &lt;= #{request.joinedEndAt}
+            </if>
+        </where>
+        order by sm.joined_at desc, sm.create_time desc
+    </select>
+    <select id="accountSubjectMemberCount"
+            resultType="com.authsphere.server.api.model.dto.subject.AccountSubjectCountResponse">
+        select account_id,
+        count(1) as count
+        from subject_member
+        where account_id in
+        <foreach collection="accountId" open="(" close=")" separator="," item="id">
+            #{id}
+        </foreach>
+        group by account_id;
+    </select>
+</mapper>

@@ -18,4 +18,6 @@ public interface BaseErrorCode {
     String SUBJECT = "1003";
 
     String APP = "1004";
+
+    String ROLE = "1005";
 }
