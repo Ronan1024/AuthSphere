@@ -1,11 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { 
-  ArrowLeft, CopyDocument, Document, Clock, Connection,
-  Right, User, UserFilled, OfficeBuilding, Lock, EditPen, Monitor,
-  Key, Link, InfoFilled, Promotion, Stamp, Warning
-} from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { computed, ref, watch } from 'vue'
+import { ArrowLeft, EditPen, Warning, InfoFilled } from '@element-plus/icons-vue'
 import type { RealmRecord } from '@/api/realm'
 
 const props = defineProps<{
@@ -15,8 +10,7 @@ const props = defineProps<{
 
 const emit = defineEmits(['back', 'edit'])
 
-const activeTab = ref('basic')
-
+// Map category type text
 const displayType = computed(() => {
   if (props.typeCategoryText && props.typeCategoryText !== '-') {
     return props.typeCategoryText
@@ -29,476 +23,537 @@ const displayType = computed(() => {
   return '系统内置域'
 })
 
-const getAuthMethodsText = () => {
-  const code = props.realm.code
-  if (code === 'platform_realm') return '密码 / 短信'
-  if (code === 'tenant_realm') return '密码 / MFA'
-  if (code === 'merchant_realm') return '密码 / 邮箱'
-  if (code === 'consumer_realm') return '短信 / 邮箱'
-  return '密码 / 短信'
-}
+// Mapped form structure from props.realm to resemble creation form state
+const detailForm = computed(() => {
+  const row = props.realm
+  const isPlatform = row.code === 'platform_realm'
+  
+  return {
+    name: row.name,
+    code: row.code,
+    typeCategoryId: row.typeCategoryId || '',
+    typeCategoryCode: '',
+    description: row.description || '',
+    status: row.status || 1,
+    sortNo: 10,
+    loginUrl: row.loginUrl || 'default',
+    noLoginHandler: 'redirect_default',
+    authMethods: isPlatform ? ['password', 'sms'] : ['password', 'mfa'],
+    authPolicy: 'default',
+    sessionTimeout: 8,
+    tokenTimeout: 120,
+    passwordPolicy: row.passwordPolicy || '',
+    sslRequired: true,
+    mfaPolicy: row.mfaPolicy || 'default',
+    loginFailLock: false,
+    remark: row.description || '',
+    configurePolicy: 'custom',
+    policyName: row.name + '默认认证策略',
+    policyCode: row.code + '_default_auth_policy',
+    policyStatus: 1,
+    policyMethods: isPlatform ? ['password', 'sms'] : ['password', 'mfa'],
+    policyDefaultMethod: 'password',
+    policyMfa: 'none',
+    policyCaptcha: 'threshold',
 
-const getLoginPageName = () => {
-  const code = props.realm.code
-  if (code === 'tenant_realm') return '租户统一登录页'
-  if (code === 'platform_realm') return '平台后台登录页'
-  if (code === 'merchant_realm') return '商户后台登录页'
-  if (code === 'consumer_realm') return '移动端登录页'
-  return '默认登录页'
-}
-
-const getLoginPageCode = () => {
-  const code = props.realm.code
-  if (code === 'tenant_realm') return 'tenant_login_page'
-  if (code === 'platform_realm') return 'platform_login_page'
-  if (code === 'merchant_realm') return 'merchant_login_page'
-  if (code === 'consumer_realm') return 'consumer_login_page'
-  return 'default_login_page'
-}
-
-const copyCode = (text: string) => {
-  navigator.clipboard.writeText(text).then(() => {
-    ElMessage.success('编码已成功复制')
-  }).catch(() => {
-    ElMessage.error('复制失败，请手动选择复制')
-  })
-}
-
-// Mock referenced objects for the login configurations tab
-const mockImpactObjects = [
-  { name: '租户身份域', code: 'tenant_realm', type: '身份域默认登录页', status: 1 },
-  { name: '租户管理端客户端', code: 'tenant_admin_web', type: '继承身份域配置', status: 1 }
-]
-
-// Mock audit logs
-const mockAuditLogs = [
-  { operator: 'admin', action: '修改配置', desc: '更新身份域【默认登录页】为 租户统一登录页', time: '2026-06-08 11:20:15' },
-  { operator: 'admin', action: '策略绑定', desc: '绑定安全策略【高强度密码策略】', time: '2026-06-08 10:45:00' },
-  { operator: 'system', action: '自动同步', desc: '完成身份域基础元数据刷新', time: '2026-06-08 00:00:02' },
-  { operator: 'admin', action: '创建身份域', desc: '初始化创建身份域配置', time: '2026-05-28 14:30:10' }
-]
-
-// Mock association summary stats
-const stats = computed(() => {
-  const code = props.realm.code
-  if (code === 'tenant_realm') {
-    return { accounts: '128', subjects: '12', clients: '8', policy: '完整' }
+    // Password Security
+    passwordMinLength: 8,
+    passwordMaxLength: 32,
+    passwordComplexity: 'letters_digits',
+    passwordExpireDays: 90,
+    passwordForceChangeOnFirstLogin: 'yes',
+    passwordForceChangeOnReset: 'yes',
+    
+    // Token Security
+    accessTokenTimeout: 120,
+    refreshTokenTimeout: 7,
+    tokenRotationEnabled: 'open',
+    tokenBlacklistEnabled: 'open',
+    
+    // Account Lock
+    loginFailMaxCount: '5',
+    loginFailWindowMinutes: 10,
+    loginFailLockMinutes: 30,
+    loginFailAutoUnlock: 'open',
+    
+    // Session Security
+    sessionIdleTimeout: 30,
+    sessionMultiDevice: 'allow',
+    sessionMaxDevices: 5
   }
-  if (code === 'platform_realm') {
-    return { accounts: '42', subjects: '5', clients: '3', policy: '完整' }
-  }
-  if (code === 'merchant_realm') {
-    return { accounts: '86', subjects: '8', clients: '4', policy: '待配置' }
-  }
-  return { accounts: '0', subjects: '0', clients: '0', policy: '缺策略' }
 })
 
-const handleTabClick = (tabName: string) => {
-  activeTab.value = tabName
+// Preview support
+const previewActiveMethod = ref('password')
+
+watch(() => detailForm.value.policyDefaultMethod, (newVal) => {
+  if (newVal) {
+    previewActiveMethod.value = newVal
+  }
+}, { immediate: true })
+
+const getMethodLabel = (method: string) => {
+  if (method === 'password') return '账号密码'
+  if (method === 'sms') return '短信'
+  if (method === 'wechat') return '微信小程序'
+  return method
 }
 
+const getMfaLabel = (mfa: string) => {
+  if (mfa === 'totp') return 'TOTP'
+  if (mfa === 'sms') return '短信'
+  if (mfa === 'email') return '邮件'
+  return '不启用'
+}
+
+const getLoginPreviewTitle = () => {
+  if (detailForm.value.loginUrl === 'default') return '租户后台登录'
+  if (detailForm.value.loginUrl === 'platform') return '平台后台登录'
+  if (detailForm.value.loginUrl === 'merchant') return '商户后台登录'
+  if (detailForm.value.loginUrl === 'mobile') return '移动端登录'
+  return '统一后台登录'
+}
+
+const getLoginPreviewSubtitle = () => {
+  return `${getMethodLabel(detailForm.value.policyDefaultMethod)}为默认登录方式`
+}
+
+// Referenced objects for "影响范围" card
+const mockImpactObjects = computed(() => {
+  return [
+    { name: props.realm.name, code: props.realm.code, type: '身份域默认登录页', status: props.realm.status || 1 },
+    { name: props.realm.name + '管理端', code: props.realm.code + '_web', type: '继承身份域配置', status: props.realm.status || 1 }
+  ]
+})
 </script>
 
 <template>
-  <div class="realm-detail-layout">
-    <!-- Top Action Header -->
-    <div class="detail-header-actions">
-      <div class="header-left">
-        <el-button :icon="ArrowLeft" class="btn-back" @click="emit('back')">返回</el-button>
-        <span class="crumb-text">身份域管理 / 身份域 / {{ realm.name }}</span>
+  <div class="create-realm-page-wrapper">
+    <!-- Breadcrumb / Header Row -->
+    <div class="form-navigation-header-row">
+      <div class="nav-title-left">
+        <h1>身份域详情</h1>
+        <p class="subtitle-text">查看当前身份空间（{{ realm.name }}）的登录页配置、认证规则和安全策略。</p>
       </div>
-      <div class="header-right">
-        <el-button class="btn-action-normal" @click="emit('edit', realm)">编辑</el-button>
-        <el-button class="btn-action-danger" v-if="realm.status === 1">禁用</el-button>
-        <el-button class="btn-action-success" v-else>启用</el-button>
-      </div>
-    </div>
-
-    <!-- Detail Hero Block -->
-    <div class="detail-hero-card">
-      <div class="hero-top-row">
-        <h2>
-          {{ realm.name }} 
-          <span class="badge" :class="realm.status === 1 ? 'green' : 'red'">
-            {{ realm.status === 1 ? '启用' : '禁用' }}
-          </span>
-        </h2>
-        <div class="hero-actions">
-          <button class="btn-hero-small" @click="copyCode(realm.code)">复制编码</button>
-          <button class="btn-hero-small" @click="handleTabClick('audit')">查看日志</button>
-        </div>
-      </div>
-      <div class="hero-meta-grid">
-        <div class="meta-item">
-          <span class="meta-label">身份域编码</span>
-          <span class="meta-value">{{ realm.code }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">身份域类型</span>
-          <span class="meta-value">{{ displayType }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">默认登录页</span>
-          <span class="meta-value">{{ getLoginPageName() }}</span>
-        </div>
-        <div class="meta-item">
-          <span class="meta-label">认证方式</span>
-          <span class="meta-value">{{ getAuthMethodsText() }}</span>
-        </div>
+      <div class="nav-buttons-right">
+        <el-button class="btn-op-outline" @click="emit('back')">返回列表</el-button>
+        <el-button type="primary" class="btn-new-realm" @click="emit('edit', realm)">编辑</el-button>
       </div>
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="detail-navigation-tabs">
-      <span class="detail-tab-item" :class="activeTab === 'basic' ? 'active' : ''" @click="handleTabClick('basic')">基础信息</span>
-      <span class="detail-tab-item" :class="activeTab === 'login' ? 'active' : ''" @click="handleTabClick('login')">登录配置</span>
-      <span class="detail-tab-item" :class="activeTab === 'auth' ? 'active' : ''" @click="handleTabClick('auth')">认证策略</span>
-      <span class="detail-tab-item" :class="activeTab === 'security' ? 'active' : ''" @click="handleTabClick('security')">安全策略</span>
-      <span class="detail-tab-item" :class="activeTab === 'relation' ? 'active' : ''" @click="handleTabClick('relation')">关联对象</span>
-      <span class="detail-tab-item" :class="activeTab === 'audit' ? 'active' : ''" @click="handleTabClick('audit')">审计日志</span>
+    <div class="form-tabs-sub">
+      <span class="tab-sub-item" @click="emit('back')">列表</span>
+      <span class="tab-sub-item active">详情</span>
+      <span class="tab-sub-item" @click="emit('edit', realm)">编辑 / 新增</span>
     </div>
 
-    <!-- Tabs Content Container -->
-    <div class="tabs-content-area">
-      <!-- Tab 1: 基础信息 -->
-      <div v-if="activeTab === 'basic'" class="tab-pane-grid">
-        <!-- Left: Basic Info Table -->
-        <div class="pane-card">
-          <div class="pane-card-head">
-            <h3>基础信息</h3>
-            <p>身份域自身信息，不在此处管理账号和角色。</p>
+    <!-- Two-column grid -->
+    <div class="realm-form-two-column-layout">
+      <!-- Left Column: Form Details (Read-only) -->
+      <div class="form-left-column">
+        <el-form label-position="top" class="create-form read-only-form">
+          
+          <!-- Card 1: 基础信息 -->
+          <div class="form-section-card-custom">
+            <div class="card-title-header-custom">
+              <h3>基础信息</h3>
+              <p>定义身份空间的名称、编码、类型和状态。</p>
+            </div>
+            <div class="card-body-custom">
+              <div class="grid-2-col">
+                <el-form-item label="身份域名称">
+                  <el-input :model-value="detailForm.name" disabled />
+                </el-form-item>
+                <el-form-item label="身份域编码">
+                  <el-input :model-value="detailForm.code" disabled />
+                </el-form-item>
+              </div>
+              <div class="grid-2-col mt-16">
+                <el-form-item label="身份域类型">
+                  <el-select :model-value="detailForm.typeCategoryId" disabled placeholder="选择类型">
+                    <el-option :label="displayType" :value="detailForm.typeCategoryId" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="状态">
+                  <el-select :model-value="detailForm.status" disabled>
+                    <el-option label="启用" :value="1" />
+                    <el-option label="禁用" :value="2" />
+                  </el-select>
+                </el-form-item>
+              </div>
+              <div class="full-width-field mt-16">
+                <el-form-item label="说明">
+                  <el-input :model-value="detailForm.description" type="textarea" :rows="3" disabled />
+                </el-form-item>
+              </div>
+            </div>
           </div>
-          <div class="info-list-rows">
-            <div class="info-row">
-              <span class="info-label">身份域名称</span>
-              <strong class="info-val">{{ realm.name }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">身份域编码</span>
-              <strong class="info-val">{{ realm.code }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">身份域类型</span>
-              <strong class="info-val">{{ displayType }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">强制 HTTPS</span>
-              <strong class="info-val">开启</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">排序</span>
-              <strong class="info-val">10</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">描述</span>
-              <strong class="info-val">{{ realm.description || '暂无描述内容' }}</strong>
-            </div>
-          </div>
-        </div>
 
-        <!-- Right: Binding Configurations -->
-        <div class="pane-card">
-          <div class="pane-card-head">
-            <h3>绑定配置</h3>
-            <p>身份域只引用认证相关配置，客户端资源与角色不在此处配置。</p>
-          </div>
-          <div class="binding-list-rows">
-            <div class="binding-item">
-              <div class="binding-info">
-                <span class="binding-title">默认登录页</span>
-                <span class="binding-desc">{{ getLoginPageName() }} ({{ getLoginPageCode() }})</span>
-              </div>
-              <span class="binding-op-link" @click="handleTabClick('login')">查看</span>
+          <!-- Card 2: 登录配置 -->
+          <div class="form-section-card-custom mt-20">
+            <div class="card-title-header-custom">
+              <h3>登录配置</h3>
+              <p>身份域提供默认登录入口；不同客户端可在客户端登录配置中覆盖。</p>
             </div>
-            <div class="binding-item">
-              <div class="binding-info">
-                <span class="binding-title">默认认证策略</span>
-                <span class="binding-desc">租户默认认证策略 tenant_auth_policy</span>
+            <div class="card-body-custom">
+              <div class="grid-2-col">
+                <el-form-item label="默认登录页">
+                  <el-select :model-value="detailForm.loginUrl" disabled>
+                    <el-option label="租户后台登录" value="default" />
+                    <el-option label="平台后台登录" value="platform" />
+                    <el-option label="商户后台登录" value="merchant" />
+                    <el-option label="移动端登录页" value="mobile" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="未登录处理">
+                  <el-select :model-value="detailForm.noLoginHandler" disabled>
+                    <el-option label="跳转默认登录页" value="redirect_default" />
+                    <el-option label="返回 401 错误码" value="return_401" />
+                  </el-select>
+                </el-form-item>
               </div>
-              <span class="binding-op-link" @click="handleTabClick('auth')">查看</span>
-            </div>
-            <div class="binding-item">
-              <div class="binding-info">
-                <span class="binding-title">密码策略</span>
-                <span class="binding-desc">高强度密码策略</span>
+              <div class="alert-banner-custom mt-16">
+                <span class="vertical-bar"></span>
+                <div class="alert-content-text">
+                  客户端可覆盖：登录页、登录成功跳转地址、登录失败跳转地址、退出地址、认证策略。
+                </div>
               </div>
-              <span class="binding-op-link" @click="handleTabClick('security')">查看</span>
-            </div>
-            <div class="binding-item">
-              <div class="binding-info">
-                <span class="binding-title">Token 策略</span>
-                <span class="binding-desc">Access Token 120 分钟</span>
-              </div>
-              <span class="binding-op-link" @click="handleTabClick('security')">查看</span>
             </div>
           </div>
-        </div>
 
-        <!-- Flowchart mapping (Added at full width below details) -->
-        <div class="pane-card span-full" style="margin-top: 16px;">
-          <div class="pane-card-head">
-            <h3>主体与域关联关系链路</h3>
+          <!-- Card 3: 默认认证策略 -->
+          <div class="form-section-card-custom mt-20">
+            <div class="card-title-header-custom">
+              <h3>默认认证策略</h3>
+              <p>配置该身份域的默认认证策略。主登录方式、默认登录方式、MFA 和图形验证码规则将在该身份域下生效。</p>
+            </div>
+            <div class="card-body-custom">
+              <div class="checkbox-cards-grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px; pointer-events: none;">
+                <div class="checkbox-card-item" :class="{ checked: detailForm.configurePolicy === 'none' }">
+                  <div class="flex-align-center-row">
+                    <span class="custom-radio-circle" :class="{ checked: detailForm.configurePolicy === 'none' }"></span>
+                    <span class="checkbox-title ml-8">不配置认证策略</span>
+                  </div>
+                  <p class="checkbox-desc" style="margin-left: 20px;">使用系统默认认证策略，继承系统级别的安全登录方式。</p>
+                </div>
+                <div class="checkbox-card-item" :class="{ checked: detailForm.configurePolicy === 'custom' }">
+                  <div class="flex-align-center-row">
+                    <span class="custom-radio-circle" :class="{ checked: detailForm.configurePolicy === 'custom' }"></span>
+                    <span class="checkbox-title ml-8">配置专属认证策略</span>
+                  </div>
+                  <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主登录方式、默认登录、MFA与图形验证码规则。</p>
+                </div>
+              </div>
+
+              <div v-if="detailForm.configurePolicy === 'custom'" class="policy-details-sub-card">
+                <div class="full-width-field">
+                  <el-form-item label="主登录认证方式">
+                    <div class="checkbox-cards-grid-3" style="pointer-events: none;">
+                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('password') }">
+                        <el-checkbox :model-value="detailForm.policyMethods.includes('password')" disabled>
+                          <span class="checkbox-title">账号密码登录</span>
+                        </el-checkbox>
+                        <p class="checkbox-desc">系统内置，适合后台登录</p>
+                      </div>
+                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('sms') }">
+                        <el-checkbox :model-value="detailForm.policyMethods.includes('sms')" disabled>
+                          <span class="checkbox-title">短信验证码登录</span>
+                        </el-checkbox>
+                        <p class="checkbox-desc">可作为主登录或备用登录</p>
+                      </div>
+                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('wechat') }">
+                        <el-checkbox :model-value="detailForm.policyMethods.includes('wechat')" disabled>
+                          <span class="checkbox-title">微信小程序登录</span>
+                        </el-checkbox>
+                        <p class="checkbox-desc">小程序端客户端常用</p>
+                      </div>
+                    </div>
+                  </el-form-item>
+                </div>
+
+                <div class="grid-3-col mt-16">
+                  <el-form-item label="默认登录方式">
+                    <el-select :model-value="detailForm.policyDefaultMethod" disabled>
+                      <el-option label="账号密码登录" value="password" />
+                      <el-option label="短信验证码登录" value="sms" />
+                      <el-option label="微信小程序登录" value="wechat" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="MFA 认证方式">
+                    <el-select :model-value="detailForm.policyMfa" disabled>
+                      <el-option label="不启用" value="none" />
+                      <el-option label="TOTP 动态口令" value="totp" />
+                      <el-option label="短信 MFA" value="sms" />
+                      <el-option label="邮件 MFA" value="email" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="图形验证码">
+                    <el-select :model-value="detailForm.policyCaptcha" disabled>
+                      <el-option label="不启用" value="none" />
+                      <el-option label="失败 3 次后启用" value="threshold" />
+                      <el-option label="每次登录都启用" value="always" />
+                    </el-select>
+                  </el-form-item>
+                </div>
+              </div>
+              <div class="alert-banner-custom mt-16">
+                <span class="vertical-bar"></span>
+                <div class="alert-content-text">
+                  优先级：客户端认证策略 > 身份域默认认证策略 > 系统默认认证策略。
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="flowchart-premium">
-            <div class="flow-node">
-              <div class="node-icon bg-blue"><el-icon><Right /></el-icon></div>
-              <div class="node-text">
-                <h4>登录入口</h4>
-                <p>用户发起登录</p>
-              </div>
+
+          <!-- Card 4: 安全配置 -->
+          <div class="form-section-card-custom mt-20">
+            <div class="card-title-header-custom">
+              <h3>安全配置</h3>
+              <p>管理员设置的密码复杂度、Token 有效期、账号锁定及会话规则。</p>
             </div>
-            <div class="flow-arrow"><el-icon><Right /></el-icon></div>
-            <div class="flow-node highlight">
-              <div class="node-icon bg-indigo"><el-icon><Lock /></el-icon></div>
-              <div class="node-text">
-                <h4>身份域 (Realm)</h4>
-                <p>隔离安全策略</p>
+            
+            <div class="card-body-custom" style="border-top: none; padding-top: 0;">
+              <!-- 密码安全 -->
+              <div class="sub-security-block">
+                <div class="sub-sec-title">
+                  <h4>密码安全</h4>
+                  <p>控制密码复杂度、有效期和首次登录改密。</p>
+                </div>
+                <div class="grid-4-col mt-12">
+                  <el-form-item label="最小长度">
+                    <el-input-number :model-value="detailForm.passwordMinLength" disabled style="width: 100%;" />
+                  </el-form-item>
+                  <el-form-item label="最大长度">
+                    <el-input-number :model-value="detailForm.passwordMaxLength" disabled style="width: 100%;" />
+                  </el-form-item>
+                  <el-form-item label="复杂度">
+                    <el-select :model-value="detailForm.passwordComplexity" disabled>
+                      <el-option label="数字 + 字母" value="letters_digits" />
+                      <el-option label="数字 + 大小写 + 特殊字符" value="letters_digits_symbols" />
+                      <el-option label="不限制" value="none" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="密码有效期">
+                    <el-input :model-value="detailForm.passwordExpireDays" disabled>
+                      <template #append>天</template>
+                    </el-input>
+                  </el-form-item>
+                </div>
+                <div class="grid-4-col mt-12">
+                  <el-form-item label="首次登录改密">
+                    <el-select :model-value="detailForm.passwordForceChangeOnFirstLogin" disabled>
+                      <el-option label="是" value="yes" />
+                      <el-option label="否" value="no" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="重置后改密">
+                    <el-select :model-value="detailForm.passwordForceChangeOnReset" disabled>
+                      <el-option label="是" value="yes" />
+                      <el-option label="否" value="no" />
+                    </el-select>
+                  </el-form-item>
+                </div>
               </div>
-            </div>
-            <div class="flow-arrow"><el-icon><Right /></el-icon></div>
-            <div class="flow-node">
-              <div class="node-icon bg-green"><el-icon><User /></el-icon></div>
-              <div class="node-text">
-                <h4>账号 (Account)</h4>
-                <p>登录实体对象</p>
+
+              <!-- Token 安全 -->
+              <div class="sub-security-block mt-24">
+                <div class="sub-sec-title">
+                  <h4>Token 安全</h4>
+                  <p>控制 Access Token、Refresh Token 有效期和刷新规则。</p>
+                </div>
+                <div class="grid-4-col mt-12">
+                  <el-form-item label="Access Token">
+                    <el-input :model-value="detailForm.accessTokenTimeout" disabled>
+                      <template #append>分钟</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="Refresh Token">
+                    <el-input :model-value="detailForm.refreshTokenTimeout" disabled>
+                      <template #append>天</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="Refresh 轮换">
+                    <el-select :model-value="detailForm.tokenRotationEnabled" disabled>
+                      <el-option label="开启" value="open" />
+                      <el-option label="关闭" value="close" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="Token 黑名单">
+                    <el-select :model-value="detailForm.tokenBlacklistEnabled" disabled>
+                      <el-option label="开启" value="open" />
+                      <el-option label="关闭" value="close" />
+                    </el-select>
+                  </el-form-item>
+                </div>
               </div>
-            </div>
-            <div class="flow-arrow"><el-icon><Right /></el-icon></div>
-            <div class="flow-node">
-              <div class="node-icon bg-purple"><el-icon><Connection /></el-icon></div>
-              <div class="node-text">
-                <h4>关系成员</h4>
-                <p>关联账号与主体</p>
+
+              <!-- 账号锁定 -->
+              <div class="sub-security-block mt-24">
+                <div class="sub-sec-title">
+                  <h4>账号锁定</h4>
+                  <p>控制登录失败后的账号保护规则。</p>
+                </div>
+                <div class="grid-4-col mt-12">
+                  <el-form-item label="失败次数">
+                    <el-select :model-value="detailForm.loginFailMaxCount" disabled>
+                      <el-option label="3 次" value="3" />
+                      <el-option label="5 次" value="5" />
+                      <el-option label="10 次" value="10" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="统计周期">
+                    <el-input :model-value="detailForm.loginFailWindowMinutes" disabled>
+                      <template #append>分钟</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="锁定时长">
+                    <el-input :model-value="detailForm.loginFailLockMinutes" disabled>
+                      <template #append>分钟</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="自动解锁">
+                    <el-select :model-value="detailForm.loginFailAutoUnlock" disabled>
+                      <el-option label="开启" value="open" />
+                      <el-option label="关闭" value="close" />
+                    </el-select>
+                  </el-form-item>
+                </div>
               </div>
-            </div>
-            <div class="flow-arrow"><el-icon><Right /></el-icon></div>
-            <div class="flow-node">
-              <div class="node-icon bg-orange"><el-icon><Stamp /></el-icon></div>
-              <div class="node-text">
-                <h4>主体 (Subject)</h4>
-                <p>授权策略载体</p>
+
+              <!-- 会话安全 -->
+              <div class="sub-security-block mt-24">
+                <div class="sub-sec-title">
+                  <h4>会话安全</h4>
+                  <p>控制在线会话、空闲超时和多端登录。</p>
+                </div>
+                <div class="grid-4-col mt-12">
+                  <el-form-item label="会话有效期">
+                    <el-input :model-value="detailForm.sessionTimeout" disabled>
+                      <template #append>小时</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="空闲超时">
+                    <el-input :model-value="detailForm.sessionIdleTimeout" disabled>
+                      <template #append>分钟</template>
+                    </el-input>
+                  </el-form-item>
+                  <el-form-item label="多端登录">
+                    <el-select :model-value="detailForm.sessionMultiDevice" disabled>
+                      <el-option label="允许" value="allow" />
+                      <el-option label="限制" value="limit" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="最大设备数">
+                    <el-input :model-value="detailForm.sessionMaxDevices" disabled>
+                      <template #append>台</template>
+                    </el-input>
+                  </el-form-item>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+          
+        </el-form>
       </div>
 
-      <!-- Tab 2: 登录配置 -->
-      <div v-if="activeTab === 'login'" class="tab-pane-grid">
-        <!-- Left: Interactive Live Mock Preview -->
-        <div class="pane-card">
-          <div class="pane-card-head">
+      <!-- Right Column: Previews and Impact -->
+      <div class="preview-right-column">
+        <div class="sticky-preview-wrapper">
+          <div class="preview-title-bar">
             <h3>登录页预览</h3>
-            <p>展示当前的登录界面布局。预览不产生真实登录行为，不生成 Token。</p>
+            <p class="subtitle">跟随默认登录页与认证配置变化</p>
           </div>
-          <div class="login-preview-container">
-            <div class="preview-login">
-              <div class="login-left">
-                <h3>{{ displayType === '平台域' ? '平台管理后台' : '租户管理后台' }}</h3>
-                <p>统一身份空间登录入口，支持账号密码、短信验证码与 MFA 二次安全校验。</p>
-              </div>
-              <div class="login-right">
-                <h3>登录 IAM</h3>
-                <div class="login-field-mock">用户名 / 手机号 / 邮箱</div>
-                <div class="login-field-mock">密码</div>
-                <div class="login-field-mock">验证码（失败 3 次后显示）</div>
-                <div class="login-btn-mock">登录</div>
+          
+          <!-- Simulated Browser Frame -->
+          <div class="mock-browser-window">
+            <div class="browser-header-dots">
+              <span class="dot red"></span>
+              <span class="dot yellow"></span>
+              <span class="dot green"></span>
+              <div class="browser-address-bar">
+                <span class="lock-icon">🔒</span> authsphere.com/login/{{ detailForm.code || 'tenant_realm' }}
               </div>
             </div>
-          </div>
-        </div>
+            
+            <div class="browser-content-area">
+              <div class="login-card-preview-inner">
+                <h2 class="login-inner-title">{{ getLoginPreviewTitle() }}</h2>
+                <p class="login-inner-subtitle">{{ getLoginPreviewSubtitle() }}</p>
+                
+                <!-- Tab switches -->
+                <div class="login-methods-tabs-preview" v-if="detailForm.policyMethods && detailForm.policyMethods.length > 0">
+                  <span 
+                    v-for="method in detailForm.policyMethods" 
+                    :key="method" 
+                    class="tab-preview-item" 
+                    :class="{ active: previewActiveMethod === method }"
+                    @click="previewActiveMethod = method"
+                  >
+                    {{ getMethodLabel(method) }}
+                  </span>
+                </div>
+                
+                <!-- Login Inner Inputs -->
+                <div class="login-inputs-preview mt-20">
+                  <template v-if="previewActiveMethod === 'password'">
+                    <div class="mock-input-field">
+                      <span class="placeholder-txt">用户名 / 手机号</span>
+                    </div>
+                    <div class="mock-input-field mt-12">
+                      <span class="placeholder-txt">密码</span>
+                    </div>
+                  </template>
+                  
+                  <template v-else-if="previewActiveMethod === 'sms'">
+                    <div class="mock-input-field">
+                      <span class="placeholder-txt">手机号</span>
+                    </div>
+                    <div class="mock-input-field mt-12 flex-row-input" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                      <span class="placeholder-txt">验证码</span>
+                      <span class="send-btn-mock" style="font-size: 11px; color: #2563EB; font-weight: 600; cursor: pointer;">获取验证码</span>
+                    </div>
+                  </template>
 
-        <!-- Right: Configurations Summary -->
-        <div class="pane-card">
-          <div class="pane-card-head">
-            <h3>当前配置</h3>
-            <p>身份域默认配置，可被客户端登录配置覆盖。</p>
-          </div>
-          <div class="info-list-rows">
-            <div class="info-row">
-              <span class="info-label">默认登录页</span>
-              <strong class="info-val">{{ getLoginPageName() }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">登录页编码</span>
-              <strong class="info-val">{{ getLoginPageCode() }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">认证方式</span>
-              <strong class="info-val">{{ getAuthMethodsText() }}</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">默认认证策略</span>
-              <strong class="info-val">租户默认认证策略</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">登录失败规则</span>
-              <strong class="info-val">5 次失败锁定 30 分钟</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">MFA 触发</span>
-              <strong class="info-val">管理员每次登录</strong>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bottom: Referenced clients / Impact Analysis Table -->
-        <div class="pane-card span-full" style="margin-top: 16px;">
-          <div class="pane-card-head">
-            <h3>影响范围</h3>
-            <p>修改登录页或认证策略时，将直接影响以下已绑定引用对象。</p>
-          </div>
-          <el-table :data="mockImpactObjects" class="premium-table">
-            <el-table-column prop="name" label="引用对象" min-width="160" />
-            <el-table-column prop="code" label="对象编码" min-width="160" />
-            <el-table-column prop="type" label="引用类型" min-width="160" />
-            <el-table-column label="状态" width="100" align="center">
-              <template #default="{ row }">
-                <span class="badge" :class="row.status === 1 ? 'green' : 'red'">
-                  {{ row.status === 1 ? '启用' : '禁用' }}
-                </span>
-              </template>
-            </el-table-column>
-            <el-table-column label="操作" width="120" fixed="right">
-              <template #default>
-                <span class="op-link">查看</span>
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-      </div>
-
-      <!-- Tab 3: 认证策略 -->
-      <div v-if="activeTab === 'auth'" class="tab-pane-grid">
-        <div class="pane-card span-full">
-          <div class="pane-card-head">
-            <h3>绑定的认证策略</h3>
-            <p>认证流程链、锁定规则和MFA控制标准。</p>
-          </div>
-          <div class="info-list-rows" style="max-width: 600px;">
-            <div class="info-row">
-              <span class="info-label">策略名称</span>
-              <strong class="info-val">租户默认认证策略 (tenant_auth_policy)</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">认证流水线</span>
-              <strong class="info-val">密码验证 -> MFA 二次校验（对于特权管理员账号）</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">密码容错限制</span>
-              <strong class="info-val">连续输错密码 5 次，锁定 30 分钟。</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">锁定类型</span>
-              <strong class="info-val">基于 IP 和 Username 联合锁定</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab 4: 安全策略 -->
-      <div v-if="activeTab === 'security'" class="tab-pane-grid">
-        <div class="pane-card">
-          <div class="pane-card-head">
-            <h3>密码与安全策略</h3>
-            <p>密码强度与会话生命周期配置。</p>
-          </div>
-          <div class="info-list-rows">
-            <div class="info-row">
-              <span class="info-label">密码策略名称</span>
-              <strong class="info-val">高强度密码策略</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">密码复杂度</span>
-              <strong class="info-val">大写字母+小写字母+数字+特殊字符，最小8位</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">强制过期</span>
-              <strong class="info-val">90 天内强制更换密码</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">历史密码防重</span>
-              <strong class="info-val">不可与最近 3 次密码重复</strong>
-            </div>
-          </div>
-        </div>
-
-        <div class="pane-card">
-          <div class="pane-card-head">
-            <h3>会话与 Token 策略</h3>
-            <p>令牌有效周期设置。</p>
-          </div>
-          <div class="info-list-rows">
-            <div class="info-row">
-              <span class="info-label">会话有效期</span>
-              <strong class="info-val">8 小时 (Session Timeout)</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Access Token 有效期</span>
-              <strong class="info-val">120 分钟</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Refresh Token 有效期</span>
-              <strong class="info-val">30 天</strong>
-            </div>
-            <div class="info-row">
-              <span class="info-label">单浏览器多登录</span>
-              <strong class="info-val">允许共存</strong>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tab 5: 关联对象 -->
-      <div v-if="activeTab === 'relation'" class="tab-pane-grid">
-        <div class="pane-card span-full">
-          <div class="pane-card-head">
-            <h3>归属统计</h3>
-            <p>身份空间中已经分配的对象总量。</p>
-          </div>
-          <div class="stats-summary-grid">
-            <div class="stat-box">
-              <el-icon class="stat-box-icon text-blue"><UserFilled /></el-icon>
-              <div class="stat-box-text">
-                <span class="stat-num">{{ stats.accounts }}</span>
-                <span class="stat-lbl">关联账号数</span>
-              </div>
-            </div>
-            <div class="stat-box">
-              <el-icon class="stat-box-icon text-orange"><Stamp /></el-icon>
-              <div class="stat-box-text">
-                <span class="stat-num">{{ stats.subjects }}</span>
-                <span class="stat-lbl">关联主体数</span>
-              </div>
-            </div>
-            <div class="stat-box">
-              <el-icon class="stat-box-icon text-green"><Monitor /></el-icon>
-              <div class="stat-box-text">
-                <span class="stat-num">{{ stats.clients }}</span>
-                <span class="stat-lbl">启用客户端</span>
+                  <template v-else-if="previewActiveMethod === 'wechat'">
+                    <div class="wechat-preview-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0;">
+                      <div class="wechat-qr-code" style="border: 1px dashed #BFDBFE; padding: 16px; border-radius: 8px; background-color: #F8FAFC; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;">
+                        <span class="wechat-qr-stub" style="font-size: 10px; color: #64748B; text-align: center;">微信扫码登录</span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+                
+                <!-- Login Button -->
+                <button class="btn-login-preview-submit mt-20" style="margin-top: 16px; height: 36px; line-height: 36px; font-size: 13px; background-color: #2563EB; color: #fff; border: none; width: 100%; border-radius: 6px; font-weight: 600; cursor: default;">登录</button>
+                
+                <!-- Login Footer -->
+                <div class="login-footer-preview mt-16" style="display: flex; justify-content: space-between; font-size: 11px; color: #64748B; margin-top: 12px;">
+                  <span class="link-forgot-pwd" style="cursor: default;" v-if="detailForm.policyMethods.includes('password')">忘记密码</span>
+                  <span class="mfa-indicator-txt" v-if="detailForm.policyMfa !== 'none'">MFA: {{ getMfaLabel(detailForm.policyMfa) }}</span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Tab 6: 审计日志 -->
-      <div v-if="activeTab === 'audit'" class="tab-pane-grid">
-        <div class="pane-card span-full">
-          <div class="pane-card-head">
-            <h3>操作审计记录</h3>
-            <p>仅记录对当前身份域属性及策略绑定的修改日志。</p>
+          <!-- Card: 影响范围 -->
+          <div class="form-section-card-custom mt-20">
+            <div class="card-title-header-custom">
+              <h3>影响范围</h3>
+              <p>当前绑定使用该身份域的客户端对象。</p>
+            </div>
+            <div class="card-body-custom">
+              <el-table :data="mockImpactObjects" size="small" class="premium-table">
+                <el-table-column prop="name" label="引用对象" min-width="110" />
+                <el-table-column prop="type" label="类型" min-width="110" />
+                <el-table-column label="状态" width="70" align="center">
+                  <template #default="{ row }">
+                    <span class="badge-dot" :class="row.status === 1 ? 'green' : 'red'"></span>
+                    <span style="font-size: 11px; color: #475569;">{{ row.status === 1 ? '启用' : '禁用' }}</span>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </div>
           </div>
-          <el-table :data="mockAuditLogs" class="premium-table">
-            <el-table-column prop="operator" label="操作人" width="120" />
-            <el-table-column prop="action" label="操作类型" width="150">
-              <template #default="{ row }">
-                <span class="badge gray">{{ row.action }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="desc" label="变更描述" min-width="280" />
-            <el-table-column prop="time" label="操作时间" width="180" />
-          </el-table>
         </div>
       </div>
     </div>
@@ -506,458 +561,492 @@ const handleTabClick = (tabName: string) => {
 </template>
 
 <style scoped>
-.realm-detail-layout {
-  font-family: "Inter", "Segoe UI", Arial, sans-serif;
-  color: #334155;
+.create-realm-page-wrapper {
+  padding: 0;
 }
 
-/* Header bar */
-.detail-header-actions {
+/* Form navigation header */
+.form-navigation-header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
-.header-left {
+.nav-title-left h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0F172A;
+}
+.subtitle-text {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #64748B;
+}
+.nav-buttons-right {
   display: flex;
-  align-items: center;
   gap: 12px;
 }
-.btn-back {
-  border: 1px solid #E5E7EB;
-  color: #334155;
-  font-weight: 600;
-}
-.crumb-text {
-  font-size: 14px;
-  color: #64748B;
-  font-weight: 500;
-}
-.header-right {
-  display: flex;
-  gap: 10px;
-}
-.btn-action-normal {
-  border: 1px solid #E5E7EB;
-  color: #334155;
-  font-weight: 600;
-}
-.btn-action-danger {
+.btn-op-outline {
+  height: 36px;
+  border: 1px solid #E2E8F0;
   background-color: #fff;
-  border-color: #FCA5A5;
-  color: #DC2626;
   font-weight: 600;
+  color: #475569;
+  border-radius: 6px;
+  font-size: 13px;
 }
-.btn-action-success {
+.btn-op-outline:hover {
+  border-color: #2563EB;
+  color: #2563EB;
+}
+.btn-new-realm {
   background-color: #2563EB;
   border-color: #2563EB;
   color: #fff;
   font-weight: 600;
-}
-
-/* Hero card */
-.detail-hero-card {
-  background-color: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 24px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.02);
-}
-.hero-top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 18px;
-}
-.hero-top-row h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: #0F172A;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.hero-actions {
-  display: flex;
-  gap: 8px;
-}
-.btn-hero-small {
-  height: 30px;
-  padding: 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  background-color: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 4px;
-  color: #334155;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.btn-hero-small:hover {
-  border-color: #2563EB;
-  color: #2563EB;
-}
-.hero-meta-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-.meta-item {
-  display: flex;
-  flex-direction: column;
-}
-.meta-label {
-  font-size: 12px;
-  color: #64748B;
-  margin-bottom: 6px;
-}
-.meta-value {
-  font-size: 14px;
-  font-weight: 700;
-  color: #334155;
-}
-
-/* Navigation tabs */
-.detail-navigation-tabs {
-  display: flex;
-  height: 48px;
-  background-color: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 0 14px;
-  align-items: center;
-  margin-bottom: 16px;
-  gap: 6px;
-}
-.detail-tab-item {
-  height: 32px;
+  height: 36px;
+  padding: 0 16px;
   border-radius: 6px;
-  padding: 0 14px;
-  display: inline-flex;
-  align-items: center;
-  color: #64748B;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
-.detail-tab-item.active {
-  background-color: #EFF6FF;
-  color: #2563EB;
-}
-.detail-tab-item:hover:not(.active) {
-  color: #2563EB;
-  background-color: #F8FAFC;
+.btn-new-realm:hover {
+  background-color: #1D4ED8;
+  border-color: #1D4ED8;
 }
 
-/* Tabs content grid */
-.tab-pane-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-.span-full {
-  grid-column: span 2;
-}
-
-/* Pane card */
-.pane-card {
-  background-color: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 20px;
-}
-.pane-card-head {
-  margin-bottom: 18px;
-  border-bottom: 1px solid #F1F5F9;
+/* Sub tabs under header */
+.form-tabs-sub {
+  display: flex;
+  gap: 24px;
+  border-bottom: 1px solid #E2E8F0;
+  margin-bottom: 24px;
   padding-bottom: 12px;
 }
-.pane-card-head h3 {
-  margin: 0 0 4px 0;
-  font-size: 15px;
-  color: #0F172A;
-  font-weight: 700;
-}
-.pane-card-head p {
-  margin: 0;
-  font-size: 13px;
+.tab-sub-item {
+  font-size: 14px;
+  font-weight: 600;
   color: #64748B;
+  cursor: pointer;
+  position: relative;
+  padding: 4px 0;
+}
+.tab-sub-item.active {
+  color: #2563EB;
+}
+.tab-sub-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: -13px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #2563EB;
 }
 
-/* Info row values */
-.info-list-rows {
-  display: flex;
-  flex-direction: column;
+/* Grid Layout */
+.realm-form-two-column-layout {
+  display: grid;
+  grid-template-columns: 1.80fr 1fr;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
 }
-.info-row {
-  display: flex;
-  height: 48px;
-  align-items: center;
-  border-bottom: 1px solid #E5E7EB;
+
+/* Custom Cards */
+.form-section-card-custom {
+  background-color: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
-.info-row:last-child {
-  border-bottom: 0;
+.card-title-header-custom {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #F1F5F9;
+  padding-bottom: 16px;
 }
-.info-label {
-  width: 150px;
+.card-title-header-custom h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+}
+.card-title-header-custom p {
+  margin: 4px 0 0 0;
+  font-size: 12px;
   color: #64748B;
-  font-size: 13px;
+}
+.card-body-custom {
+  padding-top: 4px;
+}
+
+/* Grids */
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 20px;
+}
+.grid-3-col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px 20px;
+}
+.grid-4-col {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px 20px;
+}
+.full-width-field {
+  width: 100%;
+}
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mt-24 { margin-top: 24px; }
+.ml-8 { margin-left: 8px; }
+
+/* ElFormItem label style override */
+.form-left-column :deep(.el-form-item) {
+  margin-bottom: 0;
+}
+.form-left-column :deep(.el-form-item__label) {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 6px;
+  padding: 0;
+  line-height: normal;
+}
+.form-left-column :deep(.el-input__wrapper),
+.form-left-column :deep(.el-select__wrapper) {
+  height: 36px;
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  box-shadow: none !important;
+}
+.form-left-column :deep(.el-textarea__inner) {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  box-shadow: none !important;
+}
+
+/* Alert banner styling */
+.alert-banner-custom {
+  background-color: #EFF6FF;
+  border-radius: 8px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.alert-banner-custom .vertical-bar {
+  width: 3px;
+  height: 16px;
+  background-color: #2563EB;
+  border-radius: 2px;
+}
+.alert-content-text {
+  font-size: 12.5px;
+  color: #1E40AF;
+  line-height: 1.5;
   font-weight: 500;
 }
-.info-val {
-  font-size: 13px;
-  color: #334155;
-  font-weight: 600;
-}
 
-/* Binding items list */
-.binding-list-rows {
-  display: flex;
-  flex-direction: column;
-}
-.binding-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 54px;
-  border-bottom: 1px solid #E5E7EB;
-}
-.binding-item:last-child {
-  border-bottom: 0;
-}
-.binding-info {
-  display: flex;
-  flex-direction: column;
-}
-.binding-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #0F172A;
-}
-.binding-desc {
-  font-size: 12px;
-  color: #64748B;
-  margin-top: 4px;
-}
-.binding-op-link {
-  color: #2563EB;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-}
-.binding-op-link:hover {
-  color: #1D4ED8;
-}
-
-/* Badges */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 700;
-}
-.badge.green {
-  background-color: #DCFCE7;
-  color: #16A34A;
-}
-.badge.red {
-  background-color: #FEE2E2;
-  color: #DC2626;
-}
-.badge.gray {
-  background-color: #F1F5F9;
-  color: #64748B;
-}
-
-/* Login Preview Pane */
-.login-preview-container {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 12px 0;
-}
-.preview-login {
-  width: 100%;
-  max-width: 580px;
-  height: 280px;
-  border: 1px solid #E5E7EB;
-  border-radius: 10px;
+/* Card select option styling */
+.checkbox-cards-grid-3 {
   display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  overflow: hidden;
-  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
 }
-.login-left {
-  background-color: #0F1B2D;
-  color: #fff;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-.login-left h3 {
-  font-size: 18px;
-  margin: 0 0 10px 0;
-  font-weight: 700;
-}
-.login-left p {
-  color: #CBD5E1;
-  font-size: 11px;
-  line-height: 1.6;
-  margin: 0;
-}
-.login-right {
-  padding: 24px;
+.checkbox-card-item {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  padding: 14px;
   background-color: #fff;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+  cursor: default;
+  transition: all 0.2s ease;
 }
-.login-right h3 {
-  font-size: 16px;
-  color: #0F172A;
-  margin: 0 0 14px 0;
+.checkbox-card-item.checked {
+  border-color: #2563EB;
+  background-color: #EFF6FF;
+}
+.checkbox-title {
+  font-size: 13px;
   font-weight: 700;
+  color: #1E293B;
 }
-.login-field-mock {
-  height: 32px;
-  border: 1px solid #E5E7EB;
+.checkbox-desc {
+  font-size: 11px;
+  color: #64748B;
+  margin: 4px 0 0 0;
+  line-height: 1.4;
+}
+.flex-align-center-row {
+  display: flex;
+  align-items: center;
+}
+.custom-radio-circle {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #CBD5E1;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+  background-color: #fff;
+}
+.custom-radio-circle.checked {
+  border-color: #2563EB;
+  background-color: #2563EB;
+}
+.custom-radio-circle.checked::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  background-color: #fff;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.policy-details-sub-card {
+  border: 1px dashed #BFDBFE;
+  background-color: #F8FAFC;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+/* Security Blocks */
+.sub-security-block {
+  border-bottom: 1px solid #F1F5F9;
+  padding: 20px 0;
+}
+.sub-security-block:first-child {
+  padding-top: 8px;
+}
+.sub-security-block:last-child {
+  border-bottom: none;
+  padding-bottom: 8px;
+}
+.sub-sec-title h4 {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0F172A;
+}
+.sub-sec-title p {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: #64748B;
+}
+
+/* Custom disabled overrides for premium read-only form elements */
+.read-only-form :deep(.el-input.is-disabled .el-input__wrapper),
+.read-only-form :deep(.el-select.is-disabled .el-select__wrapper),
+.read-only-form :deep(.el-textarea.is-disabled .el-textarea__inner),
+.read-only-form :deep(.el-input-number.is-disabled .el-input__wrapper) {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: none !important;
+  color: #0F172A !important;
+  cursor: default !important;
+}
+
+.read-only-form :deep(.el-input.is-disabled .el-input__inner),
+.read-only-form :deep(.el-select.is-disabled .el-select__placeholder),
+.read-only-form :deep(.el-textarea.is-disabled .el-textarea__inner) {
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+  cursor: default !important;
+  font-weight: 500;
+}
+
+.read-only-form :deep(.el-input-number.is-disabled .el-input-number__decrease),
+.read-only-form :deep(.el-input-number.is-disabled .el-input-number__increase) {
+  display: none !important;
+}
+
+/* Checkboxes read-only style */
+.read-only-form :deep(.el-checkbox.is-disabled) {
+  cursor: default !important;
+}
+.read-only-form :deep(.el-checkbox.is-disabled .el-checkbox__label) {
+  color: #334155 !important;
+  cursor: default !important;
+  font-weight: 600;
+}
+.read-only-form :deep(.el-checkbox.is-disabled.is-checked .el-checkbox__inner) {
+  background-color: #2563EB !important;
+  border-color: #2563EB !important;
+}
+.read-only-form :deep(.el-checkbox.is-disabled.is-checked .el-checkbox__inner::after) {
+  border-color: #fff !important;
+}
+
+/* Right Previews columns */
+.preview-right-column {
+  position: relative;
+}
+.sticky-preview-wrapper {
+  position: sticky;
+  top: 24px;
+}
+.preview-title-bar {
+  margin-bottom: 16px;
+}
+.preview-title-bar h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F172A;
+}
+.preview-title-bar .subtitle {
+  margin: 4px 0 0 0;
+  font-size: 12px;
+  color: #64748B;
+}
+
+/* Simulated Browser window */
+.mock-browser-window {
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  background-color: #fff;
+}
+.browser-header-dots {
+  background-color: #F8FAFC;
+  height: 38px;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  position: relative;
+}
+.browser-header-dots .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  display: inline-block;
+}
+.browser-header-dots .dot.red { background-color: #EF4444; }
+.browser-header-dots .dot.yellow { background-color: #F59E0B; }
+.browser-header-dots .dot.green { background-color: #10B981; }
+.browser-address-bar {
+  flex: 1;
+  background-color: #fff;
+  border: 1px solid #E2E8F0;
   border-radius: 6px;
-  margin-bottom: 8px;
-  color: #94A3B8;
+  height: 24px;
+  margin-left: 20px;
+  font-size: 11px;
+  color: #64748B;
   display: flex;
   align-items: center;
   padding: 0 10px;
-  font-size: 11px;
 }
-.login-btn-mock {
-  height: 32px;
-  border-radius: 6px;
-  background-color: #2563EB;
-  color: #fff;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  margin-top: 6px;
-  cursor: default;
+.browser-address-bar .lock-icon {
+  margin-right: 4px;
 }
 
-/* Referenced elements link color */
-.op-link {
-  color: #2563EB;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-}
-.op-link:hover {
-  color: #1D4ED8;
-}
-
-/* Flowchart */
-.flowchart-premium {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #F8FAFC;
-  padding: 20px 24px;
-  border-radius: 8px;
-  border: 1px solid #E5E7EB;
-  overflow-x: auto;
-}
-.flow-node {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  min-width: 110px;
-}
-.flow-node.highlight .node-icon {
+/* Browser content login page mockup */
+.browser-content-area {
+  padding: 32px 24px;
   background-color: #EFF6FF;
-  color: #2563EB;
-  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
-}
-.node-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
   display: flex;
-  align-items: center;
   justify-content: center;
-  font-size: 20px;
-  margin-bottom: 8px;
+  align-items: center;
+  min-height: 320px;
 }
-.bg-blue { background-color: #EFF6FF; color: #2563EB; }
-.bg-indigo { background-color: #EEF2F6; color: #4F46E5; }
-.bg-green { background-color: #DCFCE7; color: #16A34A; }
-.bg-purple { background-color: #F5F3FF; color: #8B5CF6; }
-.bg-orange { background-color: #FFEDD5; color: #EA580C; }
-
-.node-text h4 {
-  margin: 0 0 2px 0;
-  font-size: 13px;
+.login-card-preview-inner {
+  background-color: #fff;
+  border-radius: 12px;
+  border: 1px solid #F1F5F9;
+  padding: 24px;
+  width: 100%;
+  max-width: 290px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+.login-inner-title {
+  margin: 0;
+  font-size: 16px;
   font-weight: 700;
   color: #0F172A;
+  text-align: center;
 }
-.node-text p {
-  margin: 0;
+.login-inner-subtitle {
+  margin: 4px 0 16px 0;
   font-size: 11px;
   color: #64748B;
-}
-.flow-arrow {
-  color: #CBD5E1;
-  font-size: 18px;
+  text-align: center;
 }
 
-/* Stats summary boxes */
-.stats-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+/* Mock tabs */
+.login-methods-tabs-preview {
+  display: flex;
+  border-bottom: 1px solid #F1F5F9;
+  justify-content: center;
   gap: 16px;
+  margin-bottom: 16px;
 }
-.stat-box {
-  background-color: #F8FAFC;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.stat-box-icon {
-  font-size: 28px;
-}
-.text-blue { color: #2563EB; }
-.text-orange { color: #EA580C; }
-.text-green { color: #16A34A; }
-
-.stat-box-text {
-  display: flex;
-  flex-direction: column;
-}
-.stat-num {
-  font-size: 20px;
-  font-weight: 700;
-  color: #0F172A;
-}
-.stat-lbl {
+.tab-preview-item {
   font-size: 12px;
   color: #64748B;
+  padding-bottom: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  position: relative;
+}
+.tab-preview-item.active {
+  color: #2563EB;
+}
+.tab-preview-item.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #2563EB;
 }
 
-@media (max-width: 1024px) {
-  .tab-pane-grid {
+/* Mock Inputs */
+.mock-input-field {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+}
+.placeholder-txt {
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.premium-table {
+  width: 100%;
+}
+.badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 6px;
+}
+.badge-dot.green {
+  background-color: #10B981;
+}
+.badge-dot.red {
+  background-color: #EF4444;
+}
+
+@media (max-width: 1200px) {
+  .realm-form-two-column-layout {
     grid-template-columns: 1fr;
-  }
-  .span-full {
-    grid-column: span 1;
   }
 }
 </style>

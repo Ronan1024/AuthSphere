@@ -296,6 +296,7 @@ body {
   height: 48px;
   padding: 0 24px;
   overflow-x: auto;
+  overflow-y: hidden;
   border-bottom: 1px solid #dfe3ea;
   background: #ffffff;
   box-shadow: 0 1px 3px rgb(16 24 40 / 8%);
