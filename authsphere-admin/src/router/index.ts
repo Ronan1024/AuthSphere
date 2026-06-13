@@ -57,6 +57,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'realm/auth-methods',
+        name: 'RealmAuthMethod',
+        component: () => import('@/views/realm/AuthMethodView.vue'),
+        meta: {
+          title: '认证方式',
+          breadcrumb: ['身份域管理', '认证方式'],
+          moduleDescription: '管理和配置登录可用的具体认证方式（账号密码、短信验证码、邮箱验证码、TOTP 动态口令、外部 OIDC 等）。',
+        },
+      },
+      {
         path: 'realm/auth-policies',
         name: 'RealmAuthPolicy',
         component: () => import('@/views/realm/AuthPolicyView.vue'),
