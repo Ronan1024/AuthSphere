@@ -88,8 +88,8 @@ public class AuthMethodServiceImpl implements AuthMethodService {
      */
     @Override
     public Boolean update(Long id, AuthMethodRequest request) {
-        authMethodDomain.normalizeAndValidate(request);
         AuthMethod method = authMethodDomain.findById(id);
+        authMethodDomain.normalizeAndValidate(request);
         authMethodDomain.copyForUpdate(request, method);
         authMethodMapper.updateById(method);
         return Boolean.TRUE;

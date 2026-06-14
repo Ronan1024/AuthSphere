@@ -7,6 +7,7 @@ import com.authsphere.server.realm.dto.AuthMethodReferenceResponse;
 import com.authsphere.server.realm.dto.AuthMethodRequest;
 import com.authsphere.server.realm.dto.AuthMethodResponse;
 import com.authsphere.server.realm.enums.AuthMethodStatus;
+import com.authsphere.server.realm.enums.AuthMethodTemplate;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.model.AuthMethod;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -33,8 +35,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class AuthMethodDomain {
 
-    private static final Set<String> SUPPORTED_POSITIONS = Set.of("主登录", "MFA", "接口认证", "允许自动建号");
+    private static final Set<String> SUPPORTED_POSITIONS = Set.of(
+            "主登录", "MFA", "MFA 二次认证", "接口认证", "允许自动建号", "账号绑定校验", "敏感操作");
     private static final String MASK_VALUE = "********";
+    private static final String FORM_SCHEMA_KEY = "formSchema";
+    private static final String FIELD_CODE_KEY = "code";
 
     private final AuthMethodMapper authMethodMapper;
     private final ObjectMapper objectMapper;
@@ -69,9 +74,7 @@ public class AuthMethodDomain {
         request.setPositions(positions);
         request.setApplicableRange(trimToNull(request.getApplicableRange()));
         request.setDescription(trimToNull(request.getDescription()));
-        if (request.getParams() == null) {
-            request.setParams(Collections.emptyMap());
-        }
+        request.setParams(normalizeAndValidateParams(request.getCode(), request.getParams()));
     }
 
     /**
@@ -92,7 +95,8 @@ public class AuthMethodDomain {
      * @param code 认证方式编码
      */
     public void checkNotReferenced(String code) {
-        if (value(authMethodMapper.countReferences(code)) > 0) {
+        Integer counted = authMethodMapper.countReferences(code);
+        if (counted > 0) {
             throw new BizException(RealmErrorCode.AUTH_METHOD_REFERENCED);
         }
     }
@@ -171,7 +175,7 @@ public class AuthMethodDomain {
     public AuthMethod buildModel(AuthMethodRequest request) {
         AuthMethod method = new AuthMethod();
         copyRequest(request, method);
-        method.setSystemBuiltin(Boolean.FALSE);
+        method.setSystemBuiltin(AuthMethodTemplate.findByCode(request.getCode()).isPresent());
         method.setDeleted(Boolean.FALSE);
         return method;
     }
@@ -200,6 +204,53 @@ public class AuthMethodDomain {
         method.setSortNo(request.getSortNo());
         method.setStatus(request.getStatus());
         method.setDescription(request.getDescription());
+    }
+
+    private Map<String, Object> normalizeAndValidateParams(String code, Map<String, Object> params) {
+        Map<String, Object> submitted = new LinkedHashMap<>(params == null ? Collections.emptyMap() : params);
+        Optional<AuthMethodTemplate> template = AuthMethodTemplate.findByCode(code);
+        if (template.isPresent()) {
+            return normalizePresetTemplateParams(template.get(), submitted);
+        }
+        validateFormSchema(submitted.get(FORM_SCHEMA_KEY));
+        return Map.of(FORM_SCHEMA_KEY, submitted.get(FORM_SCHEMA_KEY));
+    }
+
+    private Map<String, Object> normalizePresetTemplateParams(AuthMethodTemplate template, Map<String, Object> params) {
+        if (template.isCustomFieldsAllowed()) {
+            validateFormSchema(params.get(FORM_SCHEMA_KEY));
+            return Map.of(FORM_SCHEMA_KEY, params.get(FORM_SCHEMA_KEY));
+        }
+        if (params.containsKey(FORM_SCHEMA_KEY)) {
+            throw new BizException(RealmErrorCode.AUTH_METHOD_TEMPLATE_LOCKED);
+        }
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            if (!template.getAllowedParamKeys().contains(entry.getKey())) {
+                throw new BizException(RealmErrorCode.AUTH_METHOD_PARAM_ERROR);
+            }
+            normalized.put(entry.getKey(), entry.getValue());
+        }
+        return normalized;
+    }
+
+    private void validateFormSchema(Object formSchema) {
+        if (!(formSchema instanceof List<?> fields) || fields.isEmpty()) {
+            throw new BizException(RealmErrorCode.AUTH_METHOD_FORM_SCHEMA_REQUIRED);
+        }
+        Set<String> fieldCodes = new java.util.HashSet<>();
+        for (Object field : fields) {
+            if (!(field instanceof Map<?, ?> fieldMap)) {
+                throw new BizException(RealmErrorCode.AUTH_METHOD_PARAM_ERROR);
+            }
+            Object code = fieldMap.get(FIELD_CODE_KEY);
+            if (!(code instanceof String fieldCode) || fieldCode.trim().isEmpty()) {
+                throw new BizException(RealmErrorCode.AUTH_METHOD_FORM_SCHEMA_REQUIRED);
+            }
+            if (!fieldCodes.add(fieldCode.trim())) {
+                throw new BizException(RealmErrorCode.AUTH_METHOD_PARAM_ERROR);
+            }
+        }
     }
 
     private List<String> normalize(List<String> values) {

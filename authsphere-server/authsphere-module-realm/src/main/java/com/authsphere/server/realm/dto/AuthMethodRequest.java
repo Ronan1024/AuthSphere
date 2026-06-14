@@ -18,7 +18,6 @@ import java.util.Map;
 public class AuthMethodRequest {
 
     @NotBlank(message = "认证方式编码不能为空")
-    @Pattern(regexp = "^[a-z][a-z0-9_]{1,63}$", message = "认证方式编码需以小写字母开头，仅支持小写字母、数字和下划线")
     private String code;
 
     @NotBlank(message = "认证方式名称不能为空")

@@ -10,12 +10,23 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 public class AuthMethodPageRequest extends PageRequest {
-
+    /**
+     * 认证方式名称
+     */
     private String name;
 
+    /**
+     * 认证方式编码
+     */
     private String code;
 
+    /**
+     * 认证方式位置
+     */
     private String position;
 
+    /**
+     * 认证方式状态
+     */
     private Integer status;
 }

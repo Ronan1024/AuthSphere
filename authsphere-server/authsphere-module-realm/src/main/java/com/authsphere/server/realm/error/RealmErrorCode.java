@@ -152,7 +152,15 @@ public enum RealmErrorCode implements BaseError {
     /**
      * 认证方式编码保存后不可修改
      */
-    AUTH_METHOD_CODE_IMMUTABLE(REALM + "045", "认证方式编码保存后不可修改");
+    AUTH_METHOD_CODE_IMMUTABLE(REALM + "045", "认证方式编码保存后不可修改"),
+    /**
+     * 系统内置认证方式模板字段结构不可修改
+     */
+    AUTH_METHOD_TEMPLATE_LOCKED(REALM + "046", "系统内置认证方式模板字段结构不可修改"),
+    /**
+     * 扩展认证方式必须配置自定义字段
+     */
+    AUTH_METHOD_FORM_SCHEMA_REQUIRED(REALM + "047", "扩展认证方式必须配置自定义字段");
 
     private final String code;
 

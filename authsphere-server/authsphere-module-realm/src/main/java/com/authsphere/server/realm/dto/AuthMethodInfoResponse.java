@@ -5,11 +5,8 @@ import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 /**
-* @program: AuthSphere
-* @description:
-* @author: L.J.Ran
-* @create: 2026/6/6
-*/
+ * 认证方式简要信息，用于登录页和身份域等关联接口。
+ */
 @Data
 public class AuthMethodInfoResponse {
 
@@ -17,12 +14,12 @@ public class AuthMethodInfoResponse {
     private Long id;
 
     /**
-     * 认证方式名称
+     * 认证方式名称。
      */
     private String name;
 
     /**
-     * 认证方式描述
+     * 认证方式描述。
      */
     private String description;
 }
