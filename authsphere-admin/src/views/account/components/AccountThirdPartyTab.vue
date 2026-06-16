@@ -74,7 +74,7 @@ onMounted(loadBindings)
         </template>
       </el-table-column>
       <el-table-column label="操作" width="120" fixed="right">
-        <template #default="{ row }">
+        <template #default>
           <el-button link type="primary">详情</el-button>
           <el-button link type="primary" disabled>解绑</el-button>
         </template>

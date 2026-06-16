@@ -7,6 +7,7 @@ import {
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { authMethodApi } from '@/api/authMethod'
+import type { AuthMethodTemplateResponse } from '@/api/authMethod'
 
 const router = useRouter()
 
@@ -122,6 +123,7 @@ const query = reactive({
 })
 
 const methods = ref<AuthMethodRecord[]>([])
+const builtinTemplateMap = ref<Record<string, AuthMethodTemplateResponse>>({})
 const loading = ref(false)
 const total = ref(0)
 const page = ref(1)
@@ -188,6 +190,35 @@ const getParamsSummary = (row: any) => {
 
 const getStatusText = (status: number) => {
   return status === 1 ? '启用' : (status === 2 ? '待配置' : '禁用')
+}
+
+const loadBuiltinTemplates = async () => {
+  try {
+    const templates = await authMethodApi.templates()
+    builtinTemplateMap.value = templates.reduce<Record<string, AuthMethodTemplateResponse>>((result, item) => {
+      result[item.template] = item
+      return result
+    }, {})
+  } catch (error: any) {
+    ElMessage.error(error.message || '获取认证方式模板失败')
+  }
+}
+
+const applyBuiltinTemplateDefaults = (template: string) => {
+  if (currentView.value !== 'create') return
+  const builtinTemplate = builtinTemplateMap.value[template]
+  if (!builtinTemplate) return
+  formModel.name = builtinTemplate.defaultName
+  formModel.code = builtinTemplate.defaultCode
+}
+
+const selectTemplate = async (template: string) => {
+  if (isReadOnly.value) return
+  formModel.template = template
+  if (!builtinTemplateMap.value[template]) {
+    await loadBuiltinTemplates()
+  }
+  applyBuiltinTemplateDefaults(template)
 }
 
 const addField = () => {
@@ -280,6 +311,7 @@ const loadMethods = async () => {
 }
 
 onMounted(() => {
+  loadBuiltinTemplates()
   loadMethods()
 })
 
@@ -885,9 +917,9 @@ const submitForm = async () => {
                   :class="[formModel.template === tpl.key ? 'active' : '', isReadOnly ? 'disabled-tpl' : '']"
                   role="button"
                   tabindex="0"
-                  @click="!isReadOnly && (formModel.template = tpl.key)"
-                  @keydown.enter.prevent="!isReadOnly && (formModel.template = tpl.key)"
-                  @keydown.space.prevent="!isReadOnly && (formModel.template = tpl.key)"
+                  @click="selectTemplate(tpl.key)"
+                  @keydown.enter.prevent="selectTemplate(tpl.key)"
+                  @keydown.space.prevent="selectTemplate(tpl.key)"
                 >
                   <span class="tag lock-tag" :class="tpl.key === 'extend' ? 'orange' : 'gray'">
                     {{ tpl.key === 'extend' ? '可自定义字段' : '锁定' }}

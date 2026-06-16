@@ -16,7 +16,6 @@ const props = defineProps<{
 const emit = defineEmits(['back', 'refresh'])
 
 const activeTab = ref('basic')
-const ACCOUNT_STATUS_ENABLED = 1
 const ACCOUNT_STATUS_LOCKED = 2
 const ACCOUNT_STATUS_DISABLED = 3
 

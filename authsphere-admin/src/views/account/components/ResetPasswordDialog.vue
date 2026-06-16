@@ -17,7 +17,7 @@ const formData = reactive({
   forceReset: true
 })
 
-const validatePass2 = (rule: any, value: any, callback: any) => {
+const validatePass2 = (_rule: any, value: any, callback: any) => {
   if (formData.resetMethod === 'email') {
     callback()
     return

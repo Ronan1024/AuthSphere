@@ -28,7 +28,7 @@ const formData = reactive({
   confirmPassword: ''
 })
 
-const validatePass2 = (rule: any, value: any, callback: any) => {
+const validatePass2 = (_rule: any, value: any, callback: any) => {
   if (formData.credentialType === 'none') {
     callback()
     return

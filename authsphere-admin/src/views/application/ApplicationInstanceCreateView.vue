@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Lock, InfoFilled, User, Box, CopyDocument, Monitor, Key, Connection, Opportunity } from '@element-plus/icons-vue'
 

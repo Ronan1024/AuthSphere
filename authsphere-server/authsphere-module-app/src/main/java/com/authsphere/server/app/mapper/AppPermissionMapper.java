@@ -1,9 +1,9 @@
 package com.authsphere.server.app.mapper;
 
 import com.authsphere.server.app.dto.AppClientPermissionResponse;
-import com.authsphere.server.app.dto.AppPermissionPageRequest;
 import com.authsphere.server.app.model.AppClientPermission;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -17,7 +17,7 @@ import org.apache.ibatis.annotations.Param;
 @Mapper
 public interface AppPermissionMapper extends BaseMapper<AppClientPermission> {
 
-    Page<AppClientPermissionResponse> page(@Param("page") Page<AppClientPermission> page, @Param("request") AppPermissionPageRequest request, @Param("appId") Long appId, @Param("clientId") Long clientId, @Param("permissionType") Integer permissionType);
+    Page<AppClientPermissionResponse> page(@Param("page") IPage<AppClientPermissionResponse> page, @Param("appId") Long appId, @Param("clientId") Long clientId, @Param("permissionType") Integer permissionType);
 }
 
 

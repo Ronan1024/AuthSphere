@@ -1,10 +1,13 @@
 package com.authsphere.server.app.enums;
 
+import lombok.Getter;
+
 import java.util.Arrays;
 
 /**
  * 应用权限资源类型。
  */
+@Getter
 public enum AppPermissionType {
     /**
      * 按钮或页面操作权限。

@@ -107,7 +107,6 @@ const openDetail = async (row: AccountRecord) => {
   }
 }
 const closeDetail = () => currentDetail.value = null
-const openEdit = (row: AccountRecord) => createDrawerRef.value?.open(realmOptions.value, row)
 
 const refreshCurrent = async () => {
   await loadAccounts()
@@ -218,7 +217,7 @@ onMounted(() => {
 
     <!-- 数据表格区 -->
     <el-card shadow="never" class="account-table-card">
-      <el-table v-loading="loading" :data="tableData" style="width: 100%" @selection-change="(val) => selectedRows = val">
+      <el-table v-loading="loading" :data="tableData" style="width: 100%" @selection-change="(val: any[]) => selectedRows = val">
         <el-table-column type="selection" width="55" />
         <el-table-column label="账号昵称" min-width="140">
           <template #default="{ row }">

@@ -2,10 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
-  ArrowLeft, Edit, Delete, VideoPause, 
-  Menu as IconMenu, Lock, Box, Monitor, Clock,
-  DocumentCopy, TopRight,
-  ElementPlus
+  ArrowLeft, Edit, VideoPause,
+  Box, Monitor, Clock,
+  DocumentCopy, TopRight
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { appApi, type AppPayload, type AppRecord } from '@/api/app'
@@ -115,7 +114,7 @@ onMounted(() => {
           <!-- App Icon -->
           <div class="app-icon-large-container">
             <div class="app-icon-large">
-              <el-icon><ElementPlus /></el-icon>
+              <el-icon><Monitor /></el-icon>
             </div>
           </div>
           

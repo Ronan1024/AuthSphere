@@ -19,7 +19,6 @@ public class AppClientPermissionResponse {
     private Long id;
 
 
-
     /**
      * 所属菜单ID
      */

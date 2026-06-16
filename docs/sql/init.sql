@@ -3,10 +3,15 @@ create table realm
     id               bigint       not null primary key,
     code             varchar(255) null comment '身份域编码， 唯一',
     name             varchar(255) null comment '身份域名称',
-    type_category_id bigint       null comment '身份域类型',
-    login_url        varchar(500) null comment '独立登录页',
+    realm_type_id    bigint       null comment '身份域类型',
+    auth_policy_id   bigint       null comment '默认认证策略ID',
     register_enabled bit(1)       null comment '是否允许注册',
     sso_enabled      bit(1)       null comment '是否开启SSO',
+    sso_session_timeout int       null comment 'SSO会话有效期，单位小时',
+    sso_idle_timeout int          null comment 'SSO空闲超时，单位分钟',
+    sso_single_logout varchar(32) null comment '单点退出策略',
+    existing_session_handler varchar(32) null comment '已存在会话处理方式',
+    no_client_id_handler varchar(32) null comment '无client_id时的处理方式',
     status           tinyint(1)   null comment '状态',
     password_policy  bigint       null comment '密码策略',
     mfa_policy       bigint       null comment 'MFA 策略',
@@ -16,6 +21,122 @@ create table realm
     update_time      datetime     null
 )
     comment '身份域信息' engine = InnoDB;
+
+create table login_page
+(
+    id                       bigint       not null primary key,
+    code                     varchar(64)  not null comment '登录页编码',
+    name                     varchar(128) not null comment '登录页名称',
+    applicable_realm_type_id bigint       null comment '适用身份域类型ID',
+    page_title               varchar(128) not null comment '页面标题',
+    page_subtitle            varchar(255) null comment '页面副标题',
+    logo_url                 varchar(512) null comment 'Logo地址',
+    background_url           varchar(512) null comment '背景图地址',
+    logo_object_key          varchar(512) null comment 'Logo OSS对象标识',
+    background_object_key    varchar(512) null comment '背景图 OSS对象标识',
+    layout_mode              varchar(32)  not null default 'CENTER_CARD' comment '页面布局模式',
+    theme_config_json        text         null comment '主题配置JSON',
+    component_config_json    text         null comment '组件展示配置JSON',
+    micro_frontend_url       varchar(512) null comment '微前端远程入口地址',
+    auth_methods             varchar(255) not null comment '登录方式，逗号分隔',
+    default_auth_method      varchar(64)  not null comment '默认登录方式',
+    show_forgot_password     bit(1)      not null default b'1' comment '是否显示忘记密码',
+    forgot_password_url      varchar(512) null comment '忘记密码跳转地址',
+    show_register            bit(1)       not null default b'0' comment '是否显示注册入口',
+    register_url             varchar(512) null comment '注册入口跳转地址',
+    show_third_party_login   bit(1)       not null default b'0' comment '是否显示第三方登录',
+    success_redirect_url     varchar(512) null comment '登录成功跳转地址',
+    failure_prompt_mode      varchar(32)  not null default 'page' comment '登录失败提示方式',
+    default_page             bit(1)       not null default b'0' comment '是否默认登录页',
+    system_builtin           bit(1)       not null default b'0' comment '是否系统内置',
+    status                   tinyint(1)   not null comment '状态',
+    description              varchar(512) null comment '备注',
+    deleted                  bit(1)       not null default b'0' comment '逻辑删除',
+    create_time              datetime     null,
+    update_time              datetime     null,
+    constraint uk_login_page_code unique (code),
+    key idx_login_page_realm_type (applicable_realm_type_id),
+    key idx_login_page_status (status)
+)
+    comment '登录页配置' engine = InnoDB;
+
+create table auth_policy
+(
+    id                          bigint       not null primary key,
+    code                        varchar(64)  not null comment '认证策略编码',
+    name                        varchar(128) not null comment '认证策略名称',
+    applicable_realm_id         bigint       null comment '适用身份域ID',
+    auth_methods                varchar(255) not null comment '支持的登录方式，逗号分隔',
+    default_auth_method         varchar(64)  not null comment '默认登录方式',
+    captcha_enabled             bit(1)      not null default b'0' comment '是否启用图形验证码',
+    captcha_failure_threshold   int          null comment '失败几次后启用验证码',
+    captcha_ttl_seconds         int          null comment '验证码有效期，单位秒',
+    captcha_error_limit         int          null comment '验证码错误次数限制',
+    max_failure_count           int          not null comment '最大连续失败次数',
+    failure_window_minutes      int          not null comment '失败统计周期，单位分钟',
+    lock_minutes                int          not null comment '锁定时长，单位分钟',
+    notify_user                 bit(1)      not null default b'0' comment '锁定后是否通知用户',
+    risk_log_enabled            bit(1)      not null default b'1' comment '是否记录风险日志',
+    mfa_enabled                 bit(1)      not null default false comment '是否启用MFA',
+    mfa_triggers                varchar(255) null comment 'MFA触发条件，逗号分隔',
+    mfa_methods                 varchar(255) null comment 'MFA方式，逗号分隔',
+    remember_device_enabled     bit(1)      not null default b'0' comment '是否允许记住设备',
+    remember_device_days        int          null comment '记住设备有效期，单位天',
+    ip_restriction_enabled      bit(1)      not null default b'0' comment '是否限制登录IP',
+    device_check_enabled        bit(1)      not null default b'0' comment '是否校验设备',
+    remote_login_check_enabled  bit(1)      not null default b'0' comment '是否校验异地登录',
+    abnormal_time_check_enabled bit(1)      not null default b'0' comment '是否校验异常时间登录',
+    system_builtin              bit(1)      not null default b'0' comment '是否系统内置',
+    status                      tinyint(1)   not null comment '状态',
+    description                 varchar(512) null comment '备注',
+    deleted                     bit(1)      not null default b'0' comment '逻辑删除',
+    create_time                 datetime     null,
+    update_time                 datetime     null,
+    constraint uk_auth_policy_code unique (code),
+    key idx_auth_policy_realm (applicable_realm_id),
+    key idx_auth_policy_status (status)
+)
+    comment '认证策略' engine = InnoDB;
+
+create table auth_method
+(
+    id               bigint       not null primary key,
+    code             varchar(64)  not null comment '认证方式唯一编码',
+    name             varchar(128) not null comment '认证方式名称',
+    positions        varchar(255) not null comment '可用位置，逗号分隔',
+    applicable_range varchar(128) null comment '适用范围说明',
+    params_json      json         null comment '认证方式扩展参数，敏感字段接口脱敏',
+    sort_no          int          not null default 0 comment '排序值，越小越靠前',
+    system_builtin   bit(1)       not null default b'0' comment '是否系统内置',
+    status           tinyint(1)   not null comment '状态：1启用，2待配置，3禁用',
+    description      varchar(512) null comment '备注',
+    deleted          bit(1)       not null default b'0' comment '逻辑删除',
+    create_time      datetime     null,
+    update_time      datetime     null,
+    constraint uk_auth_method_code unique (code),
+    key idx_auth_method_status_sort (status, sort_no)
+)
+    comment '认证方式配置' engine = InnoDB;
+
+insert ignore into auth_method
+(id, code, name, positions, applicable_range, params_json, sort_no, system_builtin, status, description, deleted, create_time, update_time)
+values
+    (1001001, 'password_login', '账号密码', '主登录',
+     '全部',
+     json_object('passwordPolicy', 'default', 'maxRetries', 5, 'lockDuration', 30),
+     10, b'1', 1, '系统内置账号密码认证方式，字段结构由系统锁定。', b'0', now(), now()),
+    (1001002, 'totp_login', 'TOTP 动态口令', 'MFA 二次认证,敏感操作',
+     '全部',
+     json_object('totpDigits', 6, 'totpPeriod', 30, 'totpWindow', 1),
+     20, b'1', 1, '系统内置 TOTP 动态口令认证方式，字段结构由系统锁定。', b'0', now(), now()),
+    (1001003, 'extended_login', '扩展登录', '主登录,账号绑定校验',
+     '全部',
+     json_object('formSchema', json_array()),
+     30, b'1', 2, '系统内置扩展登录模板，允许为具体接入场景配置自定义字段。', b'0', now(), now()),
+    (1001004, 'client_credentials', 'Client Credentials', '接口认证',
+     '服务端接口认证',
+     json_object('tokenTtl', 365, 'signAlg', 'HS256', 'allowScope', 'iam:token,api:read'),
+     40, b'1', 1, '系统内置服务端接口凭证认证方式，字段结构由系统锁定。', b'0', now(), now());
 
 create table password_policy
 (
@@ -339,11 +460,11 @@ CREATE TABLE app
     app_code    VARCHAR(64)  NOT NULL COMMENT '应用编码',
     app_name    VARCHAR(128) NOT NULL COMMENT '应用名称',
     app_type    VARCHAR(32)  NOT NULL COMMENT '应用类型：IAM/MALL/PAYMENT/WAREHOUSE/LOGISTICS/CUSTOM',
-    entry_url   VARCHAR(512) DEFAULT NULL COMMENT '应用入口',
-    icon        VARCHAR(128) DEFAULT NULL COMMENT '应用图标',
+    entry_url   VARCHAR(512)          DEFAULT NULL COMMENT '应用入口',
+    icon        VARCHAR(128)          DEFAULT NULL COMMENT '应用图标',
     status      tinyint(1)   NOT NULL COMMENT 'ENABLED/DISABLED',
     built_in    TINYINT      NOT NULL DEFAULT 0 COMMENT '是否内置',
-    description VARCHAR(512) DEFAULT NULL,
+    description VARCHAR(512)          DEFAULT NULL,
     create_time DATETIME     NOT NULL,
     update_time DATETIME     NOT NULL,
     UNIQUE KEY uk_app_code (app_code),
@@ -379,11 +500,13 @@ CREATE TABLE app_client_permission
     id              BIGINT PRIMARY KEY COMMENT '权限ID',
     app_code        VARCHAR(64)  NOT NULL COMMENT '所属应用编码',
     client_code     VARCHAR(128) NOT NULL COMMENT '应用端编码',
-    menu_id         BIGINT       DEFAULT NULL COMMENT '所属菜单ID',
+    menu_id         BIGINT                DEFAULT NULL COMMENT '所属菜单ID',
     permission_code VARCHAR(128) NOT NULL COMMENT '权限编码',
     permission_name VARCHAR(128) NOT NULL COMMENT '权限名称',
     permission_type tinyint(1)   NOT NULL COMMENT '1.BUTTON 2.API 3.DATA',
-    description     VARCHAR(512) DEFAULT NULL,
+    api_path        VARCHAR(256)          DEFAULT NULL COMMENT 'API接口路径',
+    method          VARCHAR(16)           DEFAULT NULL COMMENT 'HTTP请求方法',
+    description     VARCHAR(512)          DEFAULT NULL,
     status          tinyint(1)   NOT NULL COMMENT 'ENABLED/DISABLED',
     built_in        TINYINT      NOT NULL DEFAULT 0 COMMENT '是否内置',
     create_time     DATETIME     NOT NULL,
@@ -454,8 +577,15 @@ CREATE TABLE app_client
     client_code       VARCHAR(128) NOT NULL COMMENT '应用端编码',
     client_name       VARCHAR(128) NOT NULL COMMENT '应用端名称',
     client_type       tinyint      NOT NULL COMMENT '1.ADMIN_WEB 2.MERCHANT_WEB 3.MINI_PROGRAM 4.H5 5.OPEN_API 6.SERVICE',
+    client_secret     VARCHAR(512)          DEFAULT NULL COMMENT '客户端密钥，加密存储',
     default_realm_id  BIGINT                DEFAULT NULL COMMENT '默认身份域ID',
     default_entry_url VARCHAR(512)          DEFAULT NULL COMMENT '默认入口地址',
+    login_mode        VARCHAR(32)  NOT NULL DEFAULT 'IAM_HOSTED' COMMENT '登录接入方式：IAM_HOSTED/EXTERNAL_REDIRECT/API_ONLY/SERVICE',
+    external_login_url VARCHAR(512)         DEFAULT NULL COMMENT '客户自有登录页地址',
+    login_callback_url VARCHAR(512)         DEFAULT NULL COMMENT '登录回调地址',
+    login_page_id     BIGINT                DEFAULT NULL COMMENT '覆盖身份域默认登录页ID',
+    auth_policy_id    BIGINT                DEFAULT NULL COMMENT '覆盖身份域默认认证策略ID',
+    oss_config_id     BIGINT                DEFAULT NULL COMMENT '客户端绑定的OSS外部配置ID',
     status            tinyint(1)   NOT NULL COMMENT 'ENABLED/DISABLED',
     built_in          TINYINT      NOT NULL DEFAULT 0 COMMENT '是否内置',
     description       VARCHAR(512)          DEFAULT NULL COMMENT '描述',
@@ -464,7 +594,11 @@ CREATE TABLE app_client
     UNIQUE KEY uk_app_client_code (app_code, client_code),
     KEY idx_client_app (app_id),
     KEY idx_client_type (client_type),
-    KEY idx_client_realm (default_realm_id)
+    KEY idx_client_realm (default_realm_id),
+    KEY idx_client_login_page (login_page_id),
+    KEY idx_client_auth_policy (auth_policy_id),
+    KEY idx_client_login_mode (login_mode),
+    KEY idx_client_oss_config (oss_config_id)
 ) COMMENT ='应用端定义表';
 
 CREATE TABLE app_client_instance
@@ -479,8 +613,8 @@ CREATE TABLE app_client_instance
     root_subject_id      BIGINT       NOT NULL COMMENT '数据隔离根主体ID',
     client_instance_code VARCHAR(128) NOT NULL COMMENT '应用端实例编码',
     client_instance_name VARCHAR(128) NOT NULL COMMENT '应用端实例名称',
-    realm_id             BIGINT                DEFAULT NULL COMMENT '身份域ID',
-    entry_url            VARCHAR(512)          DEFAULT NULL COMMENT '访问入口',
+    realm_id             BIGINT       DEFAULT NULL COMMENT '身份域ID',
+    entry_url            VARCHAR(512) DEFAULT NULL COMMENT '访问入口',
     status               tinyint(1)   NOT NULL COMMENT 'ENABLED/DISABLED',
     create_time          DATETIME     NOT NULL,
     update_time          DATETIME     NOT NULL,
@@ -516,9 +650,9 @@ CREATE TABLE iam_role
 CREATE TABLE iam_role_menu
 (
     id                 BIGINT PRIMARY KEY COMMENT '主键ID',
-    role_id            BIGINT NOT NULL COMMENT '角色ID',
-    menu_id            BIGINT NOT NULL COMMENT '应用端菜单ID',
-    client_instance_id BIGINT NOT NULL COMMENT '应用端实例ID',
+    role_id            BIGINT   NOT NULL COMMENT '角色ID',
+    menu_id            BIGINT   NOT NULL COMMENT '应用端菜单ID',
+    client_instance_id BIGINT   NOT NULL COMMENT '应用端实例ID',
     create_time        DATETIME NOT NULL,
     UNIQUE KEY uk_role_menu (role_id, menu_id),
     KEY idx_role_menu_role (role_id),
@@ -529,9 +663,9 @@ CREATE TABLE iam_role_menu
 CREATE TABLE iam_role_permission
 (
     id                 BIGINT PRIMARY KEY COMMENT '主键ID',
-    role_id            BIGINT NOT NULL COMMENT '角色ID',
-    permission_id      BIGINT NOT NULL COMMENT '应用端权限ID',
-    client_instance_id BIGINT NOT NULL COMMENT '应用端实例ID',
+    role_id            BIGINT   NOT NULL COMMENT '角色ID',
+    permission_id      BIGINT   NOT NULL COMMENT '应用端权限ID',
+    client_instance_id BIGINT   NOT NULL COMMENT '应用端实例ID',
     create_time        DATETIME NOT NULL,
     UNIQUE KEY uk_role_permission (role_id, permission_id),
     KEY idx_role_permission_role (role_id),
@@ -546,7 +680,7 @@ CREATE TABLE iam_member_role
     role_id               BIGINT     NOT NULL COMMENT '角色ID',
     app_instance_id       BIGINT     NOT NULL COMMENT '应用实例ID',
     client_instance_id    BIGINT     NOT NULL COMMENT '应用端实例ID',
-    granted_by_account_id BIGINT              DEFAULT NULL COMMENT '授权人账号ID',
+    granted_by_account_id BIGINT DEFAULT NULL COMMENT '授权人账号ID',
     granted_at            DATETIME   NOT NULL COMMENT '授权时间',
     status                tinyint(1) NOT NULL COMMENT 'ENABLED/DISABLED',
     create_time           DATETIME   NOT NULL,
@@ -565,15 +699,85 @@ CREATE TABLE app_client_external_config
     provider_type VARCHAR(32)  NOT NULL COMMENT 'WECHAT_MINI/ALIPAY_MINI/DOUYIN_MINI/OIDC/WECHAT_WORK',
     provider_code VARCHAR(64)  NOT NULL COMMENT '配置编码',
     provider_name VARCHAR(128) NOT NULL COMMENT '配置名称',
-    app_id        VARCHAR(128) DEFAULT NULL COMMENT '第三方应用ID',
+    app_id        VARCHAR(128)  DEFAULT NULL COMMENT '第三方应用ID',
     app_secret    VARCHAR(1024) DEFAULT NULL COMMENT '第三方密钥，加密存储',
-    public_key    TEXT         DEFAULT NULL COMMENT '第三方公钥',
-    private_key   TEXT         DEFAULT NULL COMMENT '应用私钥，加密存储',
-    callback_url  VARCHAR(512) DEFAULT NULL COMMENT '回调地址',
-    config_json   TEXT         DEFAULT NULL COMMENT '扩展配置JSON',
+    public_key    TEXT          DEFAULT NULL COMMENT '第三方公钥',
+    private_key   TEXT          DEFAULT NULL COMMENT '应用私钥，加密存储',
+    callback_url  VARCHAR(512)  DEFAULT NULL COMMENT '回调地址',
+    config_json   TEXT          DEFAULT NULL COMMENT '扩展配置JSON',
     status        tinyint(1)   NOT NULL COMMENT 'ENABLED/DISABLED',
     create_time   DATETIME     NOT NULL,
     update_time   DATETIME     NOT NULL,
     UNIQUE KEY uk_client_provider (app_client_id, provider_type, provider_code),
     KEY idx_external_client (app_client_id)
 ) COMMENT ='应用客户端外部平台配置表';
+
+
+CREATE TABLE role
+(
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+    realm_id    BIGINT       NOT NULL COMMENT '身份域ID',
+    subject_id  BIGINT       NULL COMMENT '主体ID',
+    client_id   BIGINT       NOT NULL COMMENT '客户端ID',
+
+    role_name   VARCHAR(128) NOT NULL COMMENT '角色名称',
+    role_code   VARCHAR(128) NOT NULL COMMENT '角色编码',
+
+    data_scope  VARCHAR(32)  NOT NULL DEFAULT 'current_subject' COMMENT '数据范围',
+
+    status      tinyint(1)   NOT NULL DEFAULT 1 COMMENT '状态：enabled/disabled',
+    remark      VARCHAR(512) NULL COMMENT '备注',
+
+    created_by  BIGINT       NULL COMMENT '创建人',
+    create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_by  BIGINT       NULL COMMENT '更新人',
+    update_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+
+    deleted     TINYINT      NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+
+    UNIQUE KEY uk_role_code (realm_id, subject_id, client_id, role_code),
+    KEY idx_realm_id (realm_id),
+    KEY idx_subject_id (subject_id),
+    KEY idx_client_id (client_id),
+    KEY idx_status (status)
+) COMMENT ='角色表';
+
+
+CREATE TABLE role_resource
+(
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+    role_id     BIGINT   NOT NULL COMMENT '角色ID',
+    resource_id BIGINT   NOT NULL COMMENT '资源ID',
+    client_id   BIGINT   NOT NULL COMMENT '客户端ID',
+
+    created_by  BIGINT   NULL COMMENT '创建人',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    UNIQUE KEY uk_role_resource (role_id, resource_id),
+    KEY idx_role_id (role_id),
+    KEY idx_resource_id (resource_id),
+    KEY idx_client_id (client_id)
+) COMMENT ='角色资源关系表';
+
+CREATE TABLE account_role
+(
+    id         BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+
+    account_id BIGINT      NOT NULL COMMENT '账号ID',
+    subject_id BIGINT      NULL COMMENT '主体ID',
+    client_id  BIGINT      NOT NULL COMMENT '客户端ID',
+    role_id    BIGINT      NOT NULL COMMENT '角色ID',
+
+    status     VARCHAR(32) NOT NULL DEFAULT 'enabled' COMMENT '状态：enabled/disabled',
+
+    created_by BIGINT      NULL COMMENT '创建人',
+    create_time DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+
+    UNIQUE KEY uk_account_role (account_id, subject_id, client_id, role_id),
+    KEY idx_account_id (account_id),
+    KEY idx_subject_id (subject_id),
+    KEY idx_client_id (client_id),
+    KEY idx_role_id (role_id)
+) COMMENT ='账号角色关系表';

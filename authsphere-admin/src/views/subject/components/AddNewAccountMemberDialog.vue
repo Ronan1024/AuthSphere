@@ -22,7 +22,7 @@ const accountData = reactive({
   forceReset: true
 })
 
-const validatePass2 = (rule: any, value: any, callback: any) => {
+const validatePass2 = (_rule: any, value: any, callback: any) => {
   if (value === '') {
     callback(new Error('请再次输入密码'))
   } else if (value !== accountData.password) {

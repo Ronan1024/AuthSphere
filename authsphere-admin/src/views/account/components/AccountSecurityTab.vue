@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { CircleCheck, Lock, Unlock, Warning, Document, TrendCharts, CircleClose, Cellphone, Message, Key } from '@element-plus/icons-vue'
+import { CircleCheck, Unlock, Warning, Document } from '@element-plus/icons-vue'
 import { ref } from 'vue'
 import type { AccountRecord } from '@/api/account'
 
-const props = defineProps<{
+defineProps<{
   account: AccountRecord
 }>()
 
-const ACCOUNT_STATUS_ENABLED = 1
 const ACCOUNT_STATUS_LOCKED = 2
 const ACCOUNT_STATUS_DISABLED = 3
 
