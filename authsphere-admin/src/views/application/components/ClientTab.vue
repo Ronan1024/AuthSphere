@@ -12,7 +12,6 @@ import {
   Delete, 
   Search,
   Compass,
-  ArrowRight,
   Connection,
   Check,
   Clock,
@@ -33,274 +32,7 @@ const query = reactive({
 const loading = ref(false)
 const tableData = ref<AppClientRecord[]>([])
 
-// Resource configuration drawer states
-const configDrawerVisible = ref(false)
-const selectedClient = ref<AppClientRecord | null>(null)
-const drawerActiveTab = ref('menus')
 
-// Realm options for client configurations
-const realmOptions = [
-  { label: '默认身份域 (default_realm)', value: 'default_realm' },
-  { label: '商户中心身份域 (merchant_realm)', value: 'merchant_realm' },
-  { label: '平台管理身份域 (platform_realm)', value: 'platform_realm' }
-]
-
-// Mock External configurations
-interface ExternalConfig {
-  id: string
-  providerType: string
-  providerCode: string
-  providerName: string
-  appId: string
-  appSecret: string
-  callbackUrl?: string
-  status: number
-}
-
-const clientExternalConfigs = reactive<Record<string, ExternalConfig[]>>({
-  'default_merchant': [
-    {
-      id: 'ext_1',
-      providerType: 'WECHAT_MINI',
-      providerCode: 'wechat_mini_pay',
-      providerName: '微信小程序支付端',
-      appId: 'wx8888888888888888',
-      appSecret: 'sec_wx_723849723894723947',
-      status: 1
-    },
-    {
-      id: 'ext_2',
-      providerType: 'OIDC',
-      providerCode: 'oidc_google',
-      providerName: 'Google 身份验证',
-      appId: 'google-oauth2-client-id',
-      appSecret: 'sec_goog_98712398127391',
-      callbackUrl: 'https://authsphere.com/login/callback',
-      status: 1
-    }
-  ]
-})
-
-const currentExternalConfigs = ref<ExternalConfig[]>([])
-
-const platformTypeOptions = [
-  { label: '微信小程序 (WECHAT_MINI)', value: 'WECHAT_MINI' },
-  { label: '支付宝小程序 (ALIPAY_MINI)', value: 'ALIPAY_MINI' },
-  { label: '抖音小程序 (DOUYIN_MINI)', value: 'DOUYIN_MINI' },
-  { label: 'OIDC 身份源 (OIDC)', value: 'OIDC' },
-  { label: '企业微信 (WECHAT_WORK)', value: 'WECHAT_WORK' }
-]
-
-const copyToClipboard = (text: string) => {
-  navigator.clipboard.writeText(text).then(() => {
-    ElMessage.success('密钥已成功复制到剪贴板')
-  }).catch(() => {
-    ElMessage.error('复制失败，请手动复制')
-  })
-}
-
-// External platform config editing states
-const isEditingExternal = ref(false)
-const externalFormMode = ref<'create' | 'edit'>('create')
-const externalFormRef = ref()
-const externalFormData = reactive({
-  id: '',
-  providerType: 'WECHAT_MINI',
-  providerCode: '',
-  providerName: '',
-  appId: '',
-  appSecret: '',
-  callbackUrl: '',
-  status: 1
-})
-
-const externalFormRules = {
-  providerCode: [{ required: true, message: '请输入配置编码', trigger: 'blur' }],
-  providerName: [{ required: true, message: '请输入配置名称', trigger: 'blur' }],
-  appId: [{ required: true, message: '请输入 AppID / Client ID', trigger: 'blur' }],
-  appSecret: [{ required: true, message: '请输入 Secret', trigger: 'blur' }]
-}
-
-const handleAddExternal = () => {
-  externalFormMode.value = 'create'
-  externalFormData.id = 'ext_' + Date.now()
-  externalFormData.providerType = 'WECHAT_MINI'
-  externalFormData.providerCode = ''
-  externalFormData.providerName = ''
-  externalFormData.appId = ''
-  externalFormData.appSecret = ''
-  externalFormData.callbackUrl = ''
-  externalFormData.status = 1
-  isEditingExternal.value = true
-}
-
-const handleEditExternal = (item: ExternalConfig) => {
-  externalFormMode.value = 'edit'
-  externalFormData.id = item.id
-  externalFormData.providerType = item.providerType
-  externalFormData.providerCode = item.providerCode
-  externalFormData.providerName = item.providerName
-  externalFormData.appId = item.appId
-  externalFormData.appSecret = item.appSecret
-  externalFormData.callbackUrl = item.callbackUrl || ''
-  externalFormData.status = item.status
-  isEditingExternal.value = true
-}
-
-const handleDeleteExternal = (index: number) => {
-  ElMessageBox.confirm('确定删除此外部平台配置吗？', '提示', {
-    type: 'warning'
-  }).then(() => {
-    currentExternalConfigs.value.splice(index, 1)
-    ElMessage.success('配置已删除')
-  }).catch(() => {})
-}
-
-const saveExternalForm = async () => {
-  const valid = await externalFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-  
-  if (externalFormMode.value === 'create') {
-    currentExternalConfigs.value.push({
-      ...externalFormData
-    })
-    ElMessage.success('成功新增外部平台配置')
-  } else {
-    const idx = currentExternalConfigs.value.findIndex(item => item.id === externalFormData.id)
-    if (idx !== -1) {
-      currentExternalConfigs.value[idx] = {
-        ...externalFormData
-      }
-      ElMessage.success('修改已保存')
-    }
-  }
-  isEditingExternal.value = false
-}
-
-// Mock Menu Data for Frontend Showcase
-interface MenuNode {
-  id: string
-  label: string
-  code: string
-  path: string
-  component?: string
-  status: number
-  children?: MenuNode[]
-}
-
-const clientMenusMap = reactive<Record<string, MenuNode[]>>({
-  // Default seed menus for merchant portal
-  'default_merchant': [
-    {
-      id: 'm1',
-      label: '工作台',
-      code: 'merchant_dashboard',
-      path: '/dashboard',
-      component: '@/views/dashboard/index.vue',
-      status: 1,
-      children: []
-    },
-    {
-      id: 'm2',
-      label: '商品管理',
-      code: 'merchant_goods',
-      path: '/goods',
-      component: '@/layouts/RouterView.vue',
-      status: 1,
-      children: [
-        {
-          id: 'm2-1',
-          label: '商品列表',
-          code: 'goods_list',
-          path: '/goods/list',
-          component: '@/views/goods/List.vue',
-          status: 1
-        },
-        {
-          id: 'm2-2',
-          label: '商品分类',
-          code: 'goods_category',
-          path: '/goods/category',
-          component: '@/views/goods/Category.vue',
-          status: 1
-        }
-      ]
-    },
-    {
-      id: 'm3',
-      label: '订单中心',
-      code: 'merchant_orders',
-      path: '/orders',
-      component: '@/views/orders/index.vue',
-      status: 1,
-      children: []
-    }
-  ]
-})
-
-// Current menu tree list in drawer
-const currentMenus = ref<MenuNode[]>([])
-
-// Form to edit/create menu
-const isEditingMenu = ref(false)
-const menuFormMode = ref<'create' | 'edit'>('create')
-const menuFormRef = ref()
-const menuFormData = reactive({
-  id: '',
-  parentId: '',
-  label: '',
-  code: '',
-  path: '',
-  component: '',
-  status: 1
-})
-
-const menuFormRules = {
-  label: [{ required: true, message: '请输入菜单名称', trigger: 'blur' }],
-  code: [{ required: true, message: '请输入唯一权限标识码', trigger: 'blur' }],
-  path: [{ required: true, message: '请输入路由访问路径', trigger: 'blur' }]
-}
-
-// Mock Permission Data for Frontend Showcase
-interface PermissionItem {
-  id: string
-  name: string
-  code: string
-  apiPath: string
-  method: string
-  description: string
-}
-
-const clientPermissionsMap = reactive<Record<string, PermissionItem[]>>({
-  'default_merchant': [
-    {
-      id: 'p1',
-      name: '查询商品列表',
-      code: 'goods:query',
-      apiPath: '/api/merchant/goods/page',
-      method: 'POST',
-      description: '允许客户端分页获取当前店铺名下的商品列表。'
-    },
-    {
-      id: 'p2',
-      name: '新增/修改商品',
-      code: 'goods:write',
-      apiPath: '/api/merchant/goods',
-      method: 'POST',
-      description: '允许创建新商品或更新现有商品信息。'
-    },
-    {
-      id: 'p3',
-      name: '导出订单列表',
-      code: 'orders:export',
-      apiPath: '/api/merchant/orders/export',
-      method: 'GET',
-      description: '导出 Excel 订单清单安全接口权限。'
-    }
-  ]
-})
-
-const currentPermissions = ref<PermissionItem[]>([])
 
 const clientTypeOptions = [
   { label: 'ADMIN_WEB (管理后台)', value: 1 },
@@ -314,6 +46,17 @@ const clientTypeOptions = [
 const clientTypeText = (type?: string | number) => {
   const value = Number(type)
   return clientTypeOptions.find(item => item.value === value)?.label || '-'
+}
+
+const loginEntryText = (row: AppClientRecord) => {
+  if (Number(row.clientType) === 5 || Number(row.clientType) === 6) {
+    return '接口认证'
+  }
+  return row.loginPageName || (row.loginPageId ? `模板 ID ${row.loginPageId}` : '未绑定模板')
+}
+
+const authPolicyText = (row: AppClientRecord) => {
+  return row.authPolicyName || (row.authPolicyId ? `策略 ID ${row.authPolicyId}` : '继承身份域默认')
 }
 
 const filteredTableData = computed(() => {
@@ -373,176 +116,40 @@ const toggleStatus = async (row: AppClientRecord) => {
   }
 }
 
-// Drawer resource configurations handlers
+// Table search/action handlers
 const handleConfigure = (row: AppClientRecord) => {
-  selectedClient.value = row
-  drawerActiveTab.value = 'basic'
-  
-  // Set up mockup resources for visualization
-  const clientKey = row.clientCode || 'default_merchant'
-  if (!clientMenusMap[clientKey]) {
-    clientMenusMap[clientKey] = JSON.parse(JSON.stringify(clientMenusMap['default_merchant']))
-  }
-  if (!clientPermissionsMap[clientKey]) {
-    clientPermissionsMap[clientKey] = JSON.parse(JSON.stringify(clientPermissionsMap['default_merchant']))
-  }
-  if (!clientExternalConfigs[clientKey]) {
-    clientExternalConfigs[clientKey] = JSON.parse(JSON.stringify(clientExternalConfigs['default_merchant'] || []))
-  }
-  
-  currentMenus.value = clientMenusMap[clientKey]
-  currentPermissions.value = clientPermissionsMap[clientKey]
-  currentExternalConfigs.value = clientExternalConfigs[clientKey]
-  
-  isEditingMenu.value = false
-  isEditingExternal.value = false
-  configDrawerVisible.value = true
+  router.push(`/applications/detail/${route.params.id}/clients/config/${row.id}`)
 }
-
-const handleAddRootMenu = () => {
-  menuFormMode.value = 'create'
-  menuFormData.id = 'temp_' + Date.now()
-  menuFormData.parentId = ''
-  menuFormData.label = ''
-  menuFormData.code = ''
-  menuFormData.path = ''
-  menuFormData.component = ''
-  menuFormData.status = 1
-  
-  isEditingMenu.value = true
-}
-
-const handleAddSubMenu = (node: MenuNode) => {
-  menuFormMode.value = 'create'
-  menuFormData.id = 'temp_' + Date.now()
-  menuFormData.parentId = node.id
-  menuFormData.label = ''
-  menuFormData.code = ''
-  menuFormData.path = ''
-  menuFormData.component = ''
-  menuFormData.status = 1
-  
-  isEditingMenu.value = true
-}
-
-const handleEditMenu = (node: MenuNode) => {
-  menuFormMode.value = 'edit'
-  menuFormData.id = node.id
-  menuFormData.label = node.label
-  menuFormData.code = node.code
-  menuFormData.path = node.path
-  menuFormData.component = node.component || ''
-  menuFormData.status = node.status
-  
-  isEditingMenu.value = true
-}
-
-const handleDeleteMenu = (node: MenuNode) => {
-  ElMessageBox.confirm(`确定删除菜单「${node.label}」及其子菜单吗？`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(() => {
-    const removeNode = (list: MenuNode[], id: string): boolean => {
-      const idx = list.findIndex(item => item.id === id)
-      if (idx !== -1) {
-        list.splice(idx, 1)
-        return true
-      }
-      for (const item of list) {
-        if (item.children && removeNode(item.children, id)) {
-          return true
-        }
-      }
-      return false
-    }
-    removeNode(currentMenus.value, node.id)
-    ElMessage.success('菜单已删除')
-  }).catch(() => {})
-}
-
-const saveMenuForm = async () => {
-  const valid = await menuFormRef.value?.validate().catch(() => false)
-  if (!valid) return
-  
-  if (menuFormMode.value === 'create') {
-    const newMenu: MenuNode = {
-      id: menuFormData.id,
-      label: menuFormData.label,
-      code: menuFormData.code,
-      path: menuFormData.path,
-      component: menuFormData.component || undefined,
-      status: menuFormData.status,
-      children: []
-    }
-    
-    if (!menuFormData.parentId) {
-      currentMenus.value.push(newMenu)
-    } else {
-      const findAndAdd = (list: MenuNode[], pid: string) => {
-        for (const item of list) {
-          if (item.id === pid) {
-            if (!item.children) item.children = []
-            item.children.push(newMenu)
-            return true
-          }
-          if (item.children && findAndAdd(item.children, pid)) {
-            return true
-          }
-        }
-        return false
-      }
-      findAndAdd(currentMenus.value, menuFormData.parentId)
-    }
-    ElMessage.success('成功新增菜单项')
-  } else {
-    // Edit Mode
-    const findAndUpdate = (list: MenuNode[], id: string) => {
-      for (const item of list) {
-        if (item.id === id) {
-          item.label = menuFormData.label
-          item.code = menuFormData.code
-          item.path = menuFormData.path
-          item.component = menuFormData.component || undefined
-          item.status = menuFormData.status
-          return true
-        }
-        if (item.children && findAndUpdate(item.children, id)) {
-          return true
-        }
-      }
-      return false
-    }
-    findAndUpdate(currentMenus.value, menuFormData.id)
-    ElMessage.success('已保存菜单修改')
-  }
-  isEditingMenu.value = false
-}
-
-// Permission manager showcase
-const handleAddPermission = () => {
-  ElMessageBox.prompt('请输入权限资源名称', '新增权限', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    inputPattern: /\S+/,
-    inputErrorMessage: '名称不能为空'
-  }).then(({ value }) => {
-    currentPermissions.value.push({
-      id: 'p_' + Date.now(),
-      name: value,
-      code: 'custom:permission_' + Date.now().toString().slice(-4),
-      apiPath: '/api/custom/endpoint',
-      method: 'POST',
-      description: '自定资源访问网关凭证。'
-    })
-    ElMessage.success('权限添加成功')
-  }).catch(() => {})
-}
-
-const handleDeletePermission = (index: number) => {
-  currentPermissions.value.splice(index, 1)
-  ElMessage.success('权限已移除')
-}
+// Obsolete drawer variables to ensure compilation passes
+const configDrawerVisible = ref(false)
+const selectedClient = ref<any>(null)
+const drawerActiveTab = ref('basic')
+const isEditingMenu = ref(false)
+const menuFormMode = ref('create')
+const menuFormData = ref<any>({})
+const menuFormRules = ref<any>({})
+const menuFormRef = ref()
+const saveMenuForm = () => {}
+const handleAddPermission = () => {}
+const currentPermissions = ref<any[]>([])
+const handleDeletePermission = (_idx?: any) => {}
+const handleAddSubMenu = (_node?: any) => {}
+const handleEditMenu = (_node?: any) => {}
+const handleDeleteMenu = (_node?: any) => {}
+const currentMenus = ref<any[]>([])
+const currentExternalConfigs = ref<any[]>([])
+const copyToClipboard = (_text?: any) => {}
+const handleAddExternal = () => {}
+const isEditingExternal = ref(false)
+const handleEditExternal = (_row?: any) => {}
+const handleDeleteExternal = (_idx?: any) => {}
+const externalFormMode = ref('create')
+const externalFormData = ref<any>({})
+const externalFormRules = ref<any>({})
+const platformTypeOptions = ref<any[]>([])
+const saveExternalForm = () => {}
+const handleAddRootMenu = () => {}
+const realmOptions = ref<any[]>([])
 
 onMounted(fetchData)
 </script>
@@ -592,8 +199,18 @@ onMounted(fetchData)
           <span class="type-tag">{{ clientTypeText(row.clientType) }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="realmName" label="身份域" min-width="120" />
-      <el-table-column prop="defaultEntryUrl" label="默认入口" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="realmName" label="默认身份域" min-width="130" />
+      <el-table-column label="登录入口模板" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ loginEntryText(row) }}
+        </template>
+      </el-table-column>
+      <el-table-column label="认证策略" min-width="150" show-overflow-tooltip>
+        <template #default="{ row }">
+          {{ authPolicyText(row) }}
+        </template>
+      </el-table-column>
+      <el-table-column prop="defaultEntryUrl" label="默认入口地址" min-width="180" show-overflow-tooltip />
       <el-table-column label="状态" min-width="90">
         <template #default="{ row }">
           <div class="status-cell" :class="row.status === 1 ? 'text-green' : 'text-red'">
@@ -606,7 +223,7 @@ onMounted(fetchData)
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button link type="primary" @click="handleConfigure(row)" :icon="Compass" class="btn-table-action">资源配置</el-button>
+            <el-button link type="primary" @click="handleConfigure(row)" :icon="Compass" class="btn-table-action">客户端配置</el-button>
             <span class="divider"></span>
             <el-button link :type="row.status === 1 ? 'danger' : 'primary'" @click="toggleStatus(row)" class="btn-table-action">
               {{ row.status === 1 ? '禁用' : '启用' }}
@@ -642,7 +259,7 @@ onMounted(fetchData)
               <el-icon><Setting /></el-icon>
             </div>
             <div class="header-text">
-              <h3>应用端高级配置</h3>
+              <h3>客户端配置</h3>
               <div class="client-meta">
                 <span class="client-name">{{ selectedClient.clientName }}</span>
                 <span class="divider-dot"></span>
@@ -754,7 +371,7 @@ onMounted(fetchData)
                 <span class="field-hint-text">用户通过此客户端进行单点登录时，默认将账号鉴权指向该安全域空间。</span>
               </el-form-item>
 
-              <el-form-item label="默认登录入口 (default_entry_url)">
+              <el-form-item label="默认入口地址 (default_entry_url)">
                 <el-input v-model="selectedClient.defaultEntryUrl" placeholder="如: https://merchant.authsphere.com/login" />
                 <span class="field-hint-text">客户端的前端单点登录承载与默认重定向入口地址。</span>
               </el-form-item>
@@ -965,7 +582,7 @@ onMounted(fetchData)
                     :expand-on-click-node="false"
                     class="custom-el-tree"
                   >
-                    <template #default="{ node, data }">
+                    <template #default="{ data }">
                       <div class="custom-tree-node">
                         <div class="node-info">
                           <span class="node-icon"><el-icon><Document /></el-icon></span>
