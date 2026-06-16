@@ -40,6 +40,12 @@ public class AppClientResponse extends BaseDataBaseModel {
     private Integer clientType;
 
     /**
+     * 默认身份域 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long realmId;
+
+    /**
      * 身份域名称
      */
     private String realmName;
@@ -48,6 +54,39 @@ public class AppClientResponse extends BaseDataBaseModel {
      * 默认访问入口。
      */
     private String defaultEntryUrl;
+
+    /**
+     * 登录接入方式。
+     */
+    private String loginMode;
+
+    /**
+     * 客户自有登录页地址。
+     */
+    private String externalLoginUrl;
+
+    /**
+     * 登录回调地址。
+     */
+    private String loginCallbackUrl;
+
+    /**
+     * 覆盖身份域默认登录页的登录页 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long loginPageId;
+
+    /**
+     * 覆盖身份域默认认证策略的认证策略ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long authPolicyId;
+
+    /**
+     * 客户端绑定的 OSS 外部配置 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long ossConfigId;
 
     /**
      * ENABLED/DISABLED。

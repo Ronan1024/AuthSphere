@@ -32,6 +32,12 @@ export interface LoginPagePayload {
   pageSubtitle?: string
   logoUrl?: string
   backgroundUrl?: string
+  logoObjectKey?: string
+  backgroundObjectKey?: string
+  layoutMode?: string
+  themeConfigJson?: string
+  componentConfigJson?: string
+  microFrontendUrl?: string
   authMethods: string[]
   defaultAuthMethod: string
   showForgotPassword: boolean
@@ -61,6 +67,12 @@ export interface LoginPageRecord {
   pageSubtitle?: string
   logoUrl?: string
   backgroundUrl?: string
+  logoObjectKey?: string
+  backgroundObjectKey?: string
+  layoutMode?: string
+  themeConfigJson?: string
+  componentConfigJson?: string
+  microFrontendUrl?: string
   defaultAuthMethod?: string
   showForgotPassword?: boolean
   forgotPasswordUrl?: string
@@ -82,6 +94,12 @@ export interface LoginPagePreview {
   pageSubtitle?: string
   logoUrl?: string
   backgroundUrl?: string
+  logoObjectKey?: string
+  backgroundObjectKey?: string
+  layoutMode?: string
+  themeConfigJson?: string
+  componentConfigJson?: string
+  microFrontendUrl?: string
   authMethods: string[]
   defaultAuthMethod: string
   showForgotPassword: boolean

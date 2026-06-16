@@ -58,6 +58,36 @@ public class LoginPage extends BaseDataBaseModel {
     private String backgroundUrl;
 
     /**
+     * Logo OSS对象标识。
+     */
+    private String logoObjectKey;
+
+    /**
+     * 背景图 OSS对象标识。
+     */
+    private String backgroundObjectKey;
+
+    /**
+     * 页面布局模式。
+     */
+    private String layoutMode;
+
+    /**
+     * 主题配置 JSON。
+     */
+    private String themeConfigJson;
+
+    /**
+     * 组件展示配置 JSON。
+     */
+    private String componentConfigJson;
+
+    /**
+     * 微前端远程入口地址。
+     */
+    private String microFrontendUrl;
+
+    /**
      * 逗号分隔的登录方式编码。
      */
     private String authMethods;

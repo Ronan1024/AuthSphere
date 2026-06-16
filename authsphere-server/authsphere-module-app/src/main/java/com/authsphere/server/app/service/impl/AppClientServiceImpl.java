@@ -7,6 +7,7 @@ import com.authsphere.server.app.domain.AppDomain;
 import com.authsphere.server.app.dto.AppClientPageRequest;
 import com.authsphere.server.app.dto.AppClientRequest;
 import com.authsphere.server.app.dto.AppClientResponse;
+import com.authsphere.server.app.enums.AppClientLoginMode;
 import com.authsphere.server.app.enums.AppClientType;
 import com.authsphere.server.app.error.AppErrorCode;
 import com.authsphere.server.app.mapper.AppMapper;
@@ -19,6 +20,8 @@ import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.model.Realm;
+import com.authsphere.server.realm.service.LoginPageService;
+import com.authsphere.server.realm.service.AuthPolicyService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +54,8 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
     private final RealmDomain realmDomain;
     private final AppDomain appDomain;
     private final RealmApi realmApi;
+    private final LoginPageService loginPageService;
+    private final AuthPolicyService authPolicyService;
 
 
     /**
@@ -150,6 +155,7 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
         validateClientRequest(null, app, request);
         AppClient client = new AppClient();
         BeanUtils.copyProperties(request, client, "id");
+        normalizeLoginConfig(client, request);
         client.setAppId(app.getId());
         client.setAppCode(app.getAppCode());
         client.setClientSecret(resolveCreateClientSecret(request));
@@ -160,6 +166,7 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
         validateClientRequest(client.getId(), app, request);
         String originalClientSecret = client.getClientSecret();
         BeanUtils.copyProperties(request, client, "id", "appId", "appCode", "createTime", "updateTime");
+        normalizeLoginConfig(client, request);
         client.setAppCode(app.getAppCode());
         client.setClientSecret(resolveUpdateClientSecret(originalClientSecret, request));
         appClientMapper.updateById(client);
@@ -208,6 +215,16 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
         if (clientType == null) {
             throw new BizException(AppErrorCode.APP_CLIENT_DATA_ERROR);
         }
+        AppClientLoginMode loginMode = resolveLoginMode(clientType, request);
+        if (loginMode == null) {
+            throw new BizException(AppErrorCode.APP_CLIENT_DATA_ERROR);
+        }
+        if (loginMode == AppClientLoginMode.IAM_HOSTED && request.getLoginPageId() != null) {
+            loginPageService.validateEnabled(request.getLoginPageId());
+        }
+        if (request.getAuthPolicyId() != null) {
+            authPolicyService.validateEnabled(request.getAuthPolicyId());
+        }
 //        if (request.getDefaultRealmId() != null) {
 //            validateRealm(request.getDefaultRealmId());
 //        }
@@ -218,6 +235,29 @@ public class AppClientServiceImpl extends ServiceImpl<AppClientMapper, AppClient
                 .ne(currentId != null, AppClient::getId, currentId));
         if (count > 0) {
             throw new BizException(AppErrorCode.APP_CLIENT_ID_EXISTS);
+        }
+    }
+
+    private AppClientLoginMode resolveLoginMode(AppClientType clientType, AppClientRequest request) {
+        AppClientLoginMode loginMode = AppClientLoginMode.of(request.getLoginMode());
+        if (loginMode == null) {
+            return null;
+        }
+        if (clientType == AppClientType.OPEN_API || clientType == AppClientType.SERVICE) {
+            return AppClientLoginMode.SERVICE;
+        }
+        return loginMode;
+    }
+
+    private void normalizeLoginConfig(AppClient client, AppClientRequest request) {
+        AppClientType clientType = AppClientType.of(request.getClientType());
+        AppClientLoginMode loginMode = resolveLoginMode(clientType, request);
+        client.setLoginMode(loginMode.name());
+        if (loginMode != AppClientLoginMode.IAM_HOSTED) {
+            client.setLoginPageId(null);
+        }
+        if (loginMode != AppClientLoginMode.EXTERNAL_REDIRECT) {
+            client.setExternalLoginUrl(null);
         }
     }
 

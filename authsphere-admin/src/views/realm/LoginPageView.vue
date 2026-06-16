@@ -29,6 +29,12 @@ const editForm = reactive({
   pageSubtitle: '',
   logoUrl: '',
   backgroundUrl: '',
+  logoObjectKey: '',
+  backgroundObjectKey: '',
+  layoutMode: 'CENTER_CARD',
+  themeConfigJson: '',
+  componentConfigJson: '',
+  microFrontendUrl: '',
   authMethods: [] as string[],
   defaultAuthMethod: 'password',
   showForgotPassword: true,
@@ -71,7 +77,7 @@ const realmTypeOptions = ref<{ label: string, value: string | number }[]>([])
 const realmTypeOptionsLoading = ref(false)
 
 /**
- * 加载启用状态的身份域类型，登录页适用范围必须使用后端维护的身份域类型数据。
+ * 加载启用状态的身份域类型，登录入口模板适用范围必须使用后端维护的身份域类型数据。
  */
 const loadRealmTypeOptions = async () => {
   realmTypeOptionsLoading.value = true
@@ -103,7 +109,7 @@ const loadData = async () => {
     loginPages.value = res.records
     total.value = res.total
   } catch (e: any) {
-    ElMessage.error(e?.message || '加载登录页列表失败')
+    ElMessage.error(e?.message || '加载登录入口模板列表失败')
   } finally {
     listLoading.value = false
   }
@@ -177,6 +183,12 @@ const addForm = reactive({
   pageSubtitle: '',
   logoUrl: '',
   bgUrl: '',
+  logoObjectKey: '',
+  backgroundObjectKey: '',
+  layoutMode: 'CENTER_CARD',
+  themeConfigJson: '',
+  componentConfigJson: '',
+  microFrontendUrl: '',
   redirectUrl: '',
   authMethods: ['password'] as string[],
   defaultAuthMethod: 'password',
@@ -208,6 +220,12 @@ const openCreateView = () => {
     pageSubtitle: '',
     logoUrl: '',
     bgUrl: '',
+    logoObjectKey: '',
+    backgroundObjectKey: '',
+    layoutMode: 'CENTER_CARD',
+    themeConfigJson: '',
+    componentConfigJson: '',
+    microFrontendUrl: '',
     redirectUrl: '',
     authMethods: ['password'],
     defaultAuthMethod: 'password',
@@ -229,7 +247,7 @@ const openDetail = async (row: LoginPageRecord) => {
     isDetailEditing.value = false
     currentView.value = 'detail'
   } catch (e: any) {
-    ElMessage.error(e?.message || '获取登录页详情失败')
+    ElMessage.error(e?.message || '获取登录入口模板详情失败')
   }
 }
 
@@ -247,6 +265,12 @@ const startDetailEdit = async (row: LoginPageRecord) => {
       pageSubtitle: detail.pageSubtitle || '',
       logoUrl: detail.logoUrl || '',
       backgroundUrl: detail.backgroundUrl || '',
+      logoObjectKey: detail.logoObjectKey || '',
+      backgroundObjectKey: detail.backgroundObjectKey || '',
+      layoutMode: detail.layoutMode || 'CENTER_CARD',
+      themeConfigJson: detail.themeConfigJson || '',
+      componentConfigJson: detail.componentConfigJson || '',
+      microFrontendUrl: detail.microFrontendUrl || '',
       authMethods: detail.authMethod?.map(m => m.description || m.id) || ['password'],
       defaultAuthMethod: detail.defaultAuthMethod || 'password',
       showForgotPassword: detail.showForgotPassword ?? true,
@@ -263,7 +287,7 @@ const startDetailEdit = async (row: LoginPageRecord) => {
     })
     isDetailEditing.value = true
   } catch (e: any) {
-    ElMessage.error(e?.message || '获取登录页详情失败')
+    ElMessage.error(e?.message || '获取登录入口模板详情失败')
   }
 }
 
@@ -279,7 +303,7 @@ const openCopyView = async (row: LoginPageRecord) => {
     })
     currentView.value = 'copy'
   } catch (e: any) {
-    ElMessage.error(e?.message || '获取登录页详情失败')
+    ElMessage.error(e?.message || '获取登录入口模板详情失败')
   }
 }
 
@@ -289,14 +313,14 @@ const handleDisableOrDelete = async (row: LoginPageRecord, action: 'disable' | '
     isDeleteModalOpen.value = true
   } else {
     const actionName = action === 'disable' ? '禁用' : '删除'
-    ElMessageBox.confirm(`确认${actionName}该登录页？`, '提示', { type: 'warning' }).then(async () => {
+    ElMessageBox.confirm(`确认${actionName}该登录入口模板？`, '提示', { type: 'warning' }).then(async () => {
       try {
         if (action === 'disable') {
           await loginPageApi.disable(row.id)
-          ElMessage.success('登录页已禁用')
+          ElMessage.success('登录入口模板已禁用')
         } else {
           await loginPageApi.delete(row.id)
-          ElMessage.success('登录页已删除')
+          ElMessage.success('登录入口模板已删除')
         }
         loadData()
       } catch (e: any) {
@@ -308,7 +332,7 @@ const handleDisableOrDelete = async (row: LoginPageRecord, action: 'disable' | '
 
 const submitCreateForm = async () => {
   if (!addForm.name.trim() || !addForm.code.trim() || !addForm.pageTitle.trim()) {
-    ElMessage.error('请填写登录页名称、编码和页面标题')
+    ElMessage.error('请填写登录入口模板名称、编码和页面标题')
     return
   }
   if (!addForm.authMethods.length) {
@@ -338,6 +362,12 @@ const submitCreateForm = async () => {
       pageSubtitle: addForm.pageSubtitle || '统一登录入口，请完成身份认证',
       logoUrl: addForm.logoUrl,
       backgroundUrl: addForm.bgUrl,
+      logoObjectKey: addForm.logoObjectKey,
+      backgroundObjectKey: addForm.backgroundObjectKey,
+      layoutMode: addForm.layoutMode,
+      themeConfigJson: addForm.themeConfigJson,
+      componentConfigJson: addForm.componentConfigJson,
+      microFrontendUrl: addForm.microFrontendUrl,
       successRedirectUrl: addForm.redirectUrl,
       authMethods: addForm.authMethods,
       defaultAuthMethod: addForm.defaultAuthMethod,
@@ -351,11 +381,11 @@ const submitCreateForm = async () => {
       description: addForm.description
     }
     await loginPageApi.create(payload)
-    ElMessage.success('新增登录页成功')
+    ElMessage.success('新增登录入口模板成功')
     currentView.value = 'list'
     loadData()
   } catch (e: any) {
-    ElMessage.error(e?.message || '新增登录页失败')
+    ElMessage.error(e?.message || '新增登录入口模板失败')
   } finally {
     saveLoading.value = false
   }
@@ -378,6 +408,12 @@ const submitCopyForm = async () => {
       pageSubtitle: pageToCopy.value.pageSubtitle || '统一登录入口，请完成身份认证',
       logoUrl: pageToCopy.value.logoUrl || '',
       backgroundUrl: pageToCopy.value.backgroundUrl || '',
+      logoObjectKey: pageToCopy.value.logoObjectKey || '',
+      backgroundObjectKey: pageToCopy.value.backgroundObjectKey || '',
+      layoutMode: pageToCopy.value.layoutMode || 'CENTER_CARD',
+      themeConfigJson: pageToCopy.value.themeConfigJson || '',
+      componentConfigJson: pageToCopy.value.componentConfigJson || '',
+      microFrontendUrl: pageToCopy.value.microFrontendUrl || '',
       successRedirectUrl: pageToCopy.value.successRedirectUrl || '',
       authMethods: pageToCopy.value.authMethod?.map(m => m.description || m.id) || ['password'],
       defaultAuthMethod: pageToCopy.value.defaultAuthMethod || 'password',
@@ -403,7 +439,7 @@ const submitCopyForm = async () => {
 
 const saveDetailEdit = async () => {
   if (!editForm.name.trim() || !editForm.pageTitle.trim()) {
-    ElMessage.error('请填写登录页名称和页面标题')
+    ElMessage.error('请填写登录入口模板名称和页面标题')
     return
   }
   if (!editForm.authMethods.length) {
@@ -432,6 +468,12 @@ const saveDetailEdit = async () => {
       pageSubtitle: editForm.pageSubtitle,
       logoUrl: editForm.logoUrl,
       backgroundUrl: editForm.backgroundUrl,
+      logoObjectKey: editForm.logoObjectKey,
+      backgroundObjectKey: editForm.backgroundObjectKey,
+      layoutMode: editForm.layoutMode,
+      themeConfigJson: editForm.themeConfigJson,
+      componentConfigJson: editForm.componentConfigJson,
+      microFrontendUrl: editForm.microFrontendUrl,
       authMethods: editForm.authMethods,
       defaultAuthMethod: editForm.defaultAuthMethod,
       showForgotPassword: editForm.showForgotPassword,
@@ -474,12 +516,12 @@ onMounted(() => {
     <div v-if="currentView === 'list'" class="list-layout">
       <div class="view-header">
         <div class="title-wrap">
-          <h1>登录页管理</h1>
-          <p>维护身份域或客户端未登录时展示的登录入口页面。</p>
+          <h1>登录入口模板</h1>
+          <p>维护客户端登录入口使用的页面模板，身份域只提供默认认证与 SSO 规则。</p>
         </div>
         <div class="action-buttons">
           <el-button :icon="Refresh" @click="loadData" :loading="listLoading">刷新</el-button>
-          <el-button type="primary" :icon="Plus" @click="openCreateView">新增登录页</el-button>
+          <el-button type="primary" :icon="Plus" @click="openCreateView">新增入口模板</el-button>
         </div>
       </div>
 
@@ -487,11 +529,11 @@ onMounted(() => {
       <el-card shadow="never" class="filter-card">
         <div class="filter-flex-row">
           <div class="filter-item">
-            <label>登录页名称</label>
+            <label>模板名称</label>
             <el-input v-model="query.name" placeholder="请输入名称" clearable />
           </div>
           <div class="filter-item">
-            <label>登录页编码</label>
+            <label>模板编码</label>
             <el-input v-model="query.code" placeholder="请输入编码" clearable />
           </div>
           <div class="filter-item">
@@ -529,17 +571,17 @@ onMounted(() => {
       <!-- Main Table -->
       <el-card shadow="never" class="table-card">
         <div class="card-header-title">
-          <h3>登录页列表</h3>
-          <p>列表只展示识别、适用范围、登录方式、引用和状态。</p>
+          <h3>登录入口模板列表</h3>
+          <p>列表只展示模板标识、适用身份域类型、认证方式、客户端引用和状态。</p>
         </div>
 
         <el-table v-loading="listLoading" :data="loginPages" class="premium-table">
-          <el-table-column prop="name" label="登录页名称" min-width="160">
+          <el-table-column prop="name" label="模板名称" min-width="160">
             <template #default="{ row }">
               <span class="name-text-detail" @click="openDetail(row)">{{ row.name }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="code" label="登录页编码" min-width="140" />
+          <el-table-column prop="code" label="模板编码" min-width="140" />
           <el-table-column label="适用域类型" min-width="140">
             <template #default="{ row }">
               {{ row.applicableRealmTypeName || '通用' }}
@@ -550,11 +592,16 @@ onMounted(() => {
               {{ getAuthText(row.authMethod) }}
             </template>
           </el-table-column>
-          <el-table-column label="默认" width="90" align="center">
+          <el-table-column label="默认模板" width="100" align="center">
             <template #default="{ row }">
               <span class="badge" :class="row.defaultPage ? 'blue' : 'gray'">
                 {{ row.defaultPage ? '默认' : '普通' }}
               </span>
+            </template>
+          </el-table-column>
+          <el-table-column label="客户端引用" width="110" align="center">
+            <template #default="{ row }">
+              {{ row.clientReferenceCount ?? row.referenceCount ?? 0 }}
             </template>
           </el-table-column>
           <el-table-column label="状态" width="100" align="center">
@@ -574,9 +621,9 @@ onMounted(() => {
                   <span class="link-more-btn">更多 <el-icon><ArrowDown /></el-icon></span>
                   <template #dropdown>
                     <el-dropdown-menu>
-                      <el-dropdown-item @click="openCopyView(row)">复制配置</el-dropdown-item>
-                      <el-dropdown-item @click="handleDisableOrDelete(row, 'disable')" :disabled="row.status === 2">禁用页面</el-dropdown-item>
-                      <el-dropdown-item @click="handleDisableOrDelete(row, 'delete')" class="danger-item">删除页面</el-dropdown-item>
+                      <el-dropdown-item @click="openCopyView(row)">复制模板</el-dropdown-item>
+                      <el-dropdown-item @click="handleDisableOrDelete(row, 'disable')" :disabled="row.status === 2">禁用模板</el-dropdown-item>
+                      <el-dropdown-item @click="handleDisableOrDelete(row, 'delete')" class="danger-item">删除模板</el-dropdown-item>
                     </el-dropdown-menu>
                   </template>
                 </el-dropdown>
@@ -604,7 +651,7 @@ onMounted(() => {
       <div class="view-header">
         <div class="header-back-wrap" @click="currentView = 'list'">
           <el-icon class="back-icon"><ArrowLeft /></el-icon>
-          <h2>新增登录页</h2>
+          <h2>新增登录入口模板</h2>
         </div>
         <div class="action-buttons">
           <el-button @click="currentView = 'list'">取消</el-button>
@@ -615,15 +662,15 @@ onMounted(() => {
       <div class="detail-inline-editor create-inline-editor">
         <section class="drawer-form-section">
           <div class="drawer-section-title">基础信息</div>
-          <p class="edit-section-description">配置登录页标识、适用范围和启用状态，登录页编码保存后不可修改。</p>
+          <p class="edit-section-description">配置模板标识、适用范围和启用状态，模板编码保存后不可修改。</p>
           <div class="drawer-form-grid">
             <div class="form-item-mock">
-              <label>登录页名称 *</label>
-              <el-input v-model="addForm.name" placeholder="请输入登录页名称" maxlength="128" show-word-limit />
+              <label>模板名称 *</label>
+              <el-input v-model="addForm.name" placeholder="请输入登录入口模板名称" maxlength="128" show-word-limit />
             </div>
             <div class="form-item-mock">
-              <label>登录页编码 *</label>
-              <el-input v-model="addForm.code" placeholder="请输入登录页编码" maxlength="64" show-word-limit />
+              <label>模板编码 *</label>
+              <el-input v-model="addForm.code" placeholder="请输入登录入口模板编码" maxlength="64" show-word-limit />
             </div>
             <div class="form-item-mock drawer-grid-full">
               <div class="drawer-label-line">
@@ -654,7 +701,7 @@ onMounted(() => {
               </el-select>
             </div>
             <div class="form-item-mock">
-              <label>默认登录页</label>
+              <label>默认入口模板</label>
               <el-switch v-model="addForm.defaultPage" />
             </div>
           </div>
@@ -682,8 +729,51 @@ onMounted(() => {
                 <el-input v-model="addForm.bgUrl" placeholder="可选，不配置则使用系统默认背景" clearable />
               </div>
               <div class="form-item-mock">
+                <label>Logo OSS 对象 Key</label>
+                <el-input v-model="addForm.logoObjectKey" placeholder="如：clients/mall/logo.png" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>背景 OSS 对象 Key</label>
+                <el-input v-model="addForm.backgroundObjectKey" placeholder="如：clients/mall/login-bg.png" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>布局模式</label>
+                <el-select v-model="addForm.layoutMode" style="width: 100%">
+                  <el-option label="居中卡片" value="CENTER_CARD" />
+                  <el-option label="左右分栏" value="SPLIT_PANEL" />
+                  <el-option label="全屏沉浸" value="FULLSCREEN" />
+                </el-select>
+              </div>
+              <div class="form-item-mock">
+                <label>微前端入口</label>
+                <el-input v-model="addForm.microFrontendUrl" placeholder="如：https://cdn.example.com/login/remoteEntry.js" clearable />
+              </div>
+              <div class="form-item-mock">
                 <label>登录成功跳转地址</label>
                 <el-input v-model="addForm.redirectUrl" placeholder="默认返回来源客户端" clearable />
+              </div>
+              <div class="form-item-mock drawer-grid-full">
+                <label>主题配置 JSON</label>
+                <el-input v-model="addForm.themeConfigJson" type="textarea" :rows="3" placeholder='如：{"primaryColor":"#2563EB","backgroundMode":"image"}' />
+              </div>
+              <div class="form-item-mock drawer-grid-full">
+                <label>组件展示配置 JSON</label>
+                <el-input v-model="addForm.componentConfigJson" type="textarea" :rows="3" placeholder='如：{"logoStyle":"compact","showLanguageSwitch":true}' />
+              </div>
+              <div class="form-item-mock">
+                <label>页面辅助入口</label>
+                <div class="checkbox-list" style="display: flex; gap: 16px; margin-bottom: 8px;">
+                  <el-checkbox v-model="addForm.showForgotPassword">显示忘记密码</el-checkbox>
+                  <el-checkbox v-model="addForm.showRegister">显示注册入口</el-checkbox>
+                </div>
+              </div>
+              <div v-if="addForm.showForgotPassword" class="form-item-mock">
+                <label>忘记密码跳转地址 *</label>
+                <el-input v-model="addForm.forgotPasswordUrl" placeholder="如：/forgot-password" clearable />
+              </div>
+              <div v-if="addForm.showRegister" class="form-item-mock">
+                <label>注册入口跳转地址 *</label>
+                <el-input v-model="addForm.registerUrl" placeholder="如：/register" clearable />
               </div>
             </div>
 
@@ -698,11 +788,11 @@ onMounted(() => {
               <div class="live-simulator">
                 <div class="login-preview-panel edit-preview-panel">
                   <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(addForm.bgUrl)">
-                    <img v-if="addForm.logoUrl" :src="addForm.logoUrl" alt="登录页 Logo 预览" class="preview-logo" />
+                    <img v-if="addForm.logoUrl" :src="addForm.logoUrl" alt="登录入口模板 Logo 预览" class="preview-logo" />
                     <div v-else class="preview-logo-placeholder"><el-icon><View /></el-icon></div>
-                    <h3>{{ addForm.pageTitle || '登录页标题' }}</h3>
+                    <h3>{{ addForm.pageTitle || '入口模板标题' }}</h3>
                     <p>{{ addForm.pageSubtitle || '请输入页面副标题' }}</p>
-                    <span class="center-brand-logo">{{ addForm.name || '登录页名称' }}</span>
+                    <span class="center-brand-logo">{{ addForm.name || '模板名称' }}</span>
                   </div>
                   <div class="login-panel-right">
                     <div class="portal-login-box">
@@ -715,14 +805,13 @@ onMounted(() => {
                       <div class="portal-footer-links">
                         <span v-if="addForm.showForgotPassword" class="footer-link" :title="addForm.forgotPasswordUrl">忘记密码？</span>
                         <span v-if="addForm.showRegister" class="footer-link" :title="addForm.registerUrl">立即注册</span>
-                        <span v-if="addForm.showThirdPartyLogin" class="footer-link">第三方登录</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="preview-redirect-hint">
-                登录成功跳转：<span>{{ addForm.redirectUrl || '未配置' }}</span>
+                登录成功跳转：<span>{{ addForm.redirectUrl || '默认返回来源客户端' }}</span>
               </div>
             </div>
           </div>
@@ -730,7 +819,7 @@ onMounted(() => {
 
         <section class="drawer-form-section">
           <div class="drawer-section-title">认证与交互</div>
-          <p class="edit-section-description">配置支持的认证方式、默认登录方式和辅助入口。</p>
+          <p class="edit-section-description">配置支持的认证方式、默认登录方式。</p>
           <div class="form-item-mock">
             <label>支持的登录方式 *</label>
             <el-checkbox-group v-model="addForm.authMethods" class="drawer-checkbox-grid">
@@ -738,7 +827,6 @@ onMounted(() => {
               <el-checkbox label="sms">短信验证码</el-checkbox>
               <el-checkbox label="email">邮箱验证码</el-checkbox>
               <el-checkbox label="qr">扫码登录</el-checkbox>
-              <el-checkbox label="third_party">第三方登录</el-checkbox>
               <el-checkbox label="mfa">MFA 认证</el-checkbox>
             </el-checkbox-group>
           </div>
@@ -763,24 +851,6 @@ onMounted(() => {
               </el-select>
             </div>
           </div>
-          <div class="form-item-mock">
-            <label>辅助入口选项</label>
-            <div class="checkbox-list">
-              <el-checkbox v-model="addForm.showForgotPassword">显示忘记密码</el-checkbox>
-              <el-checkbox v-model="addForm.showRegister">显示注册入口</el-checkbox>
-              <el-checkbox v-model="addForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
-            </div>
-          </div>
-          <div class="drawer-form-grid auxiliary-url-grid">
-            <div v-if="addForm.showForgotPassword" class="form-item-mock">
-              <label>忘记密码跳转地址 *</label>
-              <el-input v-model="addForm.forgotPasswordUrl" placeholder="如：/forgot-password" clearable />
-            </div>
-            <div v-if="addForm.showRegister" class="form-item-mock">
-              <label>注册入口跳转地址 *</label>
-              <el-input v-model="addForm.registerUrl" placeholder="如：/register" clearable />
-            </div>
-          </div>
         </section>
 
         <section class="drawer-form-section">
@@ -798,7 +868,7 @@ onMounted(() => {
       <div class="view-header">
         <div class="header-back-wrap" @click="currentView = 'list'">
           <el-icon class="back-icon"><ArrowLeft /></el-icon>
-          <h2>复制登录页</h2>
+          <h2>复制登录入口模板</h2>
         </div>
         <div class="action-buttons">
           <el-button @click="currentView = 'list'">取消</el-button>
@@ -809,24 +879,24 @@ onMounted(() => {
       <el-card shadow="never" class="form-card-box">
         <div class="card-header-title">
           <h3>从 “{{ pageToCopy?.name }}” 复制</h3>
-          <p>基于已有模板快速创建新页面。复制后的副本默认处于禁用状态，避免生产环境误引用。</p>
+          <p>基于已有模板快速创建新的登录入口模板。复制后的副本默认处于禁用状态，避免生产环境误引用。</p>
         </div>
 
         <div class="form-body-container">
           <div class="copy-alert-box">
             <el-icon class="alert-icon"><Warning /></el-icon>
-            <span>复制后的默认状态为禁用。确认配置无误后，再手动启用并绑定到对应身份域。</span>
+            <span>复制后的默认状态为禁用。确认配置无误后，再手动启用并绑定到对应应用客户端。</span>
           </div>
 
           <div class="divider-line"></div>
 
           <div class="grid-row-3">
             <div class="form-item-mock">
-              <label>新登录页名称 *</label>
+              <label>新模板名称 *</label>
               <el-input v-model="copyForm.name" />
             </div>
             <div class="form-item-mock">
-              <label>新登录页编码 *</label>
+              <label>新模板编码 *</label>
               <el-input v-model="copyForm.code" />
             </div>
             <div class="form-item-mock">
@@ -898,7 +968,7 @@ onMounted(() => {
       <div class="view-header">
         <div class="header-back-wrap" @click="isDetailEditing ? isDetailEditing = false : currentView = 'list'">
           <el-icon class="back-icon"><ArrowLeft /></el-icon>
-          <h2>{{ isDetailEditing ? '编辑登录页' : selectedPage?.name }}</h2>
+          <h2>{{ isDetailEditing ? '编辑登录入口模板' : selectedPage?.name }}</h2>
         </div>
         <div class="action-buttons">
           <template v-if="isDetailEditing">
@@ -916,8 +986,8 @@ onMounted(() => {
         <div v-if="editForm.referencesCount > 0" class="drawer-referenced-alert">
           <el-icon class="warning-icon"><Warning /></el-icon>
           <p>
-            <strong>联动提示：</strong>该页面已被 <strong>{{ editForm.referencesCount }}</strong>
-            个对象引用，修改后可能影响现有登录入口。
+            <strong>联动提示：</strong>该模板已被 <strong>{{ editForm.referencesCount }}</strong>
+            个客户端引用，修改后可能影响现有登录入口。
           </p>
         </div>
 
@@ -925,13 +995,13 @@ onMounted(() => {
           <div class="drawer-section-title">基础信息</div>
           <div class="drawer-form-grid">
             <div class="form-item-mock">
-              <label>登录页名称 *</label>
+              <label>模板名称 *</label>
               <el-input v-model="editForm.name" />
             </div>
             <div class="form-item-mock">
-              <label>登录页编码</label>
+              <label>模板编码</label>
               <el-input v-model="editForm.code" disabled class="disabled-field" />
-              <div class="hint-msg">登录页编码不可修改。</div>
+              <div class="hint-msg">模板编码不可修改。</div>
             </div>
             <div class="form-item-mock drawer-grid-full">
               <div class="drawer-label-line">
@@ -962,7 +1032,7 @@ onMounted(() => {
               </el-select>
             </div>
             <div class="form-item-mock">
-              <label>默认登录页</label>
+              <label>默认入口模板</label>
               <el-switch v-model="editForm.defaultPage" />
             </div>
           </div>
@@ -990,8 +1060,51 @@ onMounted(() => {
                 <el-input v-model="editForm.backgroundUrl" clearable />
               </div>
               <div class="form-item-mock">
+                <label>Logo OSS 对象 Key</label>
+                <el-input v-model="editForm.logoObjectKey" placeholder="如：clients/mall/logo.png" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>背景 OSS 对象 Key</label>
+                <el-input v-model="editForm.backgroundObjectKey" placeholder="如：clients/mall/login-bg.png" clearable />
+              </div>
+              <div class="form-item-mock">
+                <label>布局模式</label>
+                <el-select v-model="editForm.layoutMode" style="width: 100%">
+                  <el-option label="居中卡片" value="CENTER_CARD" />
+                  <el-option label="左右分栏" value="SPLIT_PANEL" />
+                  <el-option label="全屏沉浸" value="FULLSCREEN" />
+                </el-select>
+              </div>
+              <div class="form-item-mock">
+                <label>微前端入口</label>
+                <el-input v-model="editForm.microFrontendUrl" placeholder="如：https://cdn.example.com/login/remoteEntry.js" clearable />
+              </div>
+              <div class="form-item-mock">
                 <label>登录成功跳转地址</label>
                 <el-input v-model="editForm.successRedirectUrl" clearable />
+              </div>
+              <div class="form-item-mock drawer-grid-full">
+                <label>主题配置 JSON</label>
+                <el-input v-model="editForm.themeConfigJson" type="textarea" :rows="3" placeholder='如：{"primaryColor":"#2563EB","backgroundMode":"image"}' />
+              </div>
+              <div class="form-item-mock drawer-grid-full">
+                <label>组件展示配置 JSON</label>
+                <el-input v-model="editForm.componentConfigJson" type="textarea" :rows="3" placeholder='如：{"logoStyle":"compact","showLanguageSwitch":true}' />
+              </div>
+              <div class="form-item-mock">
+                <label>页面辅助入口</label>
+                <div class="checkbox-list" style="display: flex; gap: 16px; margin-bottom: 8px;">
+                  <el-checkbox v-model="editForm.showForgotPassword">显示忘记密码</el-checkbox>
+                  <el-checkbox v-model="editForm.showRegister">显示注册入口</el-checkbox>
+                </div>
+              </div>
+              <div v-if="editForm.showForgotPassword" class="form-item-mock">
+                <label>忘记密码跳转地址 *</label>
+                <el-input v-model="editForm.forgotPasswordUrl" placeholder="如: /forgot-password" clearable />
+              </div>
+              <div v-if="editForm.showRegister" class="form-item-mock">
+                <label>注册入口跳转地址 *</label>
+                <el-input v-model="editForm.registerUrl" placeholder="如: /register" clearable />
               </div>
             </div>
 
@@ -1008,11 +1121,11 @@ onMounted(() => {
                   class="login-preview-panel edit-preview-panel"
                 >
                   <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(editForm.backgroundUrl)">
-                    <img v-if="editForm.logoUrl" :src="editForm.logoUrl" alt="登录页 Logo 预览" class="preview-logo" />
+                    <img v-if="editForm.logoUrl" :src="editForm.logoUrl" alt="登录入口模板 Logo 预览" class="preview-logo" />
                     <div v-else class="preview-logo-placeholder"><el-icon><View /></el-icon></div>
-                    <h3>{{ editForm.pageTitle || '登录页标题' }}</h3>
+                    <h3>{{ editForm.pageTitle || '入口模板标题' }}</h3>
                     <p>{{ editForm.pageSubtitle || '请输入页面副标题' }}</p>
-                    <span class="center-brand-logo">{{ editForm.name || '登录页名称' }}</span>
+                    <span class="center-brand-logo">{{ editForm.name || '模板名称' }}</span>
                   </div>
                   <div class="login-panel-right">
                     <div class="portal-login-box">
@@ -1025,14 +1138,13 @@ onMounted(() => {
                       <div class="portal-footer-links">
                         <span v-if="editForm.showForgotPassword" class="footer-link" :title="editForm.forgotPasswordUrl">忘记密码？</span>
                         <span v-if="editForm.showRegister" class="footer-link" :title="editForm.registerUrl">立即注册</span>
-                        <span v-if="editForm.showThirdPartyLogin" class="footer-link">第三方登录</span>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
               <div class="preview-redirect-hint">
-                登录成功跳转：<span>{{ editForm.successRedirectUrl || '未配置' }}</span>
+                登录成功跳转：<span>{{ editForm.successRedirectUrl || '默认返回来源客户端' }}</span>
               </div>
             </div>
           </div>
@@ -1047,7 +1159,6 @@ onMounted(() => {
               <el-checkbox label="sms">短信验证码</el-checkbox>
               <el-checkbox label="email">邮箱验证码</el-checkbox>
               <el-checkbox label="qr">扫码登录</el-checkbox>
-              <el-checkbox label="third_party">第三方登录</el-checkbox>
               <el-checkbox label="mfa">MFA 认证</el-checkbox>
             </el-checkbox-group>
           </div>
@@ -1072,24 +1183,6 @@ onMounted(() => {
               </el-select>
             </div>
           </div>
-          <div class="form-item-mock">
-            <label>辅助入口选项</label>
-            <div class="checkbox-list">
-              <el-checkbox v-model="editForm.showForgotPassword">显示忘记密码</el-checkbox>
-              <el-checkbox v-model="editForm.showRegister">显示注册入口</el-checkbox>
-              <el-checkbox v-model="editForm.showThirdPartyLogin">显示第三方登录</el-checkbox>
-            </div>
-          </div>
-          <div class="drawer-form-grid auxiliary-url-grid">
-            <div v-if="editForm.showForgotPassword" class="form-item-mock">
-              <label>忘记密码跳转地址 *</label>
-              <el-input v-model="editForm.forgotPasswordUrl" placeholder="如: /forgot-password" clearable />
-            </div>
-            <div v-if="editForm.showRegister" class="form-item-mock">
-              <label>注册入口跳转地址 *</label>
-              <el-input v-model="editForm.registerUrl" placeholder="如: /register" clearable />
-            </div>
-          </div>
         </section>
 
         <section class="drawer-form-section">
@@ -1109,22 +1202,21 @@ onMounted(() => {
               <h3>{{ selectedPage?.name }}</h3>
               <span class="hero-code">{{ selectedPage?.code }}</span>
             </div>
-            <p class="hero-subtitle">{{ selectedPage?.description || '暂无登录页备注' }}</p>
+            <p class="hero-subtitle">{{ selectedPage?.description || '暂无登录入口模板备注' }}</p>
             <div class="hero-badges">
               <span class="badge" :class="selectedPage?.status === 1 ? 'green' : 'red'">
                 {{ selectedPage?.status === 1 ? '启用' : '禁用' }}
               </span>
               <span class="badge" :class="selectedPage?.defaultPage ? 'blue' : 'gray'">
-                {{ selectedPage?.defaultPage ? '默认登录页' : '普通登录页' }}
+                {{ selectedPage?.defaultPage ? '默认入口模板' : '普通入口模板' }}
               </span>
               <span class="badge gray">{{ selectedPage?.systemBuiltin ? '系统内置' : '自定义' }}</span>
             </div>
           </div>
         </div>
         <div class="detail-summary-stats">
+          <div class="summary-stat"><strong>{{ selectedPage?.clientReferenceCount ?? selectedPage?.referenceCount ?? 0 }}</strong><span>客户端引用</span></div>
           <div class="summary-stat"><strong>{{ selectedPage?.referenceCount ?? 0 }}</strong><span>引用总数</span></div>
-          <div class="summary-stat"><strong>{{ selectedPage?.realmReferenceCount ?? 0 }}</strong><span>身份域引用</span></div>
-          <div class="summary-stat"><strong>{{ selectedPage?.clientReferenceCount ?? 0 }}</strong><span>客户端引用</span></div>
         </div>
       </section>
 
@@ -1139,7 +1231,7 @@ onMounted(() => {
               class="login-preview-panel"
             >
               <div class="login-panel-left preview-overlay" :style="getPreviewBackgroundStyle(selectedPage?.backgroundUrl)">
-                <img v-if="selectedPage?.logoUrl" :src="selectedPage.logoUrl" alt="登录页 Logo" class="preview-logo" />
+                <img v-if="selectedPage?.logoUrl" :src="selectedPage.logoUrl" alt="登录入口模板 Logo" class="preview-logo" />
                 <h3>{{ selectedPage?.pageTitle }}</h3>
                 <p>{{ selectedPage?.pageSubtitle }}</p>
                 <span class="center-brand-logo">{{ selectedPage?.name }}</span>
@@ -1158,7 +1250,6 @@ onMounted(() => {
                   <div class="portal-footer-links">
                     <span v-if="selectedPage?.showForgotPassword" class="footer-link" :title="selectedPage?.forgotPasswordUrl">忘记密码？</span>
                     <span v-if="selectedPage?.showRegister" class="footer-link" :title="selectedPage?.registerUrl">立即注册</span>
-                    <span v-if="selectedPage?.showThirdPartyLogin" class="footer-link">第三方登录</span>
                   </div>
                 </div>
               </div>
@@ -1169,16 +1260,16 @@ onMounted(() => {
         <section class="pane-card-box">
           <div class="pane-header">
             <h4>基础信息</h4>
-            <p>登录页标识、适用范围和系统维护属性。</p>
+            <p>模板标识、适用范围和系统维护属性。</p>
           </div>
           <div class="metadata-table">
-            <div class="meta-row"><span class="lbl">登录页 ID</span><span class="val mono-value">{{ getDisplayText(selectedPage?.id) }}</span></div>
-            <div class="meta-row"><span class="lbl">登录页编码</span><span class="val mono-value">{{ getDisplayText(selectedPage?.code) }}</span></div>
-            <div class="meta-row"><span class="lbl">登录页名称</span><span class="val">{{ getDisplayText(selectedPage?.name) }}</span></div>
+            <div class="meta-row"><span class="lbl">模板 ID</span><span class="val mono-value">{{ getDisplayText(selectedPage?.id) }}</span></div>
+            <div class="meta-row"><span class="lbl">模板编码</span><span class="val mono-value">{{ getDisplayText(selectedPage?.code) }}</span></div>
+            <div class="meta-row"><span class="lbl">模板名称</span><span class="val">{{ getDisplayText(selectedPage?.name) }}</span></div>
             <div class="meta-row"><span class="lbl">身份域类型</span><span class="val">{{ selectedPage?.applicableRealmTypeName || '通用' }}</span></div>
             <div class="meta-row"><span class="lbl">身份域类型 ID</span><span class="val mono-value">{{ getDisplayText(selectedPage?.applicableRealmTypeId) }}</span></div>
             <div class="meta-row"><span class="lbl">状态</span><span class="val">{{ selectedPage?.status === 1 ? '启用' : '禁用' }}</span></div>
-            <div class="meta-row"><span class="lbl">默认登录页</span><span class="val">{{ getBooleanText(selectedPage?.defaultPage) }}</span></div>
+            <div class="meta-row"><span class="lbl">默认入口模板</span><span class="val">{{ getBooleanText(selectedPage?.defaultPage) }}</span></div>
             <div class="meta-row"><span class="lbl">系统内置</span><span class="val">{{ getBooleanText(selectedPage?.systemBuiltin) }}</span></div>
             <div class="meta-row"><span class="lbl">创建时间</span><span class="val">{{ getDisplayText(selectedPage?.createTime) }}</span></div>
             <div class="meta-row"><span class="lbl">更新时间</span><span class="val">{{ getDisplayText(selectedPage?.updateTime) }}</span></div>
@@ -1197,6 +1288,10 @@ onMounted(() => {
             <div class="description-item"><span>页面副标题</span><strong>{{ getDisplayText(selectedPage?.pageSubtitle) }}</strong></div>
             <div class="description-item full-width"><span>Logo 资源地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.logoUrl) }}</strong></div>
             <div class="description-item full-width"><span>背景图资源地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.backgroundUrl) }}</strong></div>
+            <div class="description-item full-width"><span>Logo OSS 对象 Key</span><strong class="break-value">{{ getDisplayText(selectedPage?.logoObjectKey) }}</strong></div>
+            <div class="description-item full-width"><span>背景 OSS 对象 Key</span><strong class="break-value">{{ getDisplayText(selectedPage?.backgroundObjectKey) }}</strong></div>
+            <div class="description-item"><span>布局模式</span><strong>{{ getDisplayText(selectedPage?.layoutMode) }}</strong></div>
+            <div class="description-item full-width"><span>微前端入口</span><strong class="break-value">{{ getDisplayText(selectedPage?.microFrontendUrl) }}</strong></div>
             <div class="description-item full-width"><span>登录成功跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.successRedirectUrl) }}</strong></div>
             <div class="description-item full-width"><span>忘记密码跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.forgotPasswordUrl) }}</strong></div>
             <div class="description-item full-width"><span>注册入口跳转地址</span><strong class="break-value">{{ getDisplayText(selectedPage?.registerUrl) }}</strong></div>
@@ -1220,7 +1315,6 @@ onMounted(() => {
             <div class="meta-row"><span class="lbl">失败提示模式</span><span class="val">{{ getFailurePromptModeName(selectedPage?.failurePromptMode) }}</span></div>
             <div class="meta-row"><span class="lbl">忘记密码入口</span><span class="val">{{ getBooleanText(selectedPage?.showForgotPassword) }}</span></div>
             <div class="meta-row"><span class="lbl">注册入口</span><span class="val">{{ getBooleanText(selectedPage?.showRegister) }}</span></div>
-            <div class="meta-row"><span class="lbl">第三方登录入口</span><span class="val">{{ getBooleanText(selectedPage?.showThirdPartyLogin) }}</span></div>
           </div>
         </section>
       </div>
@@ -1228,15 +1322,14 @@ onMounted(() => {
       <section v-if="!isDetailEditing" class="pane-card-box reference-card">
         <div class="pane-header">
           <h4>引用影响范围</h4>
-          <p>详情接口返回的身份域、客户端及总引用数量。</p>
+          <p>详情接口返回的客户端及总引用数量。</p>
         </div>
         <div class="reference-metrics">
-          <div class="reference-metric"><span>身份域引用</span><strong>{{ selectedPage?.realmReferenceCount ?? 0 }}</strong></div>
-          <div class="reference-metric"><span>客户端引用</span><strong>{{ selectedPage?.clientReferenceCount ?? 0 }}</strong></div>
+          <div class="reference-metric"><span>客户端引用</span><strong>{{ selectedPage?.clientReferenceCount ?? selectedPage?.referenceCount ?? 0 }}</strong></div>
           <div class="reference-metric total"><span>引用总数</span><strong>{{ selectedPage?.referenceCount ?? 0 }}</strong></div>
           <div class="info-alert-panel">
             <el-icon class="info-icon"><InfoFilled /></el-icon>
-            <p>客户端可覆盖身份域默认登录页。修改或禁用前，应先确认引用范围及实际登录影响。</p>
+            <p>登录入口模板由客户端引用。修改或禁用前，应先确认客户端范围及实际登录影响。</p>
           </div>
         </div>
       </section>
@@ -1245,22 +1338,22 @@ onMounted(() => {
     <!-- Modal: Referenced/Conflict modal that blocks Delete -->
     <el-dialog
       v-model="isDeleteModalOpen"
-      title="无法删除登录页"
+      title="无法删除登录入口模板"
       width="450px"
       align-center
       class="custom-conflict-dialog"
     >
       <div class="dialog-body-container">
         <p class="dialog-desc">
-          当前登录页已被以下身份域或应用客户端引用绑定，不能直接物理删除。请先进入绑定对象并完成解绑或登录配置替换。
+          当前登录入口模板已被应用客户端引用绑定，不能直接物理删除。请先进入客户端配置并完成解绑或入口模板替换。
         </p>
         
         <div class="conflict-scope-box">
           <div class="scope-title">影响范围分析：</div>
           <div class="scope-body">
-            <strong>关联身份域：</strong>{{ referencedPageForDelete?.applicableRealmTypeName || '未分类域' }}<br/>
-            <strong>关联引用数量：</strong>{{ referencedPageForDelete?.referenceCount }} 个关联项<br/>
-            <strong>解除建议：</strong>请先前往对应的身份域管理或应用配置，更换其默认登录页模板。
+            <strong>适用身份域类型：</strong>{{ referencedPageForDelete?.applicableRealmTypeName || '通用' }}<br/>
+            <strong>客户端引用数量：</strong>{{ referencedPageForDelete?.clientReferenceCount ?? referencedPageForDelete?.referenceCount }} 个关联项<br/>
+            <strong>解除建议：</strong>请先前往应用客户端配置，更换其登录入口模板。
           </div>
         </div>
       </div>
@@ -2074,7 +2167,7 @@ onMounted(() => {
 }
 .edit-preview-panel {
   max-width: none;
-  height: 360px;
+  height: 500px;
 }
 .preview-logo-placeholder {
   width: 42px;

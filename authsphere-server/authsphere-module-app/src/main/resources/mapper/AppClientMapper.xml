@@ -12,8 +12,14 @@
             <result property="clientName" column="client_name" jdbcType="VARCHAR"/>
             <result property="clientType" column="client_type" jdbcType="TINYINT"/>
             <result property="clientSecret" column="client_secret" jdbcType="VARCHAR"/>
-            <result property="defaultRealmId" column="default_realm_id" jdbcType="BIGINT"/>
+            <result property="realmId" column="default_realm_id" jdbcType="BIGINT"/>
             <result property="defaultEntryUrl" column="default_entry_url" jdbcType="VARCHAR"/>
+            <result property="loginMode" column="login_mode" jdbcType="VARCHAR"/>
+            <result property="externalLoginUrl" column="external_login_url" jdbcType="VARCHAR"/>
+            <result property="loginCallbackUrl" column="login_callback_url" jdbcType="VARCHAR"/>
+            <result property="loginPageId" column="login_page_id" jdbcType="BIGINT"/>
+            <result property="authPolicyId" column="auth_policy_id" jdbcType="BIGINT"/>
+            <result property="ossConfigId" column="oss_config_id" jdbcType="BIGINT"/>
             <result property="status" column="status" jdbcType="TINYINT"/>
             <result property="builtIn" column="built_in" jdbcType="TINYINT"/>
             <result property="description" column="description" jdbcType="VARCHAR"/>
@@ -24,8 +30,9 @@
     <sql id="Base_Column_List">
         id,app_id,app_code,
         client_code,client_name,client_type,
-        client_secret,default_realm_id,default_entry_url,
-        status,built_in,description,create_time,
+        client_secret,default_realm_id,default_entry_url,login_mode,
+        external_login_url,login_callback_url,login_page_id,auth_policy_id,
+        oss_config_id,status,built_in,description,create_time,
         update_time
     </sql>
 </mapper>

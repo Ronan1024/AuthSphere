@@ -59,6 +59,40 @@ public class LoginPageRequest {
     private String backgroundUrl;
 
     /**
+     * Logo OSS对象标识。
+     */
+    @Size(max = 512, message = "Logo对象标识不能超过512个字符")
+    private String logoObjectKey;
+
+    /**
+     * 背景图 OSS对象标识。
+     */
+    @Size(max = 512, message = "背景图对象标识不能超过512个字符")
+    private String backgroundObjectKey;
+
+    /**
+     * 页面布局模式，例如 CENTER_CARD、SPLIT_PANEL、FULLSCREEN。
+     */
+    @Size(max = 32, message = "布局模式不能超过32个字符")
+    private String layoutMode;
+
+    /**
+     * 主题配置 JSON。
+     */
+    private String themeConfigJson;
+
+    /**
+     * 组件展示配置 JSON。
+     */
+    private String componentConfigJson;
+
+    /**
+     * 微前端远程入口地址。
+     */
+    @Size(max = 512, message = "微前端入口地址不能超过512个字符")
+    private String microFrontendUrl;
+
+    /**
      * 支持的认证方式编码集合。
      */
     @NotEmpty(message = "登录方式不能为空")

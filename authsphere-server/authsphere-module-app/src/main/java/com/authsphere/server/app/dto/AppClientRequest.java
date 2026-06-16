@@ -49,6 +49,36 @@ public class AppClientRequest {
     private String defaultEntryUrl;
 
     /**
+     * 登录接入方式：IAM_HOSTED、EXTERNAL_REDIRECT、API_ONLY、SERVICE。
+     */
+    private String loginMode;
+
+    /**
+     * 客户自有登录页地址，仅 EXTERNAL_REDIRECT 场景需要。
+     */
+    private String externalLoginUrl;
+
+    /**
+     * 登录回调地址，用于客户自有登录页或托管登录后的回跳。
+     */
+    private String loginCallbackUrl;
+
+    /**
+     * 覆盖身份域默认登录页的登录页 ID。
+     */
+    private Long loginPageId;
+
+    /**
+     * 覆盖身份域默认认证策略的认证策略ID。
+     */
+    private Long authPolicyId;
+
+    /**
+     * 客户端绑定的 OSS 外部配置 ID。
+     */
+    private Long ossConfigId;
+
+    /**
      * 客户端状态，使用 {@code StatusEnum} 的状态值。
      */
     private Integer status;
