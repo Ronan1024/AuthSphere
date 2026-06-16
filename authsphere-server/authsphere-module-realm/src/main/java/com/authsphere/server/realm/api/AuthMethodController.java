@@ -5,6 +5,7 @@ import com.authsphere.server.realm.dto.AuthMethodOptionResponse;
 import com.authsphere.server.realm.dto.AuthMethodPageRequest;
 import com.authsphere.server.realm.dto.AuthMethodRequest;
 import com.authsphere.server.realm.dto.AuthMethodResponse;
+import com.authsphere.server.realm.dto.AuthMethodTemplateResponse;
 import com.authsphere.server.realm.service.AuthMethodService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,16 @@ public class AuthMethodController {
     @GetMapping({"", "/list"})
     public List<AuthMethodOptionResponse> listEnabled(@RequestParam(required = false) String position) {
         return authMethodService.listEnabled(position);
+    }
+
+    /**
+     * 查询系统内置认证方式模板默认名称和编码。
+     *
+     * @return 内置认证方式模板
+     */
+    @GetMapping("/templates")
+    public List<AuthMethodTemplateResponse> templates() {
+        return authMethodService.listTemplates();
     }
 
     /**

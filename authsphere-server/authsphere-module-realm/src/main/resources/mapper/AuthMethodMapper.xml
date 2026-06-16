@@ -19,6 +19,7 @@
             ) as referenceCount,
             am.sort_no as sortNo,
             am.description,
+            am.params_json as paramsJson,
             am.create_time as createTime,
             am.update_time as updateTime
         from auth_method am

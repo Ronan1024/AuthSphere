@@ -37,6 +37,15 @@ public class AuthMethodDomain {
 
     private static final Set<String> SUPPORTED_POSITIONS = Set.of(
             "主登录", "MFA", "MFA 二次认证", "接口认证", "允许自动建号", "账号绑定校验", "敏感操作");
+    private static final List<Set<String>> SUPPORTED_TEMPLATE_PARAM_KEYS = List.of(
+            Set.of("passwordPolicy", "maxRetries", "lockDuration"),
+            Set.of("totpDigits", "totpPeriod", "totpWindow"),
+            Set.of("tokenTtl", "signAlg", "allowScope"),
+            Set.of("smsProvider", "codeTtl", "sendInterval", "dailyLimit", "retryLimit", "templateCode"),
+            Set.of("emailProvider", "emailTtl", "emailTemplate", "sendInterval"),
+            Set.of("oidcIssuer", "clientId", "clientSecret", "userField", "callbackUrl"),
+            Set.of("ldapUrl", "baseDn", "ldapUserField", "ldapMailField")
+    );
     private static final String MASK_VALUE = "********";
     private static final String FORM_SCHEMA_KEY = "formSchema";
     private static final String FIELD_CODE_KEY = "code";
@@ -137,7 +146,10 @@ public class AuthMethodDomain {
      * @param responses 列表响应
      */
     public void enrichListResponses(List<AuthMethodResponse> responses) {
-        responses.forEach(response -> response.setPositions(split(response.getPositionsText())));
+        responses.forEach(response -> {
+            response.setPositions(split(response.getPositionsText()));
+            response.setParams(maskSensitiveParams(readParams(response.getParamsJson())));
+        });
     }
 
     /**
@@ -212,15 +224,14 @@ public class AuthMethodDomain {
         if (template.isPresent()) {
             return normalizePresetTemplateParams(template.get(), submitted);
         }
+        if (!submitted.containsKey(FORM_SCHEMA_KEY) && matchesSupportedTemplateParams(submitted)) {
+            return submitted;
+        }
         validateFormSchema(submitted.get(FORM_SCHEMA_KEY));
         return Map.of(FORM_SCHEMA_KEY, submitted.get(FORM_SCHEMA_KEY));
     }
 
     private Map<String, Object> normalizePresetTemplateParams(AuthMethodTemplate template, Map<String, Object> params) {
-        if (template.isCustomFieldsAllowed()) {
-            validateFormSchema(params.get(FORM_SCHEMA_KEY));
-            return Map.of(FORM_SCHEMA_KEY, params.get(FORM_SCHEMA_KEY));
-        }
         if (params.containsKey(FORM_SCHEMA_KEY)) {
             throw new BizException(RealmErrorCode.AUTH_METHOD_TEMPLATE_LOCKED);
         }
@@ -251,6 +262,15 @@ public class AuthMethodDomain {
                 throw new BizException(RealmErrorCode.AUTH_METHOD_PARAM_ERROR);
             }
         }
+    }
+
+    private boolean matchesSupportedTemplateParams(Map<String, Object> params) {
+        if (params.isEmpty()) {
+            return false;
+        }
+        Set<String> keys = params.keySet();
+        return SUPPORTED_TEMPLATE_PARAM_KEYS.stream()
+                .anyMatch(supportedKeys -> supportedKeys.containsAll(keys));
     }
 
     private List<String> normalize(List<String> values) {

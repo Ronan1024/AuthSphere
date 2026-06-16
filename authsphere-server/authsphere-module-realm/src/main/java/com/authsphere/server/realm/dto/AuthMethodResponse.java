@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 认证方式分页列表响应，仅返回列表展示所需字段。
@@ -55,6 +56,14 @@ public class AuthMethodResponse extends BaseDataBaseModel {
      */
     private String description;
 
+    /**
+     * 已脱敏的认证方式参数，用于列表配置摘要和扩展字段数量展示。
+     */
+    private Map<String, Object> params;
+
     @JsonIgnore
     private String positionsText;
+
+    @JsonIgnore
+    private String paramsJson;
 }

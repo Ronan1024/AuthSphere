@@ -5,6 +5,7 @@ import com.authsphere.server.realm.dto.AuthMethodOptionResponse;
 import com.authsphere.server.realm.dto.AuthMethodPageRequest;
 import com.authsphere.server.realm.dto.AuthMethodRequest;
 import com.authsphere.server.realm.dto.AuthMethodResponse;
+import com.authsphere.server.realm.dto.AuthMethodTemplateResponse;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 
 import java.util.List;
@@ -17,6 +18,8 @@ public interface AuthMethodService {
     Page<AuthMethodResponse> page(AuthMethodPageRequest request);
 
     List<AuthMethodOptionResponse> listEnabled(String position);
+
+    List<AuthMethodTemplateResponse> listTemplates();
 
     AuthMethodDetailResponse detail(Long id);
 

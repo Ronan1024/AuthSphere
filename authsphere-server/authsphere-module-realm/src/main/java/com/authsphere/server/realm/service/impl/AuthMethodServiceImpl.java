@@ -6,7 +6,9 @@ import com.authsphere.server.realm.dto.AuthMethodOptionResponse;
 import com.authsphere.server.realm.dto.AuthMethodPageRequest;
 import com.authsphere.server.realm.dto.AuthMethodRequest;
 import com.authsphere.server.realm.dto.AuthMethodResponse;
+import com.authsphere.server.realm.dto.AuthMethodTemplateResponse;
 import com.authsphere.server.realm.enums.AuthMethodStatus;
+import com.authsphere.server.realm.enums.AuthMethodTemplate;
 import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.service.AuthMethodService;
@@ -51,6 +53,16 @@ public class AuthMethodServiceImpl implements AuthMethodService {
         List<AuthMethodOptionResponse> responses = authMethodMapper.listEnabled(position);
         authMethodDomain.enrichOptionResponses(responses);
         return responses;
+    }
+
+    /**
+     * 查询后端内置认证方式模板默认值。自定义模板不在后端固定名称和编码。
+     *
+     * @return 内置模板默认配置
+     */
+    @Override
+    public List<AuthMethodTemplateResponse> listTemplates() {
+        return AuthMethodTemplate.listResponses();
     }
 
     /**
