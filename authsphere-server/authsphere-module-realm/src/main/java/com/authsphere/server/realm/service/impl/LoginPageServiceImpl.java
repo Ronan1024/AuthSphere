@@ -3,7 +3,6 @@ package com.authsphere.server.realm.service.impl;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.realm.convert.LoginPageConvert;
 import com.authsphere.server.realm.domain.LoginPageDomain;
-import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.dto.LoginPageInfoResponse;
 import com.authsphere.server.realm.dto.LoginPageOptionResponse;
 import com.authsphere.server.realm.dto.LoginPagePageRequest;
@@ -12,7 +11,6 @@ import com.authsphere.server.realm.dto.LoginPageRequest;
 import com.authsphere.server.realm.dto.LoginPageResponse;
 import com.authsphere.server.realm.mapper.LoginPageMapper;
 import com.authsphere.server.realm.model.LoginPage;
-import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.service.LoginPageService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 /**
  * 登录页管理服务实现，负责登录页用例流程编排。
@@ -30,7 +26,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LoginPageServiceImpl implements LoginPageService {
 
-    private final RealmDomain realmDomain;
     private final LoginPageMapper loginPageMapper;
     private final LoginPageDomain loginPageDomain;
 
@@ -49,15 +44,7 @@ public class LoginPageServiceImpl implements LoginPageService {
         if (CollectionUtils.isEmpty(records)) {
             return result;
         }
-        List<Long> list = records.stream().map(LoginPageResponse::getId).toList();
-        List<Realm> realmList = realmDomain.findListByType(list);
-        if (CollectionUtils.isEmpty(realmList)) {
-            Map<Long, List<Realm>> collect = realmList.stream().collect(Collectors.groupingBy(Realm::getLoginPageId));
-            records.forEach(e -> {
-                List<Realm> realmList1 = collect.get(e.getId());
-                e.setReferenceCount(realmList1 == null ? 0 : realmList1.size());
-            });
-        }
+        records.forEach(e -> e.setReferenceCount(loginPageMapper.countClientReferences(e.getId())));
         return result;
     }
 

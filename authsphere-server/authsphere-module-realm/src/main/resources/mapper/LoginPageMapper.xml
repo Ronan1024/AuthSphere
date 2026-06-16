@@ -45,9 +45,7 @@
     </select>
 
     <select id="countRealmReferences" resultType="java.lang.Integer">
-        select count(1)
-        from realm
-        where login_page_id = #{loginPageId}
+        select 0
     </select>
 
     <select id="countClientReferences" resultType="java.lang.Integer">

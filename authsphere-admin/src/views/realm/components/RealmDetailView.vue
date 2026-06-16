@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { ArrowLeft, EditPen, Warning, InfoFilled } from '@element-plus/icons-vue'
 import type { RealmRecord } from '@/api/realm'
 
@@ -31,13 +31,16 @@ const detailForm = computed(() => {
   return {
     name: row.name,
     code: row.code,
-    typeCategoryId: row.typeCategoryId || '',
+    typeCategoryId: row.typeCategoryId || row.realmTypeId || '',
     typeCategoryCode: '',
     description: row.description || '',
     status: row.status || 1,
     sortNo: 10,
-    loginUrl: row.loginUrl || 'default',
-    noLoginHandler: 'redirect_default',
+    ssoEnabled: row.ssoEnabled !== false,
+    ssoSessionTimeout: (row as any).ssoSessionTimeout || 8,
+    ssoSingleLogout: (row as any).ssoSingleLogout || 'enabled',
+    existingSessionHandler: (row as any).existingSessionHandler || 'auto_redirect',
+    noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
     authMethods: isPlatform ? ['password', 'sms'] : ['password', 'mfa'],
     authPolicy: 'default',
     sessionTimeout: 8,
@@ -83,15 +86,6 @@ const detailForm = computed(() => {
   }
 })
 
-// Preview support
-const previewActiveMethod = ref('password')
-
-watch(() => detailForm.value.policyDefaultMethod, (newVal) => {
-  if (newVal) {
-    previewActiveMethod.value = newVal
-  }
-}, { immediate: true })
-
 const getMethodLabel = (method: string) => {
   if (method === 'password') return '账号密码'
   if (method === 'sms') return '短信'
@@ -106,23 +100,42 @@ const getMfaLabel = (mfa: string) => {
   return '不启用'
 }
 
-const getLoginPreviewTitle = () => {
-  if (detailForm.value.loginUrl === 'default') return '租户后台登录'
-  if (detailForm.value.loginUrl === 'platform') return '平台后台登录'
-  if (detailForm.value.loginUrl === 'merchant') return '商户后台登录'
-  if (detailForm.value.loginUrl === 'mobile') return '移动端登录'
-  return '统一后台登录'
+const getSummaryMainLoginText = () => {
+  return detailForm.value.policyMethods.map(method => getMethodLabel(method)).join('、')
 }
 
-const getLoginPreviewSubtitle = () => {
-  return `${getMethodLabel(detailForm.value.policyDefaultMethod)}为默认登录方式`
+const getSummaryMfaText = () => {
+  if (detailForm.value.policyMfa === 'none') return '不启用'
+  return getMfaLabel(detailForm.value.policyMfa)
+}
+
+const getSsoSessionText = () => {
+  return detailForm.value.ssoEnabled
+    ? `${detailForm.value.ssoSessionTimeout} 小时有效 / ${detailForm.value.sessionIdleTimeout} 分钟空闲超时`
+    : '该身份域不共享跨客户端登录态'
+}
+
+const getSsoLogoutText = () => {
+  return detailForm.value.ssoSingleLogout === 'enabled' ? '统一退出同域客户端' : '仅退出当前客户端'
+}
+
+const getNoClientHandlerText = () => {
+  if (detailForm.value.noClientIdHandler === 'show_app_list') return '展示应用选择页'
+  if (detailForm.value.noClientIdHandler === 'show_error') return '返回错误提示'
+  return '跳转系统默认入口'
+}
+
+const getExistingSessionHandlerText = () => {
+  if (detailForm.value.existingSessionHandler === 'auto_redirect') return '自动进入目标客户端'
+  if (detailForm.value.existingSessionHandler === 'prompt') return '提示用户确认'
+  return '展示应用选择页'
 }
 
 // Referenced objects for "影响范围" card
 const mockImpactObjects = computed(() => {
   return [
-    { name: props.realm.name, code: props.realm.code, type: '身份域默认登录页', status: props.realm.status || 1 },
-    { name: props.realm.name + '管理端', code: props.realm.code + '_web', type: '继承身份域配置', status: props.realm.status || 1 }
+    { name: props.realm.name + '管理端', code: props.realm.code + '_web', type: 'SSO 客户端范围', status: props.realm.status || 1 },
+    { name: props.realm.name + '开放接口', code: props.realm.code + '_api', type: '绑定当前身份域', status: props.realm.status || 1 }
   ]
 })
 </script>
@@ -131,9 +144,9 @@ const mockImpactObjects = computed(() => {
   <div class="create-realm-page-wrapper">
     <!-- Breadcrumb / Header Row -->
     <div class="form-navigation-header-row">
-      <div class="nav-title-left">
-        <h1>身份域详情</h1>
-        <p class="subtitle-text">查看当前身份空间（{{ realm.name }}）的登录页配置、认证规则和安全策略。</p>
+        <div class="nav-title-left">
+          <h1>身份域详情</h1>
+        <p class="subtitle-text">查看当前身份空间（{{ realm.name }}）的默认认证、SSO 会话和安全规则。</p>
       </div>
       <div class="nav-buttons-right">
         <el-button class="btn-op-outline" @click="emit('back')">返回列表</el-button>
@@ -150,8 +163,9 @@ const mockImpactObjects = computed(() => {
     <!-- Two-column grid -->
     <div class="realm-form-two-column-layout">
       <!-- Left Column: Form Details (Read-only) -->
-      <div class="form-left-column">
-        <el-form label-position="top" class="create-form read-only-form">
+      <div class="form-left-column" style="width: 100%;">
+        <el-form label-position="top" class="create-form read-only-form form-grid-layout">
+          <div class="form-grid-left">
           
           <!-- Card 1: 基础信息 -->
           <div class="form-section-card-custom">
@@ -189,34 +203,47 @@ const mockImpactObjects = computed(() => {
             </div>
           </div>
 
-          <!-- Card 2: 登录配置 -->
+          <!-- Card 2: SSO 基础规则 -->
           <div class="form-section-card-custom mt-20">
             <div class="card-title-header-custom">
-              <h3>登录配置</h3>
-              <p>身份域提供默认登录入口；不同客户端可在客户端登录配置中覆盖。</p>
+              <h3>SSO 基础规则</h3>
+              <p>配置该身份域的单点登录规则，控制跨应用的会话与退出行为。</p>
             </div>
             <div class="card-body-custom">
               <div class="grid-2-col">
-                <el-form-item label="默认登录页">
-                  <el-select :model-value="detailForm.loginUrl" disabled>
-                    <el-option label="租户后台登录" value="default" />
-                    <el-option label="平台后台登录" value="platform" />
-                    <el-option label="商户后台登录" value="merchant" />
-                    <el-option label="移动端登录页" value="mobile" />
-                  </el-select>
+                <el-form-item label="启用 SSO">
+                  <el-radio-group :model-value="detailForm.ssoEnabled" class="premium-radio-group" disabled>
+                    <el-radio-button :value="true">启用</el-radio-button>
+                    <el-radio-button :value="false">停用</el-radio-button>
+                  </el-radio-group>
                 </el-form-item>
-                <el-form-item label="未登录处理">
-                  <el-select :model-value="detailForm.noLoginHandler" disabled>
-                    <el-option label="跳转默认登录页" value="redirect_default" />
-                    <el-option label="返回 401 错误码" value="return_401" />
-                  </el-select>
+                <el-form-item label="SSO 会话有效期">
+                  <el-input :model-value="detailForm.ssoSessionTimeout" disabled>
+                    <template #append>小时</template>
+                  </el-input>
                 </el-form-item>
               </div>
-              <div class="alert-banner-custom mt-16">
-                <span class="vertical-bar"></span>
-                <div class="alert-content-text">
-                  客户端可覆盖：登录页、登录成功跳转地址、登录失败跳转地址、退出地址、认证策略。
-                </div>
+              <div class="grid-2-col mt-16">
+                <el-form-item label="统一退出">
+                  <el-radio-group :model-value="detailForm.ssoSingleLogout" class="premium-radio-group" disabled>
+                    <el-radio-button value="enabled">启用</el-radio-button>
+                    <el-radio-button value="current_client_only">仅退出当前客户端</el-radio-button>
+                  </el-radio-group>
+                </el-form-item>
+              </div>
+              <div class="grid-2-col mt-16">
+                <el-form-item label="已有 SSO 会话时">
+                  <el-select :model-value="detailForm.existingSessionHandler" disabled style="width: 100%">
+                    <el-option label="自动进入目标客户端" value="auto_redirect" />
+                    <el-option label="提示用户确认" value="prompt" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="未指定 client_id 时">
+                  <el-select :model-value="detailForm.noClientIdHandler" disabled style="width: 100%">
+                    <el-option label="展示应用选择页" value="show_app_list" />
+                    <el-option label="展示错误提示页" value="show_error" />
+                  </el-select>
+                </el-form-item>
               </div>
             </div>
           </div>
@@ -225,7 +252,7 @@ const mockImpactObjects = computed(() => {
           <div class="form-section-card-custom mt-20">
             <div class="card-title-header-custom">
               <h3>默认认证策略</h3>
-              <p>配置该身份域的默认认证策略。主登录方式、默认登录方式、MFA 和图形验证码规则将在该身份域下生效。</p>
+              <p>配置该身份域的默认认证策略。主认证方式、默认认证方式、MFA 和图形验证码规则将在该身份域下生效。</p>
             </div>
             <div class="card-body-custom">
               <div class="checkbox-cards-grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px; pointer-events: none;">
@@ -241,7 +268,7 @@ const mockImpactObjects = computed(() => {
                     <span class="custom-radio-circle" :class="{ checked: detailForm.configurePolicy === 'custom' }"></span>
                     <span class="checkbox-title ml-8">配置专属认证策略</span>
                   </div>
-                  <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主登录方式、默认登录、MFA与图形验证码规则。</p>
+                  <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主认证方式、默认认证、MFA 与图形验证码规则。</p>
                 </div>
               </div>
 
@@ -272,7 +299,7 @@ const mockImpactObjects = computed(() => {
                 </div>
 
                 <div class="grid-3-col mt-16">
-                  <el-form-item label="默认登录方式">
+                  <el-form-item label="默认认证方式">
                     <el-select :model-value="detailForm.policyDefaultMethod" disabled>
                       <el-option label="账号密码登录" value="password" />
                       <el-option label="短信验证码登录" value="sms" />
@@ -305,8 +332,10 @@ const mockImpactObjects = computed(() => {
             </div>
           </div>
 
-          <!-- Card 4: 安全配置 -->
-          <div class="form-section-card-custom mt-20">
+          </div>
+          <div class="form-grid-right">
+            <!-- Card 4: 安全配置 -->
+            <div class="form-section-card-custom">
             <div class="card-title-header-custom">
               <h3>安全配置</h3>
               <p>管理员设置的密码复杂度、Token 有效期、账号锁定及会话规则。</p>
@@ -453,88 +482,6 @@ const mockImpactObjects = computed(() => {
             </div>
           </div>
           
-        </el-form>
-      </div>
-
-      <!-- Right Column: Previews and Impact -->
-      <div class="preview-right-column">
-        <div class="sticky-preview-wrapper">
-          <div class="preview-title-bar">
-            <h3>登录页预览</h3>
-            <p class="subtitle">跟随默认登录页与认证配置变化</p>
-          </div>
-          
-          <!-- Simulated Browser Frame -->
-          <div class="mock-browser-window">
-            <div class="browser-header-dots">
-              <span class="dot red"></span>
-              <span class="dot yellow"></span>
-              <span class="dot green"></span>
-              <div class="browser-address-bar">
-                <span class="lock-icon">🔒</span> authsphere.com/login/{{ detailForm.code || 'tenant_realm' }}
-              </div>
-            </div>
-            
-            <div class="browser-content-area">
-              <div class="login-card-preview-inner">
-                <h2 class="login-inner-title">{{ getLoginPreviewTitle() }}</h2>
-                <p class="login-inner-subtitle">{{ getLoginPreviewSubtitle() }}</p>
-                
-                <!-- Tab switches -->
-                <div class="login-methods-tabs-preview" v-if="detailForm.policyMethods && detailForm.policyMethods.length > 0">
-                  <span 
-                    v-for="method in detailForm.policyMethods" 
-                    :key="method" 
-                    class="tab-preview-item" 
-                    :class="{ active: previewActiveMethod === method }"
-                    @click="previewActiveMethod = method"
-                  >
-                    {{ getMethodLabel(method) }}
-                  </span>
-                </div>
-                
-                <!-- Login Inner Inputs -->
-                <div class="login-inputs-preview mt-20">
-                  <template v-if="previewActiveMethod === 'password'">
-                    <div class="mock-input-field">
-                      <span class="placeholder-txt">用户名 / 手机号</span>
-                    </div>
-                    <div class="mock-input-field mt-12">
-                      <span class="placeholder-txt">密码</span>
-                    </div>
-                  </template>
-                  
-                  <template v-else-if="previewActiveMethod === 'sms'">
-                    <div class="mock-input-field">
-                      <span class="placeholder-txt">手机号</span>
-                    </div>
-                    <div class="mock-input-field mt-12 flex-row-input" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                      <span class="placeholder-txt">验证码</span>
-                      <span class="send-btn-mock" style="font-size: 11px; color: #2563EB; font-weight: 600; cursor: pointer;">获取验证码</span>
-                    </div>
-                  </template>
-
-                  <template v-else-if="previewActiveMethod === 'wechat'">
-                    <div class="wechat-preview-box" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0;">
-                      <div class="wechat-qr-code" style="border: 1px dashed #BFDBFE; padding: 16px; border-radius: 8px; background-color: #F8FAFC; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center;">
-                        <span class="wechat-qr-stub" style="font-size: 10px; color: #64748B; text-align: center;">微信扫码登录</span>
-                      </div>
-                    </div>
-                  </template>
-                </div>
-                
-                <!-- Login Button -->
-                <button class="btn-login-preview-submit mt-20" style="margin-top: 16px; height: 36px; line-height: 36px; font-size: 13px; background-color: #2563EB; color: #fff; border: none; width: 100%; border-radius: 6px; font-weight: 600; cursor: default;">登录</button>
-                
-                <!-- Login Footer -->
-                <div class="login-footer-preview mt-16" style="display: flex; justify-content: space-between; font-size: 11px; color: #64748B; margin-top: 12px;">
-                  <span class="link-forgot-pwd" style="cursor: default;" v-if="detailForm.policyMethods.includes('password')">忘记密码</span>
-                  <span class="mfa-indicator-txt" v-if="detailForm.policyMfa !== 'none'">MFA: {{ getMfaLabel(detailForm.policyMfa) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Card: 影响范围 -->
           <div class="form-section-card-custom mt-20">
             <div class="card-title-header-custom">
@@ -555,8 +502,9 @@ const mockImpactObjects = computed(() => {
             </div>
           </div>
         </div>
-      </div>
+      </el-form>
     </div>
+  </div>
   </div>
 </template>
 
@@ -645,11 +593,21 @@ const mockImpactObjects = computed(() => {
 
 /* Grid Layout */
 .realm-form-two-column-layout {
+  display: block;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+.form-grid-layout {
   display: grid;
-  grid-template-columns: 1.80fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 24px;
   align-items: start;
-  width: 100%;
+}
+@media (max-width: 1024px) {
+  .form-grid-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Custom Cards */
@@ -890,8 +848,7 @@ const mockImpactObjects = computed(() => {
   position: relative;
 }
 .sticky-preview-wrapper {
-  position: sticky;
-  top: 24px;
+  display: none !important;
 }
 .preview-title-bar {
   margin-bottom: 16px;
@@ -1048,5 +1005,25 @@ const mockImpactObjects = computed(() => {
   .realm-form-two-column-layout {
     grid-template-columns: 1fr;
   }
+}
+.premium-radio-group :deep(.el-radio-button__inner) {
+  border-radius: 8px !important;
+  border: 1px solid #E2E8F0 !important;
+  margin-right: 8px;
+  background-color: #fff;
+  color: #64748B;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+.premium-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #fff !important;
+  color: #3B82F6 !important;
+  border-color: #3B82F6 !important;
+  font-weight: 600;
+}
+.premium-radio-group :deep(.el-radio-button:first-child .el-radio-button__inner),
+.premium-radio-group :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 8px !important;
 }
 </style>

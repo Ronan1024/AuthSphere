@@ -5,31 +5,50 @@
 <mapper namespace="com.authsphere.server.realm.mapper.RealmMapper">
     <select id="page" resultType="com.authsphere.server.realm.dto.RealmPageResponse">
         select
-        id,
-        code,
-        name,
-        realm_type_id as realmTypeId,
-        login_url as loginUrl,
-        login_page_id as loginPageId,
-        auth_policy_id as authPolicyId,
-        status,
-        create_time,
-        update_time
-        from realm
+        r.id,
+        r.code,
+        r.name,
+        r.realm_type_id as realmTypeId,
+        r.auth_policy_id as authPolicyId,
+        r.register_enabled as registerEnabled,
+        r.sso_enabled as ssoEnabled,
+        r.sso_session_timeout as ssoSessionTimeout,
+        r.sso_idle_timeout as ssoIdleTimeout,
+        r.sso_single_logout as ssoSingleLogout,
+        r.existing_session_handler as existingSessionHandler,
+        r.no_client_id_handler as noClientIdHandler,
+        r.password_policy as passwordPolicy,
+        r.mfa_policy as mfaPolicy,
+        r.unique_policy as uniquePolicy,
+        (
+            select count(1)
+            from app_client ac
+            where ac.default_realm_id = r.id
+        ) as ssoClientCount,
+        (
+            select count(1)
+            from account a
+            where a.realm_id = r.id
+        ) as accountCount,
+        r.description,
+        r.status,
+        r.create_time,
+        r.update_time
+        from realm r
         <where>
             <if test="realmPageRequest.name != null and realmPageRequest.name != ''">
-                and `name` like concat('%', #{realmPageRequest.name}, '%')
+                and r.`name` like concat('%', #{realmPageRequest.name}, '%')
             </if>
             <if test="realmPageRequest.code != null and realmPageRequest.code  != ''">
-                and `code` = #{realmPageRequest.code}
+                and r.`code` = #{realmPageRequest.code}
             </if>
             <if test="realmPageRequest.status != null">
-                and `status` = #{realmPageRequest.status}
+                and r.`status` = #{realmPageRequest.status}
             </if>
             <if test="realmPageRequest.realmTypeId != null">
-                and realm_type_id = #{realmPageRequest.realmTypeId}
+                and r.realm_type_id = #{realmPageRequest.realmTypeId}
             </if>
         </where>
-        order by update_time desc, create_time desc
+        order by r.update_time desc, r.create_time desc
     </select>
 </mapper>

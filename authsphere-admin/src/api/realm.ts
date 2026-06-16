@@ -14,6 +14,7 @@ export interface RealmQuery {
   code?: string
   name?: string
   status?: number
+  realmTypeId?: string | number | null
   typeCategoryId?: string | number | null
 }
 
@@ -21,10 +22,16 @@ export interface RealmQuery {
 export interface RealmPayload {
   code: string
   name: string
+  realmTypeId?: string | number | null
   typeCategoryId?: string | number | null
-  loginUrl?: string
   registerEnabled: boolean
   ssoEnabled: boolean
+  ssoSessionTimeout?: number
+  ssoIdleTimeout?: number
+  ssoSingleLogout?: string
+  existingSessionHandler?: string
+  noClientIdHandler?: string
+  authPolicyId?: string | number | null
   passwordPolicy?: string | number | null
   mfaPolicy?: string | number | null
   uniquePolicy?: string | number | null
@@ -33,6 +40,10 @@ export interface RealmPayload {
 
 export interface RealmRecord extends RealmPayload {
   id: string
+  realmTypeName?: string
+  authPolicyName?: string
+  ssoClientCount?: number
+  accountCount?: number
   status?: number
   createTime?: string
   updateTime?: string

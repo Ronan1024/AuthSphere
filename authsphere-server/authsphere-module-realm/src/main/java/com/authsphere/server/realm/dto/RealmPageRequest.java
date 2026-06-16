@@ -1,6 +1,7 @@
 package com.authsphere.server.realm.dto;
 
 import com.authsphere.server.common.model.PageRequest;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -32,5 +33,6 @@ public class RealmPageRequest extends PageRequest {
     /**
      * 身份域类型
      */
-    private Integer realmTypeId;
+    @JsonAlias("typeCategoryId")
+    private Long realmTypeId;
 }

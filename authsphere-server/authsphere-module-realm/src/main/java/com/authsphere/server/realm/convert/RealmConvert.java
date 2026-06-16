@@ -34,6 +34,8 @@ public interface RealmConvert {
     @Mapping(target = "createTime", ignore = true)
     void copyByModel(CreateRealmRequest createRealmRequest, @MappingTarget Realm realm);
 
+    @Mapping(target = "typeCategoryId", source = "realmTypeId")
+    @Mapping(target = "loginUrl", ignore = true)
     RealmInfoResponse toRealmInfoResponse(Realm byId);
 
     List<RealmInfoResponse> toRealmInfoResponse(List<Realm> realms);

@@ -44,12 +44,10 @@ public class RealmDomain implements RealmApi {
     }
 
     /**
-     * 根据登录页ID获取身份域列表
+     * 身份域不再绑定登录页，保留方法用于兼容旧调用。
      */
     public List<Realm> findListByLoginPage(List<Long> loginPageIdList) {
-        return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
-                .eq(Realm::getLoginPageId, loginPageIdList)
-        );
+        return List.of();
     }
 
     /**

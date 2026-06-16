@@ -97,8 +97,8 @@ const submit = async () => {
     const payload: RealmPayload = {
       code: formData.code,
       name: formData.name,
+      realmTypeId: formData.typeCategoryId,
       typeCategoryId: formData.typeCategoryId,
-      loginUrl: '',
       registerEnabled: formData.registerEnabled,
       ssoEnabled: formData.ssoEnabled,
       description: formData.description

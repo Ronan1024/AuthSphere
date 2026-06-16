@@ -43,22 +43,6 @@ public class RealmPageResponse extends BaseDataBaseModel {
     private String realmTypeName;
 
     /**
-     * 独立登录页
-     */
-    private String loginUrl;
-
-    /**
-     * 默认登录页 ID。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long loginPageId;
-
-    /**
-     * 默认登录页名称。
-     */
-    private String loginPageName;
-
-    /**
      * 默认认证策略ID。
      */
     @JsonSerialize(using = ToStringSerializer.class)
@@ -75,6 +59,73 @@ public class RealmPageResponse extends BaseDataBaseModel {
      */
     private List<AuthMethodInfoResponse> authMethodList;
 
+    /**
+     * 是否允许注册。
+     */
+    private Boolean registerEnabled;
+
+    /**
+     * 是否开启 SSO。
+     */
+    private Boolean ssoEnabled;
+
+    /**
+     * SSO 会话有效期，单位小时。
+     */
+    private Integer ssoSessionTimeout;
+
+    /**
+     * SSO 空闲超时，单位分钟。
+     */
+    private Integer ssoIdleTimeout;
+
+    /**
+     * 单点退出策略。
+     */
+    private String ssoSingleLogout;
+
+    /**
+     * 已存在会话处理方式。
+     */
+    private String existingSessionHandler;
+
+    /**
+     * 无 client_id 时的处理方式。
+     */
+    private String noClientIdHandler;
+
+    /**
+     * 密码策略 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long passwordPolicy;
+
+    /**
+     * MFA 策略 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long mfaPolicy;
+
+    /**
+     * 账号唯一性规则 ID。
+     */
+    @JsonSerialize(using = ToStringSerializer.class)
+    private Long uniquePolicy;
+
+    /**
+     * SSO 客户端数量。
+     */
+    private Long ssoClientCount;
+
+    /**
+     * 账号数量。
+     */
+    private Long accountCount;
+
+    /**
+     * 描述。
+     */
+    private String description;
 
     /**
      * 状态

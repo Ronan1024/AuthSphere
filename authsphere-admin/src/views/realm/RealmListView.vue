@@ -54,8 +54,11 @@ const createForm = reactive({
   description: '',
   status: 1,
   sortNo: 10,
-  loginUrl: 'default',
-  noLoginHandler: 'redirect_default', // 未登录处理
+  ssoEnabled: true,
+  ssoSessionTimeout: 8,
+  ssoSingleLogout: 'enabled',
+  existingSessionHandler: 'auto_redirect',
+  noClientIdHandler: 'show_app_list',
   authMethods: ['password', 'sms'] as string[],
   authPolicy: 'default',
   sessionTimeout: 8,
@@ -113,7 +116,6 @@ const createFormRules = {
     { pattern: /^[a-z][a-z0-9-_]{1,31}$/, message: '只允许小写字母、数字、下划线、长横线 3-32', trigger: 'blur' }
   ],
   typeCategoryId: [{ required: true, message: '请选择身份域类型', trigger: 'change' }],
-  loginUrl: [{ required: true, message: '请选择默认登录页', trigger: 'change' }],
   policyName: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
   policyCode: [
     { required: true, message: '请输入策略编码', trigger: 'blur' },
@@ -133,8 +135,6 @@ watch(() => createForm.code, (newVal) => {
     createForm.policyCode = newVal + '_default_auth_policy'
   }
 })
-
-const previewActiveMethod = ref('password')
 
 const getMethodLabel = (method: string) => {
   if (method === 'password') return '账号密码'
@@ -157,7 +157,7 @@ const getSummaryMainLoginText = () => {
 }
 
 const getSummaryDefaultLoginText = () => {
-  return getMethodLabel(createForm.policyDefaultMethod) + '登录'
+  return getMethodLabel(createForm.policyDefaultMethod)
 }
 
 const getSummaryMfaText = () => {
@@ -170,18 +170,6 @@ const getSummaryCaptchaText = () => {
   if (createForm.policyCaptcha === 'threshold') return '失败 3 次后启用'
   if (createForm.policyCaptcha === 'always') return '总是启用'
   return '不启用'
-}
-
-const getLoginPreviewTitle = () => {
-  if (createForm.loginUrl === 'default') return '租户后台登录'
-  if (createForm.loginUrl === 'platform') return '平台后台登录'
-  if (createForm.loginUrl === 'merchant') return '商户后台登录'
-  if (createForm.loginUrl === 'mobile') return '移动端登录'
-  return '统一后台登录'
-}
-
-const getLoginPreviewSubtitle = () => {
-  return `${getMethodLabel(createForm.policyDefaultMethod)}为默认登录方式`
 }
 
 const togglePolicyMethod = (method: string) => {
@@ -202,10 +190,6 @@ const togglePolicyMethod = (method: string) => {
     createForm.policyDefaultMethod = createForm.policyMethods[0]
   }
 }
-
-watch(() => createForm.policyDefaultMethod, (newVal) => {
-  previewActiveMethod.value = newVal
-})
 
 // Mock stats matching Screen 6 of design doc
 const getConfirmDetails = (row: RealmRecord | null) => {
@@ -238,13 +222,41 @@ const getAuthMethodsText = (row: RealmRecord) => {
   return '密码 / 短信'
 }
 
-const getLoginPageText = (row: RealmRecord) => {
+const getSsoClientCount = (row: RealmRecord) => {
+  if (typeof row.ssoClientCount === 'number') return row.ssoClientCount
   const code = row.code
-  if (code === 'tenant_realm') return '租户统一登录'
-  if (code === 'platform_realm') return '平台后台登录'
-  if (code === 'merchant_realm') return '商户后台登录'
-  if (code === 'consumer_realm') return '移动端登录'
-  return row.loginUrl || '默认登录页'
+  if (code === 'tenant_realm') return 8
+  if (code === 'platform_realm') return 3
+  if (code === 'merchant_realm') return 4
+  if (code === 'consumer_realm') return 2
+  return 0
+}
+
+const getAccountCount = (row: RealmRecord) => {
+  if (typeof row.accountCount === 'number') return row.accountCount
+  return getConfirmDetails(row).accounts
+}
+
+const getSsoSessionText = () => {
+  return createForm.ssoEnabled
+    ? `${createForm.ssoSessionTimeout} 小时有效 / ${createForm.sessionIdleTimeout} 分钟空闲超时`
+    : '该身份域不共享跨客户端登录态'
+}
+
+const getSsoLogoutText = () => {
+  return createForm.ssoSingleLogout === 'enabled' ? '统一退出同域客户端' : '仅退出当前客户端'
+}
+
+const getNoClientHandlerText = () => {
+  if (createForm.noClientIdHandler === 'show_app_list') return '展示应用选择页'
+  if (createForm.noClientIdHandler === 'show_error') return '返回错误提示'
+  return '跳转系统默认入口'
+}
+
+const getExistingSessionHandlerText = () => {
+  if (createForm.existingSessionHandler === 'auto_redirect') return '自动进入目标客户端'
+  if (createForm.existingSessionHandler === 'prompt') return '提示用户确认'
+  return '展示应用选择页'
 }
 
 const typeCategoryText = (typeCategoryId?: string | number | null) => {
@@ -285,9 +297,11 @@ const mockDataFallback = ref<RealmRecord[]>([
     name: '租户身份域',
     code: 'tenant_realm',
     typeCategoryId: '',
-    loginUrl: '租户统一登录',
     registerEnabled: true,
     ssoEnabled: true,
+    authPolicyName: '租户默认认证策略',
+    ssoClientCount: 8,
+    accountCount: 128,
     status: 1,
     createTime: '2026-05-28',
     description: '租户后台统一身份空间'
@@ -297,9 +311,11 @@ const mockDataFallback = ref<RealmRecord[]>([
     name: '平台身份域',
     code: 'platform_realm',
     typeCategoryId: '',
-    loginUrl: '平台后台登录',
     registerEnabled: true,
     ssoEnabled: true,
+    authPolicyName: '平台默认认证策略',
+    ssoClientCount: 3,
+    accountCount: 42,
     status: 1,
     createTime: '2026-05-28',
     description: '平台管理后台统一身份空间'
@@ -309,24 +325,28 @@ const mockDataFallback = ref<RealmRecord[]>([
     name: '商户身份域',
     code: 'merchant_realm',
     typeCategoryId: '',
-    loginUrl: '商户后台登录',
     registerEnabled: false,
     ssoEnabled: true,
+    authPolicyName: '商户默认认证策略',
+    ssoClientCount: 4,
+    accountCount: 86,
     status: 1,
     createTime: '2026-05-29',
-    description: '商户管理后台统一登录域'
+    description: '商户管理后台统一身份空间'
   },
   {
     id: '1004',
     name: '消费者身份域',
     code: 'consumer_realm',
     typeCategoryId: '',
-    loginUrl: '移动端登录',
     registerEnabled: true,
     ssoEnabled: true,
+    authPolicyName: '消费者默认认证策略',
+    ssoClientCount: 2,
+    accountCount: 0,
     status: 2,
     createTime: '2026-05-30',
-    description: '消费者移动端登录域'
+    description: '消费者移动端身份空间'
   }
 ])
 
@@ -339,7 +359,7 @@ const fetchData = async () => {
     }
     if (query.name && query.name.trim() !== '') params.name = query.name.trim()
     if (query.code && query.code.trim() !== '') params.code = query.code.trim()
-    if (query.typeCategoryId !== '' && query.typeCategoryId !== undefined) params.typeCategoryId = query.typeCategoryId
+    if (query.typeCategoryId !== '' && query.typeCategoryId !== undefined) params.realmTypeId = query.typeCategoryId
     if (typeof query.status === 'number') params.status = query.status
 
     const result = await realmApi.page(params)
@@ -364,7 +384,10 @@ const fetchData = async () => {
     } else {
       total.value = result.total || 0
     }
-    tableData.value = records
+    tableData.value = records.map(item => ({
+      ...item,
+      typeCategoryId: item.typeCategoryId ?? item.realmTypeId
+    }))
   } catch (error: any) {
     // Fail-safe mock data loader
     mockDataFallback.value.forEach(mockItem => {
@@ -433,9 +456,11 @@ const openCreateDialog = () => {
   handleTypeChange(createForm.typeCategoryId)
   createForm.description = ''
   createForm.status = 1
-  createForm.sortNo = 10
-  createForm.loginUrl = 'default'
-  createForm.noLoginHandler = 'redirect_default'
+  createForm.ssoEnabled = true
+  createForm.ssoSessionTimeout = 8
+  createForm.ssoSingleLogout = 'enabled'
+  createForm.existingSessionHandler = 'auto_redirect'
+  createForm.noClientIdHandler = 'show_app_list'
   createForm.authMethods = ['password', 'sms']
   createForm.authPolicy = 'default'
   createForm.sessionTimeout = 8
@@ -486,8 +511,11 @@ const openEditPage = (row: RealmRecord) => {
     description: row.description || '',
     status: row.status || 1,
     sortNo: 10,
-    loginUrl: row.loginUrl || 'default',
-    noLoginHandler: 'redirect_default',
+    ssoEnabled: row.ssoEnabled !== false,
+    ssoSessionTimeout: (row as any).ssoSessionTimeout || 8,
+    ssoSingleLogout: (row as any).ssoSingleLogout || 'enabled',
+    existingSessionHandler: (row as any).existingSessionHandler || 'auto_redirect',
+    noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
     authMethods: row.code === 'platform_realm' ? ['password', 'sms'] : ['password', 'mfa'],
     authPolicy: 'default',
     sessionTimeout: 8,
@@ -624,10 +652,14 @@ const submitRealmForm = async (continueCreating: boolean) => {
     const payload = {
       code: createForm.code,
       name: createForm.name,
+      realmTypeId: createForm.typeCategoryId,
       typeCategoryId: createForm.typeCategoryId,
-      loginUrl: createForm.loginUrl === 'default' ? '' : createForm.loginUrl,
       registerEnabled: createForm.authMethods.includes('sms') || createForm.authMethods.includes('email'),
-      ssoEnabled: true,
+      ssoEnabled: createForm.ssoEnabled,
+      ssoSessionTimeout: createForm.ssoSessionTimeout,
+      ssoSingleLogout: createForm.ssoSingleLogout,
+      existingSessionHandler: createForm.existingSessionHandler,
+      noClientIdHandler: createForm.noClientIdHandler,
       description: createForm.description || undefined,
       passwordPolicy: createForm.passwordPolicy || undefined,
       mfaPolicy: createForm.mfaPolicy === 'default' ? 1 : undefined,
@@ -713,7 +745,7 @@ onMounted(init)
         <div class="form-navigation-header-row">
           <div class="nav-title-left">
             <h1>身份域编辑</h1>
-            <p class="subtitle-text">配置默认登录页、默认认证策略，并直接配置身份域安全规则。</p>
+            <p class="subtitle-text">配置身份空间、默认认证策略、安全规则和 SSO 会话控制。</p>
           </div>
           <div class="nav-buttons-right">
             <el-button class="btn-op-outline" @click="closeFormPage">返回列表</el-button>
@@ -732,8 +764,9 @@ onMounted(init)
         <!-- Two-column grid -->
         <div class="realm-form-two-column-layout">
           <!-- Left Form Column -->
-          <div class="form-left-column">
-            <el-form ref="createFormRef" :model="createForm" :rules="createFormRules" label-position="top" class="create-form">
+          <div class="form-left-column" style="width: 100%;">
+            <el-form ref="createFormRef" :model="createForm" :rules="createFormRules" label-position="top" class="create-form form-grid-layout">
+              <div class="form-grid-left">
               
               <!-- Card 1: 基础信息 -->
               <div class="form-section-card-custom">
@@ -771,35 +804,47 @@ onMounted(init)
                 </div>
               </div>
 
-              <!-- Card 2: 登录配置 -->
+              <!-- Card 2: SSO 基础规则 -->
               <div class="form-section-card-custom mt-20">
                 <div class="card-title-header-custom">
-                  <h3>登录配置</h3>
-                  <p>身份域提供默认登录入口；不同客户端可在客户端登录配置中覆盖。</p>
+                  <h3>SSO 基础规则</h3>
+                  <p>配置该身份域的单点登录规则，控制跨应用的会话与退出行为。</p>
                 </div>
                 <div class="card-body-custom">
                   <div class="grid-2-col">
-                    <el-form-item label="默认登录页 *" prop="loginUrl">
-                      <el-select v-model="createForm.loginUrl" placeholder="选择默认登录页">
-                        <el-option label="租户后台登录" value="default" />
-                        <el-option label="平台后台登录" value="platform" />
-                        <el-option label="商户后台登录" value="merchant" />
-                        <el-option label="移动端登录页" value="mobile" />
-                      </el-select>
+                    <el-form-item label="启用 SSO">
+                      <el-radio-group v-model="createForm.ssoEnabled" class="premium-radio-group">
+                        <el-radio-button :value="true">启用</el-radio-button>
+                        <el-radio-button :value="false">停用</el-radio-button>
+                      </el-radio-group>
                     </el-form-item>
-                    <el-form-item label="未登录处理 *">
-                      <el-select v-model="createForm.noLoginHandler" placeholder="跳转默认登录页">
-                        <el-option label="跳转默认登录页" value="redirect_default" />
-                        <el-option label="返回 401 错误码" value="return_401" />
-                      </el-select>
+                    <el-form-item label="SSO 会话有效期">
+                      <el-input v-model.number="createForm.ssoSessionTimeout" placeholder="8">
+                        <template #append>小时</template>
+                      </el-input>
                     </el-form-item>
                   </div>
-                  <!-- Blue Banner -->
-                  <div class="alert-banner-custom mt-16">
-                    <span class="vertical-bar"></span>
-                    <div class="alert-content-text">
-                      客户端可覆盖：登录页、登录成功跳转地址、登录失败跳转地址、退出地址、认证策略。
-                    </div>
+                  <div class="grid-2-col mt-16">
+                    <el-form-item label="统一退出">
+                      <el-radio-group v-model="createForm.ssoSingleLogout" class="premium-radio-group">
+                        <el-radio-button value="enabled">启用</el-radio-button>
+                        <el-radio-button value="current_client_only">仅退出当前客户端</el-radio-button>
+                      </el-radio-group>
+                    </el-form-item>
+                  </div>
+                  <div class="grid-2-col mt-16">
+                    <el-form-item label="已有 SSO 会话时">
+                      <el-select v-model="createForm.existingSessionHandler" placeholder="选择处理方式" style="width: 100%">
+                        <el-option label="自动进入目标客户端" value="auto_redirect" />
+                        <el-option label="提示用户确认" value="prompt" />
+                      </el-select>
+                    </el-form-item>
+                    <el-form-item label="未指定 client_id 时">
+                      <el-select v-model="createForm.noClientIdHandler" placeholder="选择处理方式" style="width: 100%">
+                        <el-option label="展示应用选择页" value="show_app_list" />
+                        <el-option label="展示错误提示页" value="show_error" />
+                      </el-select>
+                    </el-form-item>
                   </div>
                 </div>
               </div>
@@ -808,7 +853,7 @@ onMounted(init)
               <div class="form-section-card-custom mt-20">
                 <div class="card-title-header-custom">
                   <h3>默认认证策略</h3>
-                  <p>配置该身份域的默认认证策略。主登录方式、默认登录方式、MFA 和图形验证码规则将在该身份域下生效。</p>
+                  <p>配置该身份域的默认认证策略。主认证方式、默认认证方式、MFA 和图形验证码规则将在该身份域下生效。</p>
                 </div>
                 <div class="card-body-custom">
                   <!-- Card Choice selector -->
@@ -825,7 +870,7 @@ onMounted(init)
                         <span class="custom-radio-circle" :class="{ checked: createForm.configurePolicy === 'custom' }"></span>
                         <span class="checkbox-title ml-8">配置专属认证策略</span>
                       </div>
-                      <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主登录方式、默认登录、MFA与图形验证码规则。</p>
+                      <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主认证方式、默认认证、MFA 与图形验证码规则。</p>
                     </div>
                   </div>
 
@@ -856,8 +901,8 @@ onMounted(init)
                     </div>
 
                     <div class="grid-3-col mt-16">
-                      <el-form-item label="默认登录方式">
-                        <el-select v-model="createForm.policyDefaultMethod" placeholder="选择默认登录方式">
+                      <el-form-item label="默认认证方式">
+                        <el-select v-model="createForm.policyDefaultMethod" placeholder="选择默认认证方式">
                           <el-option label="账号密码登录" value="password" v-if="createForm.policyMethods.includes('password')" />
                           <el-option label="短信验证码登录" value="sms" v-if="createForm.policyMethods.includes('sms')" />
                           <el-option label="微信小程序登录" value="wechat" v-if="createForm.policyMethods.includes('wechat')" />
@@ -891,8 +936,10 @@ onMounted(init)
                 </div>
               </div>
 
-              <!-- Card 4: 安全配置 -->
-              <div class="form-section-card-custom mt-20">
+              </div>
+              <div class="form-grid-right">
+                <!-- Card 4: 安全配置 -->
+                <div class="form-section-card-custom">
                 <div class="card-title-header-custom">
                   <h3>安全配置</h3>
                   <p>默认预填系统推荐值；管理员不修改即按这些值保存。</p>
@@ -1043,7 +1090,7 @@ onMounted(init)
               <div class="form-section-card-custom mt-20">
                 <div class="card-title-header-custom">
                   <h3>保存预览</h3>
-                  <p>保存后生成当前身份域默认登录、认证和安全规则。</p>
+                  <p>保存后生成当前身份域的默认认证、安全和 SSO 规则。</p>
                 </div>
                 <div class="card-body-custom">
                   <div class="alert-banner-custom">
@@ -1061,85 +1108,43 @@ onMounted(init)
                 </div>
               </div>
 
+              </div>
             </el-form>
           </div>
 
-          <!-- Right Preview Column -->
+          <!-- Right Summary Column -->
           <div class="preview-right-column">
             <div class="sticky-preview-wrapper">
               <div class="preview-title-bar">
-                <h3>登录页预览</h3>
-                <p class="subtitle">跟随默认登录页与认证配置变化</p>
+                <h3>身份域规则摘要</h3>
+                <p class="subtitle">身份域只维护规则；具体登录入口由客户端配置。</p>
               </div>
               
-              <!-- Simulated Browser Frame -->
-              <div class="mock-browser-window">
-                <div class="browser-header-dots">
-                  <span class="dot red"></span>
-                  <span class="dot yellow"></span>
-                  <span class="dot green"></span>
-                  <div class="browser-address-bar">
-                    <span class="lock-icon">🔒</span> authsphere.com/login/{{ createForm.code || 'tenant_realm' }}
-                  </div>
+              <div class="realm-rule-summary">
+                <div class="summary-section">
+                  <span class="summary-label">身份空间</span>
+                  <strong>{{ createForm.name || '未命名身份域' }}</strong>
+                  <p>{{ createForm.code || 'realm_code' }} / {{ createForm.typeCategoryCode || '未选择类型' }}</p>
                 </div>
-                
-                <div class="browser-content-area">
-                  <div class="login-card-preview-inner">
-                    <h2 class="login-inner-title">{{ getLoginPreviewTitle() }}</h2>
-                    <p class="login-inner-subtitle">{{ getLoginPreviewSubtitle() }}</p>
-                    
-                    <!-- Tab switches -->
-                    <div class="login-methods-tabs-preview" v-if="createForm.policyMethods && createForm.policyMethods.length > 0">
-                      <span 
-                        v-for="method in createForm.policyMethods" 
-                        :key="method" 
-                        class="tab-preview-item" 
-                        :class="{ active: previewActiveMethod === method }"
-                        @click="previewActiveMethod = method"
-                      >
-                        {{ getMethodLabel(method) }}
-                      </span>
-                    </div>
-                    
-                    <!-- Login Inner Inputs -->
-                    <div class="login-inputs-preview mt-20">
-                      <template v-if="previewActiveMethod === 'password'">
-                        <div class="mock-input-field">
-                          <span class="placeholder-txt">用户名 / 手机号</span>
-                        </div>
-                        <div class="mock-input-field mt-12">
-                          <span class="placeholder-txt">密码</span>
-                        </div>
-                      </template>
-                      
-                      <template v-else-if="previewActiveMethod === 'sms'">
-                        <div class="mock-input-field">
-                          <span class="placeholder-txt">手机号</span>
-                        </div>
-                        <div class="mock-input-field mt-12 flex-row-input">
-                          <span class="placeholder-txt">验证码</span>
-                          <span class="send-btn-mock">获取验证码</span>
-                        </div>
-                      </template>
-
-                      <template v-else-if="previewActiveMethod === 'wechat' || previewActiveMethod === 'email'">
-                        <div class="wechat-preview-box">
-                          <div class="wechat-qr-code">
-                            <div class="wechat-qr-stub">微信扫码登录</div>
-                          </div>
-                        </div>
-                      </template>
-                    </div>
-                    
-                    <!-- Login Button -->
-                    <el-button type="primary" class="btn-login-preview-submit mt-20">登录</el-button>
-                    
-                    <!-- Login Footer -->
-                    <div class="login-footer-preview mt-16">
-                      <span class="link-forgot-pwd" v-if="createForm.policyMethods.includes('password')">忘记密码</span>
-                      <span class="mfa-indicator-txt" v-if="createForm.policyMfa !== 'none'">MFA: {{ getMfaLabel(createForm.policyMfa) }}</span>
-                    </div>
-                  </div>
+                <div class="summary-section">
+                  <span class="summary-label">默认认证策略</span>
+                  <strong>{{ createForm.configurePolicy === 'custom' ? (createForm.policyName || '保存时自动生成') : '系统默认认证策略' }}</strong>
+                  <p>主登录：{{ getSummaryMainLoginText() }}；默认：{{ getSummaryDefaultLoginText() }}；MFA：{{ getSummaryMfaText() }}</p>
+                </div>
+                <div class="summary-section">
+                  <span class="summary-label">SSO 会话</span>
+                  <strong>{{ createForm.ssoEnabled ? '启用 SSO' : '停用 SSO' }}</strong>
+                  <p>{{ getSsoSessionText() }}</p>
+                </div>
+                <div class="summary-section">
+                  <span class="summary-label">SSO 行为</span>
+                  <strong>{{ getSsoLogoutText() }}</strong>
+                  <p>已有会话：{{ getExistingSessionHandlerText() }}；无 client_id：{{ getNoClientHandlerText() }}</p>
+                </div>
+                <div class="summary-section">
+                  <span class="summary-label">安全配置</span>
+                  <strong>密码 / Token / 账号锁定 / 会话安全</strong>
+                  <p>密码 {{ createForm.passwordMinLength }}-{{ createForm.passwordMaxLength }} 位；Access Token {{ createForm.accessTokenTimeout }} 分钟。</p>
                 </div>
               </div>
             </div>
@@ -1153,7 +1158,7 @@ onMounted(init)
       <div class="page-heading-premium">
         <div class="heading-left-wrapper">
           <h1>身份域管理</h1>
-          <p>维护账号归属的身份空间，并关联登录页、认证策略和安全策略。</p>
+          <p>维护账号归属的身份空间、默认认证规则、安全策略和 SSO 会话范围。</p>
         </div>
         <div class="heading-right-actions">
           <el-button :icon="Refresh" class="btn-refresh" @click="fetchData">刷新</el-button>
@@ -1218,16 +1223,26 @@ onMounted(init)
               {{ getAuthMethodsText(row) }}
             </template>
           </el-table-column>
-          <el-table-column label="默认登录页" min-width="150">
+          <el-table-column label="默认认证策略" min-width="160">
             <template #default="{ row }">
-              {{ getLoginPageText(row) }}
+              {{ row.authPolicyName || '系统默认认证策略' }}
             </template>
           </el-table-column>
-          <el-table-column label="策略状态" min-width="110" align="center">
+          <el-table-column label="SSO 状态" min-width="120" align="center">
             <template #default="{ row }">
-              <span class="badge" :class="getPolicyStatus(row).type === 'success' ? 'green' : (getPolicyStatus(row).type === 'warning' ? 'orange' : 'red')">
-                {{ getPolicyStatus(row).text }}
-              </span>
+              <el-tag :type="row.ssoEnabled !== false ? 'success' : 'info'" size="small">
+                {{ row.ssoEnabled !== false ? '已启用' : '已停用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="SSO 客户端" min-width="110" align="center">
+            <template #default="{ row }">
+              {{ getSsoClientCount(row) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="账号数" min-width="100" align="center">
+            <template #default="{ row }">
+              {{ getAccountCount(row) }}
             </template>
           </el-table-column>
           <el-table-column label="状态" width="100" align="center">
@@ -1670,10 +1685,20 @@ onMounted(init)
 
 /* Form Two Column Layout Grid */
 .realm-form-two-column-layout {
+  display: block;
+  max-width: 1440px;
+  margin: 0 auto;
+}
+.form-grid-layout {
   display: grid;
-  grid-template-columns: 1.80fr 1fr;
+  grid-template-columns: 1.15fr 1fr;
   gap: 24px;
   align-items: start;
+}
+@media (max-width: 1024px) {
+  .form-grid-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Form Cards */
@@ -1929,7 +1954,7 @@ onMounted(init)
 
 /* Preview Sticky Column styling */
 .preview-right-column {
-  position: relative;
+  display: none !important;
 }
 .sticky-preview-wrapper {
   position: sticky;
@@ -1945,6 +1970,40 @@ onMounted(init)
   margin: 4px 0 12px 0;
   font-size: 12px;
   color: #64748B;
+}
+.realm-rule-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+}
+.summary-section {
+  padding: 12px 14px;
+  background: #F8FAFC;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+}
+.summary-section .summary-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748B;
+}
+.summary-section strong {
+  display: block;
+  color: #0F172A;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.summary-section p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.55;
 }
 
 /* Simulated Browser window */
@@ -2254,5 +2313,25 @@ onMounted(init)
   .filter-item {
     width: auto;
   }
+}
+.premium-radio-group :deep(.el-radio-button__inner) {
+  border-radius: 8px !important;
+  border: 1px solid #E2E8F0 !important;
+  margin-right: 8px;
+  background-color: #fff;
+  color: #64748B;
+  transition: all 0.2s ease;
+  font-weight: 500;
+  box-shadow: none !important;
+}
+.premium-radio-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  background-color: #fff !important;
+  color: #3B82F6 !important;
+  border-color: #3B82F6 !important;
+  font-weight: 600;
+}
+.premium-radio-group :deep(.el-radio-button:first-child .el-radio-button__inner),
+.premium-radio-group :deep(.el-radio-button:last-child .el-radio-button__inner) {
+  border-radius: 8px !important;
 }
 </style>

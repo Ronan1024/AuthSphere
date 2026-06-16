@@ -2,6 +2,7 @@ package com.authsphere.server.realm.dto;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
 /**
@@ -28,17 +29,8 @@ public class CreateRealmRequest {
     /**
      * 身份域类型id
      */
-    private Long RealmTypeId;
-
-    /**
-     * 独立登录页
-     */
-    private String loginUrl;
-
-    /**
-     * 默认登录页 ID。
-     */
-    private Long loginPageId;
+    @JsonAlias("typeCategoryId")
+    private Long realmTypeId;
 
     /**
      * 默认认证策略ID。
@@ -55,6 +47,31 @@ public class CreateRealmRequest {
      * 是否开启SSO
      */
     private Boolean ssoEnabled;
+
+    /**
+     * SSO 会话有效期，单位小时。
+     */
+    private Integer ssoSessionTimeout;
+
+    /**
+     * SSO 空闲超时，单位分钟。
+     */
+    private Integer ssoIdleTimeout;
+
+    /**
+     * 单点退出策略：enabled 统一退出同域客户端，current_only 仅退出当前客户端。
+     */
+    private String ssoSingleLogout;
+
+    /**
+     * 已存在会话处理方式。
+     */
+    private String existingSessionHandler;
+
+    /**
+     * 无 client_id 时的处理方式。
+     */
+    private String noClientIdHandler;
 
     /**
      * 密码策略id。
