@@ -7,11 +7,11 @@ import com.authsphere.server.app.domain.AppMenuDomain;
 import com.authsphere.server.app.dto.AppClientPermissionResponse;
 import com.authsphere.server.app.dto.AppPermissionPageRequest;
 import com.authsphere.server.app.dto.AppPermissionRequest;
+import com.authsphere.server.app.enums.AppPermissionType;
 import com.authsphere.server.app.mapper.AppPermissionMapper;
 import com.authsphere.server.app.model.AppClient;
 import com.authsphere.server.app.model.AppClientPermission;
 import com.authsphere.server.app.service.AppPermissionService;
-import com.authsphere.server.common.enums.PermissionType;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -53,8 +53,8 @@ public class AppPermissionServiceImpl extends ServiceImpl<AppPermissionMapper, A
     @Override
     public Page<AppClientPermissionResponse> pageByClient(Long appClientId, AppPermissionPageRequest request) {
         AppClient client = appClientDomain.findById(appClientId);
-        Page<AppClientPermission> page = new Page<>(request.getPage(), request.getSize());
-        return appPermissionMapper.page(page, request, client.getAppId(), client.getId(), request.getPermissionType());
+        Page<AppClientPermissionResponse> page = new Page<>(request.getPage(), request.getSize());
+        return appPermissionMapper.page(page, client.getAppId(), client.getId(), request.getPermissionType());
     }
 
     @Override
@@ -70,7 +70,7 @@ public class AppPermissionServiceImpl extends ServiceImpl<AppPermissionMapper, A
         AppClient client = appClientDomain.findById(appClientId);
         appClientPermissionDomain.checkPermissionCode(null, client.getAppId(), client.getId(), request.getPermissionCode());
 
-        if (request.getPermissionType().equals(PermissionType.BUTTON.getType())) {
+        if (request.getPermissionType().equals(AppPermissionType.BUTTON.getCode())) {
             appMenuDomain.findById(request.getMenuId());
         }
         AppClientPermission permission = AppClientPermissionConvert.INSTANCE.toAppCLientPermission(request);
@@ -85,7 +85,7 @@ public class AppPermissionServiceImpl extends ServiceImpl<AppPermissionMapper, A
         AppClientPermission permission = appClientPermissionDomain.findById(id);
         appClientPermissionDomain.checkPermissionCode(permission.getId(), permission.getAppId(), permission.getId(), request.getPermissionCode());
         AppClientPermissionConvert.INSTANCE.copyAppClientPermission(permission, request);
-        if (request.getPermissionType().equals(PermissionType.BUTTON.getType())) {
+        if (request.getPermissionType().equals(AppPermissionType.BUTTON.getCode())) {
             appMenuDomain.findById(request.getMenuId());
         }
         appPermissionMapper.updateById(permission);
@@ -117,4 +117,3 @@ public class AppPermissionServiceImpl extends ServiceImpl<AppPermissionMapper, A
 
 
 }
-

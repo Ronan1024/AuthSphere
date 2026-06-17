@@ -18,12 +18,11 @@ import {
   ArrowDown
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { appClientApi, type AppClientRecord, type AppClientPayload, type AppClientExternalConfigRecord, type AppClientExternalConfigPayload } from '@/api/appClient'
-import { authPolicyApi, type AuthPolicyOptionResponse } from '@/api/authPolicy'
-import { loginPageApi, type LoginPageRecord } from '@/api/loginPage'
-import { menuApi, type AppMenuRecord, type AppMenuPayload } from '@/api/menu'
-import { appPermissionApi, type AppPermissionRecord, type AppPermissionPayload } from '@/api/appPermission'
-import { realmApi, type RealmRecord } from '@/api/realm'
+import type { AppClientRecord } from '@/api/appClient'
+import type { AuthPolicyOptionResponse } from '@/api/authPolicy'
+import type { LoginPageRecord } from '@/api/loginPage'
+import type { AppPermissionRecord } from '@/api/appPermission'
+import type { RealmRecord } from '@/api/realm'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,6 +51,148 @@ const loginModeOptions = [
 ]
 
 const ossConfigOptions = computed(() => currentExternalConfigs.value.filter(item => item.providerType === 'OSS'))
+
+const mockRealmOptions: RealmRecord[] = [
+  {
+    id: 'realm_platform',
+    code: 'platform_realm',
+    name: '平台身份域',
+    realmTypeId: 'platform',
+    registerEnabled: false,
+    ssoEnabled: true,
+    status: 1
+  },
+  {
+    id: 'realm_tenant_a',
+    code: 'tenant_a_realm',
+    name: '租户身份域 (租户A)',
+    realmTypeId: 'tenant',
+    registerEnabled: true,
+    ssoEnabled: true,
+    status: 1
+  }
+]
+
+const mockLoginPageOptions: LoginPageRecord[] = [
+  {
+    id: 'login_admin',
+    code: 'admin_login_page',
+    name: '平台统一登录模板',
+    defaultPage: true,
+    status: 1
+  },
+  {
+    id: 'login_mall',
+    code: 'mall_login_page',
+    name: '商城平台登录模板',
+    defaultPage: false,
+    status: 1
+  },
+  {
+    id: 'login_mobile',
+    code: 'mobile_login_page',
+    name: '移动端登录模板',
+    defaultPage: false,
+    status: 1
+  }
+]
+
+const mockAuthPolicyOptions: AuthPolicyOptionResponse[] = [
+  { id: 'policy_platform_strong', code: 'platform_strong_auth', name: '平台强认证策略' },
+  { id: 'policy_password_totp', code: 'password_totp', name: '账号密码 + TOTP' },
+  { id: 'policy_client_credentials', code: 'client_credentials', name: 'Client Credentials' },
+  { id: 'policy_external_callback', code: 'external_callback', name: '外部登录回调校验' }
+]
+
+const mockClientDetails: Record<string, AppClientRecord> = {
+  client_10001_admin: {
+    id: 'client_10001_admin',
+    appId: '10001',
+    appCode: 'admin-console',
+    clientCode: 'admin_web',
+    clientName: '管理后台 Web',
+    clientType: 1,
+    realmId: 'realm_platform',
+    defaultRealmId: 'realm_platform',
+    realmName: '平台身份域',
+    loginMode: 'IAM_HOSTED',
+    loginPageId: 'login_admin',
+    loginPageName: '平台统一登录模板',
+    authPolicyId: 'policy_platform_strong',
+    authPolicyName: '平台强认证策略',
+    ossConfigId: 'oss_admin_assets',
+    defaultEntryUrl: 'http://localhost:5173/login',
+    loginCallbackUrl: 'http://localhost:5173/auth/callback',
+    status: 1,
+    description: '认证中心管理端客户端',
+    updateTime: '2026-06-16 17:28:00'
+  },
+  client_10002_merchant: {
+    id: 'client_10002_merchant',
+    appId: '10002',
+    appCode: 'ecommerce',
+    clientCode: 'merchant_web',
+    clientName: '商家后台',
+    clientType: 2,
+    realmId: 'realm_tenant_a',
+    defaultRealmId: 'realm_tenant_a',
+    realmName: '租户身份域 (租户A)',
+    loginMode: 'EXTERNAL_REDIRECT',
+    externalLoginUrl: 'https://merchant.example.com/login',
+    authPolicyId: 'policy_external_callback',
+    authPolicyName: '外部登录回调校验',
+    ossConfigId: 'oss_mall_assets',
+    defaultEntryUrl: 'https://merchant.example.com',
+    loginCallbackUrl: 'https://merchant.example.com/auth/callback',
+    status: 1,
+    description: '客户自有登录页跳转',
+    updateTime: '2026-06-16 16:10:00'
+  },
+  client_10002_open: {
+    id: 'client_10002_open',
+    appId: '10002',
+    appCode: 'ecommerce',
+    clientCode: 'mall_open_api',
+    clientName: '开放 API',
+    clientType: 5,
+    realmId: 'realm_tenant_a',
+    defaultRealmId: 'realm_tenant_a',
+    realmName: '租户身份域 (租户A)',
+    loginMode: 'SERVICE',
+    authPolicyId: 'policy_client_credentials',
+    authPolicyName: 'Client Credentials',
+    ossConfigId: 'oss_mall_assets',
+    defaultEntryUrl: 'https://mall.example.com/openapi',
+    status: 1,
+    description: '服务端接口认证',
+    updateTime: '2026-06-16 16:10:00'
+  }
+}
+
+const getMockClientDetail = (id: string): AppClientRecord => {
+  return {
+    ...(mockClientDetails[id] || {
+      id,
+      appId: appId.value,
+      appCode: 'mock_app',
+      clientCode: 'default_web',
+      clientName: '默认 Web 客户端',
+      clientType: 1,
+      realmId: 'realm_platform',
+      defaultRealmId: 'realm_platform',
+      realmName: '平台身份域',
+      loginMode: 'IAM_HOSTED',
+      loginPageId: 'login_admin',
+      loginPageName: '平台统一登录模板',
+      authPolicyId: 'policy_platform_strong',
+      authPolicyName: '平台强认证策略',
+      defaultEntryUrl: 'https://app.example.com',
+      status: 1,
+      description: '客户端配置页本地初始化数据',
+      updateTime: '2026-06-17 10:00:00'
+    })
+  }
+}
 
 // Mock Menu Data for Frontend Showcase
 interface MenuNode {
@@ -171,6 +312,166 @@ interface ExternalConfig {
 
 const currentExternalConfigs = ref<ExternalConfig[]>([])
 
+const mockExternalConfigsByClient: Record<string, ExternalConfig[]> = {
+  client_10001_admin: [
+    {
+      id: 'oss_admin_assets',
+      providerType: 'OSS',
+      providerCode: 'admin_assets',
+      providerName: '管理端静态资源 OSS',
+      appId: 'admin-ak',
+      appSecret: '******',
+      callbackUrl: 'https://cdn.authsphere.local',
+      configJson: '{"provider":"MINIO","endpoint":"https://oss.authsphere.local","bucket":"authsphere-admin","pathPrefix":"clients/admin"}',
+      status: 1
+    },
+    {
+      id: 'oidc_admin_google',
+      providerType: 'OIDC',
+      providerCode: 'google_oidc',
+      providerName: 'Google OIDC',
+      appId: 'google-client-id',
+      appSecret: '******',
+      callbackUrl: 'http://localhost:5173/auth/oidc/callback',
+      status: 1
+    }
+  ],
+  client_10002_merchant: [
+    {
+      id: 'oss_mall_assets',
+      providerType: 'OSS',
+      providerCode: 'mall_assets',
+      providerName: '商城端 OSS',
+      appId: 'mall-ak',
+      appSecret: '******',
+      callbackUrl: 'https://cdn.mall.example.com',
+      configJson: '{"provider":"ALIYUN","bucket":"mall-assets","region":"cn-hangzhou","pathPrefix":"clients/merchant"}',
+      status: 1
+    }
+  ],
+  client_10002_open: [
+    {
+      id: 'oss_mall_assets',
+      providerType: 'OSS',
+      providerCode: 'mall_assets',
+      providerName: '商城端 OSS',
+      appId: 'mall-ak',
+      appSecret: '******',
+      callbackUrl: 'https://cdn.mall.example.com',
+      configJson: '{"provider":"ALIYUN","bucket":"mall-assets","region":"cn-hangzhou","pathPrefix":"clients/open-api"}',
+      status: 1
+    }
+  ]
+}
+
+const mockMenusByClient: Record<string, MenuNode[]> = {
+  client_10001_admin: [
+    {
+      id: 'menu_realm',
+      parentId: '0',
+      label: '身份域管理',
+      code: 'realm_manage',
+      path: '/realm',
+      component: '@/views/realm/RealmListView.vue',
+      status: 1,
+      visible: 1,
+      children: [
+        {
+          id: 'menu_realm_type',
+          parentId: 'menu_realm',
+          label: '身份域类型',
+          code: 'realm_type',
+          path: '/realm/type-categories',
+          component: '@/views/realm/RealmTypeCategoryView.vue',
+          status: 1,
+          visible: 1
+        }
+      ]
+    },
+    {
+      id: 'menu_app',
+      parentId: '0',
+      label: '应用管理',
+      code: 'app_manage',
+      path: '/applications',
+      component: '@/views/application/ApplicationListView.vue',
+      status: 1,
+      visible: 1
+    }
+  ],
+  client_10002_merchant: [
+    {
+      id: 'menu_goods',
+      parentId: '0',
+      label: '商品管理',
+      code: 'goods_manage',
+      path: '/goods',
+      component: '@/views/goods/List.vue',
+      status: 1,
+      visible: 1
+    },
+    {
+      id: 'menu_order',
+      parentId: '0',
+      label: '订单管理',
+      code: 'order_manage',
+      path: '/orders',
+      component: '@/views/order/List.vue',
+      status: 1,
+      visible: 1
+    }
+  ]
+}
+
+const mockPermissionsByClient: Record<string, AppPermissionRecord[]> = {
+  client_10001_admin: [
+    {
+      id: 'perm_realm_page',
+      appCode: 'admin-console',
+      clientCode: 'admin_web',
+      menuId: 'menu_realm',
+      permissionCode: 'realm:page',
+      permissionName: '分页查询身份域',
+      permissionType: 2,
+      apiPath: '/admin/realm/page',
+      method: 'POST',
+      description: '查询身份域列表',
+      status: 1,
+      builtIn: 0
+    },
+    {
+      id: 'perm_app_page',
+      appCode: 'admin-console',
+      clientCode: 'admin_web',
+      menuId: 'menu_app',
+      permissionCode: 'app:page',
+      permissionName: '分页查询应用',
+      permissionType: 2,
+      apiPath: '/api/apps/page',
+      method: 'POST',
+      description: '查询应用列表',
+      status: 1,
+      builtIn: 0
+    }
+  ],
+  client_10002_merchant: [
+    {
+      id: 'perm_goods_query',
+      appCode: 'ecommerce',
+      clientCode: 'merchant_web',
+      menuId: 'menu_goods',
+      permissionCode: 'goods:query',
+      permissionName: '查询商品',
+      permissionType: 2,
+      apiPath: '/api/merchant/goods/page',
+      method: 'POST',
+      description: '商家商品分页查询',
+      status: 1,
+      builtIn: 0
+    }
+  ]
+}
+
 const platformTypeOptions = [
   { label: '微信小程序 (WECHAT_MINI)', value: 'WECHAT_MINI' },
   { label: '支付宝小程序 (ALIPAY_MINI)', value: 'ALIPAY_MINI' },
@@ -195,90 +496,41 @@ const clientTypeText = (type?: string | number) => {
 }
 
 const fetchClientConfigOptions = async () => {
-  try {
-    const [realmPage, loginPages, authPolicies] = await Promise.all([
-      realmApi.page({ page: 1, size: 100, status: 1 }),
-      loginPageApi.list(),
-      authPolicyApi.list()
-    ])
-    realmOptions.value = realmPage.records ?? []
-    loginPageOptions.value = loginPages ?? []
-    authPolicyOptions.value = authPolicies ?? []
-  } catch (error: any) {
-    ElMessage.error(error.message || '加载客户端配置选项失败')
-  }
+  realmOptions.value = mockRealmOptions
+  loginPageOptions.value = mockLoginPageOptions
+  authPolicyOptions.value = mockAuthPolicyOptions
 }
 
 const loadClientMenus = async () => {
-  try {
-    const list = await menuApi.listByClient(clientId.value)
-    const mapNode = (item: AppMenuRecord): MenuNode => ({
-      id: item.id,
-      parentId: item.parentId,
-      label: item.menuName,
-      code: item.menuCode,
-      path: item.routePath || '',
-      component: item.componentPath,
-      status: item.status,
-      visible: item.visible,
-      children: item.children ? item.children.map(mapNode) : []
-    })
-    currentMenus.value = list.map(mapNode)
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取菜单资源失败')
-  }
+  currentMenus.value = JSON.parse(JSON.stringify(mockMenusByClient[clientId.value] || []))
 }
 
 const loadClientPermissions = async () => {
-  try {
-    const res = await appPermissionApi.page(clientId.value, {
-      page: permissionQuery.page,
-      size: permissionQuery.size,
-      permissionType: permissionQuery.permissionType
-    })
-    currentPermissions.value = res.records
-    permissionTotal.value = res.total
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取权限列表失败')
-  }
+  const all = mockPermissionsByClient[clientId.value] || []
+  const filtered = permissionQuery.permissionType
+    ? all.filter(item => item.permissionType === permissionQuery.permissionType)
+    : all
+  permissionTotal.value = filtered.length
+  const start = (permissionQuery.page - 1) * permissionQuery.size
+  currentPermissions.value = filtered.slice(start, start + permissionQuery.size).map(item => ({ ...item }))
 }
 
 const fetchClientDetail = async () => {
   if (!clientId.value) return
   loading.value = true
-  try {
-    const data = await appClientApi.detail(clientId.value)
+  window.setTimeout(async () => {
+    const data = getMockClientDetail(clientId.value)
     data.defaultRealmId = data.defaultRealmId ?? data.realmId ?? null
     data.loginMode = [5, 6].includes(Number(data.clientType)) ? 'SERVICE' : data.loginMode || 'IAM_HOSTED'
     clientInfo.value = data
     await loadExternalConfigs()
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取客户端详情失败')
-  } finally {
     loading.value = false
-  }
+  }, 120)
 }
-
-const mapExternalConfig = (item: AppClientExternalConfigRecord): ExternalConfig => ({
-  id: item.id,
-  providerType: item.providerType,
-  providerCode: item.providerCode,
-  providerName: item.providerName,
-  appId: item.appId,
-  appSecret: item.appSecret,
-  callbackUrl: item.callbackUrl,
-  configJson: item.configJson,
-  status: item.status
-})
 
 const loadExternalConfigs = async () => {
   if (!clientId.value) return
-  try {
-    const list = await appClientApi.listExternalConfigs(clientId.value)
-    currentExternalConfigs.value = list.map(mapExternalConfig)
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取外部平台配置失败')
-  }
+  currentExternalConfigs.value = (mockExternalConfigsByClient[clientId.value] || []).map(item => ({ ...item }))
 }
 
 const handleLoginModeChange = (mode: string) => {
@@ -317,31 +569,10 @@ const copyToClipboard = (text: string) => {
 const handleSaveConfig = async () => {
   if (!clientInfo.value) return
   submitLoading.value = true
-  try {
-    const payload: AppClientPayload = {
-      clientCode: clientInfo.value.clientCode,
-      clientName: clientInfo.value.clientName,
-      clientType: clientInfo.value.clientType,
-      status: clientInfo.value.status,
-      description: clientInfo.value.description,
-      realmId: clientInfo.value.defaultRealmId ?? clientInfo.value.realmId,
-      defaultRealmId: clientInfo.value.defaultRealmId,
-      defaultEntryUrl: clientInfo.value.defaultEntryUrl,
-      loginMode: isServiceClient.value ? 'SERVICE' : clientInfo.value.loginMode || 'IAM_HOSTED',
-      externalLoginUrl: clientInfo.value.loginMode === 'EXTERNAL_REDIRECT' ? clientInfo.value.externalLoginUrl : undefined,
-      loginCallbackUrl: clientInfo.value.loginCallbackUrl,
-      loginPageId: clientInfo.value.loginMode === 'IAM_HOSTED' ? clientInfo.value.loginPageId : undefined,
-      authPolicyId: clientInfo.value.authPolicyId,
-      ossConfigId: clientInfo.value.ossConfigId
-    }
-    await appClientApi.edit(clientId.value, payload)
+  window.setTimeout(() => {
     ElMessage.success('客户端配置已成功保存')
-    handleBack()
-  } catch (error: any) {
-    ElMessage.error(error.message || '保存客户端配置失败')
-  } finally {
     submitLoading.value = false
-  }
+  }, 120)
 }
 
 // Menu structures handlers
@@ -399,34 +630,13 @@ const handleNodeDrop = async (
   dropNode: any,
   dropType: string
 ) => {
-  try {
-    const draggingData = draggingNode.data as MenuNode
-    let newParentId = '0'
-    
-    if (dropType === 'inner') {
-      newParentId = dropNode.data.id
-    } else {
-      newParentId = dropNode.data.parentId || '0'
-    }
-    
-    const payload: AppMenuPayload = {
-      parentId: newParentId,
-      menuCode: draggingData.code,
-      menuName: draggingData.label,
-      routePath: draggingData.path || undefined,
-      componentPath: draggingData.component || undefined,
-      sortNo: 0,
-      visible: draggingData.visible !== undefined ? draggingData.visible : 1,
-      status: draggingData.status
-    }
-    
-    await menuApi.edit(draggingData.id, payload)
-    ElMessage.success('已通过拖拽更新菜单结构')
-    await loadClientMenus()
-  } catch (error: any) {
-    ElMessage.error(error.message || '拖拽更新失败')
-    await loadClientMenus()
+  const draggingData = draggingNode.data as MenuNode
+  if (dropType === 'inner') {
+    draggingData.parentId = dropNode.data.id
+  } else {
+    draggingData.parentId = dropNode.data.parentId || '0'
   }
+  ElMessage.success('已通过拖拽更新菜单结构')
 }
 
 const handleDeleteMenu = (node: MenuNode) => {
@@ -435,18 +645,21 @@ const handleDeleteMenu = (node: MenuNode) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    try {
-      await menuApi.delete(node.id)
-      ElMessage.success('菜单已删除')
-      await loadClientMenus()
-      if (selectedMenuNode.value?.id === node.id) {
-        selectedMenuNode.value = null
+    const removeNode = (nodes: MenuNode[]): boolean => {
+      const index = nodes.findIndex(item => item.id === node.id)
+      if (index >= 0) {
+        nodes.splice(index, 1)
+        return true
       }
-      if (isEditingMenu.value && menuFormData.id === node.id) {
-        isEditingMenu.value = false
-      }
-    } catch (error: any) {
-      ElMessage.error(error.message || '删除菜单失败')
+      return nodes.some(item => item.children && removeNode(item.children))
+    }
+    removeNode(currentMenus.value)
+    ElMessage.success('菜单已删除')
+    if (selectedMenuNode.value?.id === node.id) {
+      selectedMenuNode.value = null
+    }
+    if (isEditingMenu.value && menuFormData.id === node.id) {
+      isEditingMenu.value = false
     }
   }).catch(() => {})
 }
@@ -469,38 +682,63 @@ const saveMenuForm = async () => {
   if (!valid) return
   
   const targetCode = menuFormData.code
-  const payload: AppMenuPayload = {
+  const savedMenu: MenuNode = {
+    id: menuFormData.id || `menu_${Date.now()}`,
     parentId: menuFormData.parentId ? menuFormData.parentId : '0',
-    menuCode: menuFormData.code,
-    menuName: menuFormData.label,
-    routePath: menuFormData.path || undefined,
-    componentPath: menuFormData.component || undefined,
-    sortNo: 0,
+    code: menuFormData.code,
+    label: menuFormData.label,
+    path: menuFormData.path,
+    component: menuFormData.component,
     visible: menuFormData.visible,
     status: menuFormData.status
   }
-  
-  try {
-    if (menuFormMode.value === 'create') {
-      await menuApi.create(clientId.value, payload)
-      ElMessage.success('成功新增菜单项')
-    } else {
-      await menuApi.edit(menuFormData.id, payload)
+
+  const insertNode = (nodes: MenuNode[], node: MenuNode) => {
+    if (!node.parentId || node.parentId === '0') {
+      nodes.push(node)
+      return true
+    }
+    for (const item of nodes) {
+      if (item.id === node.parentId) {
+        item.children = item.children || []
+        item.children.push(node)
+        return true
+      }
+      if (item.children && insertNode(item.children, node)) return true
+    }
+    nodes.push(node)
+    return true
+  }
+
+  const updateNode = (nodes: MenuNode[], node: MenuNode): boolean => {
+    for (const item of nodes) {
+      if (item.id === node.id) {
+        Object.assign(item, node)
+        return true
+      }
+      if (item.children && updateNode(item.children, node)) return true
+    }
+    return false
+  }
+
+  if (menuFormMode.value === 'create') {
+    insertNode(currentMenus.value, savedMenu)
+    ElMessage.success('成功新增菜单项')
+  } else {
+    if (updateNode(currentMenus.value, savedMenu)) {
       ElMessage.success('已保存菜单修改')
-    }
-    
-    await loadClientMenus()
-    
-    // Auto-select and show details of the newly created or updated node
-    const savedNode = findNodeByCode(currentMenus.value, targetCode)
-    if (savedNode) {
-      handleEditMenu(savedNode)
     } else {
-      isEditingMenu.value = false
-      selectedMenuNode.value = null
+      insertNode(currentMenus.value, savedMenu)
+      ElMessage.success('已新增菜单项')
     }
-  } catch (error: any) {
-    ElMessage.error(error.message || '保存菜单失败')
+  }
+
+  const savedNode = findNodeByCode(currentMenus.value, targetCode)
+  if (savedNode) {
+    handleEditMenu(savedNode)
+  } else {
+    isEditingMenu.value = false
+    selectedMenuNode.value = null
   }
 }
 
@@ -539,13 +777,11 @@ const handleDeletePermission = (row: AppPermissionRecord) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    try {
-      await appPermissionApi.delete(row.id)
-      ElMessage.success('权限已删除')
-      await loadClientPermissions()
-    } catch (error: any) {
-      ElMessage.error(error.message || '删除权限失败')
-    }
+    const source = mockPermissionsByClient[clientId.value] || []
+    const index = source.findIndex(item => item.id === row.id)
+    if (index >= 0) source.splice(index, 1)
+    ElMessage.success('权限已删除')
+    await loadClientPermissions()
   }).catch(() => {})
 }
 
@@ -553,7 +789,10 @@ const savePermissionForm = async () => {
   const valid = await permissionFormRef.value?.validate().catch(() => false)
   if (!valid) return
   
-  const payload: AppPermissionPayload = {
+  const payload: AppPermissionRecord = {
+    id: permissionFormData.id || `perm_${Date.now()}`,
+    appCode: clientInfo.value?.appCode || 'mock_app',
+    clientCode: clientInfo.value?.clientCode || 'mock_client',
     menuId: permissionFormData.menuId ? permissionFormData.menuId : undefined,
     permissionCode: permissionFormData.permissionCode,
     permissionName: permissionFormData.permissionName,
@@ -561,22 +800,21 @@ const savePermissionForm = async () => {
     apiPath: permissionFormData.permissionType === 2 && permissionFormData.apiPath ? permissionFormData.apiPath : undefined,
     method: permissionFormData.permissionType === 2 && permissionFormData.method ? permissionFormData.method : undefined,
     description: permissionFormData.description || undefined,
-    status: permissionFormData.status
+    status: permissionFormData.status,
+    builtIn: 0
   }
-  
-  try {
-    if (permissionFormMode.value === 'create') {
-      await appPermissionApi.create(clientId.value, payload)
-      ElMessage.success('成功新增权限项')
-    } else {
-      await appPermissionApi.edit(permissionFormData.id, payload)
-      ElMessage.success('已保存权限修改')
-    }
-    isEditingPermission.value = false
-    await loadClientPermissions()
-  } catch (error: any) {
-    ElMessage.error(error.message || '保存权限失败')
+
+  const source = mockPermissionsByClient[clientId.value] || (mockPermissionsByClient[clientId.value] = [])
+  if (permissionFormMode.value === 'create') {
+    source.push(payload)
+    ElMessage.success('成功新增权限项')
+  } else {
+    const idx = source.findIndex(item => item.id === permissionFormData.id)
+    if (idx >= 0) source[idx] = payload
+    ElMessage.success('已保存权限修改')
   }
+  isEditingPermission.value = false
+  await loadClientPermissions()
 }
 
 // External platforms
@@ -635,7 +873,6 @@ const handleDeleteExternal = (index: number) => {
     type: 'warning'
   }).then(async () => {
     const item = currentExternalConfigs.value[index]
-    await appClientApi.disableExternalConfig(item.id)
     item.status = 2
     ElMessage.success('配置已禁用')
   }).catch(() => {})
@@ -644,7 +881,8 @@ const handleDeleteExternal = (index: number) => {
 const saveExternalForm = async () => {
   const valid = await externalFormRef.value?.validate().catch(() => false)
   if (!valid) return
-  const payload: AppClientExternalConfigPayload = {
+  const payload: ExternalConfig = {
+    id: externalFormData.id || `ext_${Date.now()}`,
     providerType: externalFormData.providerType,
     providerCode: externalFormData.providerCode,
     providerName: externalFormData.providerName,
@@ -655,11 +893,13 @@ const saveExternalForm = async () => {
     status: externalFormData.status
   }
 
+  const source = mockExternalConfigsByClient[clientId.value] || (mockExternalConfigsByClient[clientId.value] = [])
   if (externalFormMode.value === 'create') {
-    await appClientApi.createExternalConfig(clientId.value, payload)
+    source.push(payload)
     ElMessage.success('成功新增外部平台配置')
   } else {
-    await appClientApi.editExternalConfig(externalFormData.id, payload)
+    const idx = source.findIndex(item => item.id === externalFormData.id)
+    if (idx >= 0) source[idx] = payload
     ElMessage.success('修改已保存')
   }
   isEditingExternal.value = false

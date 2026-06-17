@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.subject.mapper.SubjectTypeRelationMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.subject.model.SubjectTypeRelation">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="parentTypeId" column="parent_type_id" jdbcType="BIGINT"/>
+            <result property="childTypeId" column="child_type_id" jdbcType="BIGINT"/>
+            <result property="relationType" column="relation_type" jdbcType="TINYINT"/>
+            <result property="allowCreate" column="allow_create" jdbcType="BIT"/>
+            <result property="allowManage" column="allow_manage" jdbcType="BIT"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,parent_type_id,child_type_id,
+        relation_type,allow_create,allow_manage,
+        status,description,create_time,
+        update_time
+    </sql>
+
+    <sql id="Response_Column_List">
+        r.id,
+        r.parent_type_id as parentTypeId,
+        p.code as parentTypeCode,
+        p.name as parentTypeName,
+        r.child_type_id as childTypeId,
+        c.code as childTypeCode,
+        c.name as childTypeName,
+        r.relation_type as relationType,
+        r.allow_create as allowCreate,
+        r.allow_manage as allowManage,
+        r.status,
+        r.description,
+        r.create_time,
+        r.update_time
+    </sql>
+
+    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectTypeRelationResponse">
+        select
+        <include refid="Response_Column_List"/>
+        from subject_type_relation r
+        left join subject_type p on p.id = r.parent_type_id
+        left join subject_type c on c.id = r.child_type_id
+        <where>
+            <if test="request.parentTypeId != null">
+                and r.parent_type_id = #{request.parentTypeId}
+            </if>
+            <if test="request.childTypeId != null">
+                and r.child_type_id = #{request.childTypeId}
+            </if>
+            <if test="request.relationType != null">
+                and r.relation_type = #{request.relationType}
+            </if>
+            <if test="request.status != null">
+                and r.status = #{request.status}
+            </if>
+        </where>
+        order by r.create_time desc
+    </select>
+
+    <select id="listAll" resultType="com.authsphere.server.subject.dto.SubjectTypeRelationResponse">
+        select
+        <include refid="Response_Column_List"/>
+        from subject_type_relation r
+        left join subject_type p on p.id = r.parent_type_id
+        left join subject_type c on c.id = r.child_type_id
+        where r.status = 1
+        order by r.create_time desc
+    </select>
+
+</mapper>

@@ -56,12 +56,24 @@ export interface AuthMethodOptionResponse {
   name: string
 }
 
+export interface AuthMethodTemplateResponse {
+  template: string
+  defaultCode: string
+  defaultName: string
+  title: string
+  description: string
+  allowedParamKeys: string[]
+}
+
 export const authMethodApi = {
   page(params: AuthMethodPageQuery) {
     return http.post<unknown, PageResult<AuthMethodRecord>>('/admin/auth/method/page', params)
   },
   list(position?: string) {
     return http.get<unknown, AuthMethodOptionResponse[]>('/admin/auth/method/list', { params: { position } })
+  },
+  templates() {
+    return http.get<unknown, AuthMethodTemplateResponse[]>('/admin/auth/method/templates')
   },
   detail(id: string) {
     return http.get<unknown, AuthMethodDetailResponse>(`/admin/auth/method/${id}`)

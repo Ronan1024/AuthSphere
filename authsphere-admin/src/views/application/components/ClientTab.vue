@@ -18,7 +18,7 @@ import {
   Share
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { appClientApi, type AppClientRecord } from '@/api/appClient'
+import type { AppClientRecord } from '@/api/appClient'
 
 const route = useRoute()
 const router = useRouter()
@@ -32,7 +32,159 @@ const query = reactive({
 const loading = ref(false)
 const tableData = ref<AppClientRecord[]>([])
 
+const mockClientsByApp: Record<string, AppClientRecord[]> = {
+  '10001': [
+    {
+      id: 'client_10001_admin',
+      appId: '10001',
+      appCode: 'admin-console',
+      clientCode: 'admin_web',
+      clientName: '管理后台 Web',
+      clientType: 1,
+      realmName: '平台身份域',
+      loginMode: 'IAM_HOSTED',
+      loginPageId: 'login_admin',
+      loginPageName: '平台统一登录模板',
+      authPolicyName: '平台强认证策略',
+      defaultEntryUrl: 'http://localhost:5173/login',
+      status: 1,
+      description: '认证中心管理端客户端',
+      updateTime: '2026-06-16 17:28:00'
+    },
+    {
+      id: 'client_10001_service',
+      appId: '10001',
+      appCode: 'admin-console',
+      clientCode: 'iam_service',
+      clientName: 'IAM 内部服务',
+      clientType: 6,
+      realmName: '平台身份域',
+      loginMode: 'SERVICE',
+      authPolicyName: 'Client Credentials',
+      defaultEntryUrl: 'http://localhost:8080/api',
+      status: 1,
+      description: '内部服务间调用客户端',
+      updateTime: '2026-06-16 17:28:00'
+    },
+    {
+      id: 'client_10001_api_only',
+      appId: '10001',
+      appCode: 'admin-console',
+      clientCode: 'account_sync_api',
+      clientName: '账号同步 API',
+      clientType: 5,
+      realmName: '平台身份域',
+      loginMode: 'API_ONLY',
+      authPolicyName: '接口签名认证',
+      defaultEntryUrl: 'http://localhost:8080/account-sync',
+      status: 2,
+      description: '仅调用注册账号和获取登录信息接口',
+      updateTime: '2026-06-15 15:40:00'
+    }
+  ],
+  '10002': [
+    {
+      id: 'client_10002_admin',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'mall_admin_client',
+      clientName: '商城平台端',
+      clientType: 1,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'IAM_HOSTED',
+      loginPageName: '商城平台登录模板',
+      authPolicyName: '账号密码 + TOTP',
+      defaultEntryUrl: 'https://mall.example.com/admin/login',
+      status: 1,
+      description: '平台运营后台',
+      updateTime: '2026-06-16 16:10:00'
+    },
+    {
+      id: 'client_10002_merchant',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'merchant_web',
+      clientName: '商家后台',
+      clientType: 2,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'EXTERNAL_REDIRECT',
+      externalLoginUrl: 'https://merchant.example.com/login',
+      authPolicyName: '商家登录回调校验',
+      defaultEntryUrl: 'https://merchant.example.com',
+      status: 1,
+      description: '客户自有登录页跳转',
+      updateTime: '2026-06-16 16:10:00'
+    },
+    {
+      id: 'client_10002_mini',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'buyer_mini_client',
+      clientName: '消费者小程序',
+      clientType: 3,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'IAM_HOSTED',
+      loginPageName: '移动端登录模板',
+      authPolicyName: '微信小程序登录',
+      defaultEntryUrl: 'app://mall/pages/index',
+      status: 1,
+      description: '消费者小程序登录入口',
+      updateTime: '2026-06-15 10:20:00'
+    },
+    {
+      id: 'client_10002_open',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'mall_open_api',
+      clientName: '开放 API',
+      clientType: 5,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'SERVICE',
+      authPolicyName: 'Client Credentials',
+      defaultEntryUrl: 'https://mall.example.com/openapi',
+      status: 1,
+      description: '服务端接口认证',
+      updateTime: '2026-06-16 16:10:00'
+    }
+  ],
+  '10006': [
+    {
+      id: 'client_10006_customer',
+      appId: '10006',
+      appCode: 'customer-login',
+      clientCode: 'customer_owned_login',
+      clientName: '客户自有登录入口',
+      clientType: 2,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'EXTERNAL_REDIRECT',
+      externalLoginUrl: 'https://customer.example.com/login',
+      authPolicyName: '外部登录回调校验',
+      defaultEntryUrl: 'https://customer.example.com',
+      status: 1,
+      description: '使用客户系统自己的登录页',
+      updateTime: '2026-06-16 09:05:00'
+    }
+  ]
+}
 
+const fallbackClients = (appId: string): AppClientRecord[] => [
+  {
+    id: `client_${appId}_default`,
+    appId,
+    appCode: 'mock_app',
+    clientCode: 'default_web',
+    clientName: '默认 Web 客户端',
+    clientType: 1,
+    realmName: '平台身份域',
+    loginMode: 'IAM_HOSTED',
+    loginPageName: '默认登录入口模板',
+    authPolicyName: '默认认证策略',
+    defaultEntryUrl: 'https://app.example.com',
+    status: 1,
+    description: '详情页本地初始化客户端数据',
+    updateTime: '2026-06-17 10:00:00'
+  }
+]
 
 const clientTypeOptions = [
   { label: 'ADMIN_WEB (管理后台)', value: 1 },
@@ -51,6 +203,12 @@ const clientTypeText = (type?: string | number) => {
 const loginEntryText = (row: AppClientRecord) => {
   if (Number(row.clientType) === 5 || Number(row.clientType) === 6) {
     return '接口认证'
+  }
+  if (row.loginMode === 'API_ONLY') {
+    return '接口接入'
+  }
+  if (row.loginMode === 'EXTERNAL_REDIRECT') {
+    return row.externalLoginUrl || '外部登录页'
   }
   return row.loginPageName || (row.loginPageId ? `模板 ID ${row.loginPageId}` : '未绑定模板')
 }
@@ -73,13 +231,11 @@ const fetchData = async () => {
   const appId = route.params.id as string
   if (!appId) return
   loading.value = true
-  try {
-    tableData.value = await appClientApi.listByApp(appId)
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取应用客户端失败')
-  } finally {
+  window.setTimeout(() => {
+    const clients = mockClientsByApp[appId] || fallbackClients(appId)
+    tableData.value = clients.map(item => ({ ...item }))
     loading.value = false
-  }
+  }, 120)
 }
 
 const handleSearch = () => {
@@ -103,13 +259,8 @@ const toggleStatus = async (row: AppClientRecord) => {
   const action = enabled ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确认${action}客户端「${row.clientName}」？`, '提示', { type: 'warning' })
-    if (enabled) {
-      await appClientApi.disable(row.id)
-    } else {
-      await appClientApi.enable(row.id)
-    }
+    row.status = enabled ? 2 : 1
     ElMessage.success(`客户端已${action}`)
-    fetchData()
   } catch (error: any) {
     if (error === 'cancel' || error === 'close') return
     ElMessage.error(error.message || `${action}客户端失败`)

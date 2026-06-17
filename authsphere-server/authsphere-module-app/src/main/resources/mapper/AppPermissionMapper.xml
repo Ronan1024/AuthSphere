@@ -4,30 +4,9 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.authsphere.server.app.mapper.AppPermissionMapper">
 
-    <resultMap id="BaseResultMap" type="com.authsphere.server.app.model.AppClientPermission">
-        <id property="id" column="id" jdbcType="BIGINT"/>
-        <result property="appCode" column="app_code" jdbcType="VARCHAR"/>
-        <result property="clientCode" column="client_code" jdbcType="VARCHAR"/>
-        <result property="menuId" column="menu_id" jdbcType="BIGINT"/>
-        <result property="permissionCode" column="permission_code" jdbcType="VARCHAR"/>
-        <result property="permissionName" column="permission_name" jdbcType="VARCHAR"/>
-        <result property="permissionType" column="permission_type" jdbcType="TINYINT"/>
-        <result property="description" column="description" jdbcType="VARCHAR"/>
-        <result property="status" column="status" jdbcType="TINYINT"/>
-        <result property="builtIn" column="built_in" jdbcType="TINYINT"/>
-        <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
-        <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
-    </resultMap>
-
-    <sql id="Base_Column_List">
-        id,app_code,client_code,
-        menu_id,permission_code,permission_name,
-        permission_type,description,status,
-        built_in,create_time,update_time
-    </sql>
     <select id="page" resultType="com.authsphere.server.app.dto.AppClientPermissionResponse">
         select
-        id,
+        id as id,
         menu_id as menuId,
         permission_code as permissionCode,
         permission_name as permissionName,
@@ -37,7 +16,7 @@
         description as description,
         status as status
         from app_client_permission
-        where app_id = #{appId} and client_id = #{id}
+        where app_id = #{appId} and client_id = #{clientId}
         <if test="permissionType != null">
             and permission_type = #{permissionType}
         </if>

@@ -770,10 +770,24 @@ fetchGlobalRelations()
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 .subject-relation-page {
+  --primary-color: #0369A1;      /* Security Blue */
+  --primary-hover: #0284c7;
+  --secondary-color: #0EA5E9;    /* Sky Blue */
+  --success-color: #16A34A;      /* Protected Green */
+  --bg-color: #F0F9FF;           /* Theme Background */
+  --text-main: #0C4A6E;          /* Deep Navy Text */
+  --text-muted: #475569;
+  --border-light: rgba(226, 232, 240, 0.8);
+  --font-family-display: 'Lexend', system-ui, -apple-system, sans-serif;
+  --font-family-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+
   display: flex;
   flex-direction: column;
   gap: 16px;
+  font-family: var(--font-family-body);
 }
 
 .page-heading,
@@ -786,27 +800,30 @@ fetchGlobalRelations()
 
 .page-heading {
   padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   background: #ffffff;
+  box-shadow: 0 4px 30px rgba(3, 105, 161, 0.03);
 }
 
 .page-heading h1 {
   margin: 0;
-  color: #111827;
+  color: var(--text-main);
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-family-display);
 }
 
 .page-heading p,
 .section-intro span {
   margin: 8px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .section-card {
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
 }
 
 .section-intro {
@@ -817,8 +834,10 @@ fetchGlobalRelations()
 
 .section-intro strong {
   display: block;
-  color: #111827;
+  color: var(--text-main);
   font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-family-display);
 }
 
 .section-intro span {
@@ -832,9 +851,9 @@ fetchGlobalRelations()
 .relation-tree {
   margin-bottom: 18px;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: #fbfcfe;
+  background: var(--bg-color);
 }
 
 .relation-tree--detail {
@@ -855,9 +874,10 @@ fetchGlobalRelations()
 }
 
 .detail-section__title {
-  color: #111827;
+  color: var(--text-main);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-family-display);
 }
 
 .path-graph {
@@ -866,9 +886,9 @@ fetchGlobalRelations()
   align-items: stretch;
   overflow: auto;
   padding: 16px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: #fbfcfe;
+  background: var(--bg-color);
 }
 
 .path-graph--form {
@@ -878,14 +898,20 @@ fetchGlobalRelations()
 .path-node {
   min-width: 190px;
   padding: 14px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.path-node:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.05);
 }
 
 .path-node--active {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(3, 105, 161, 0.14);
 }
 
 .path-node strong,
@@ -895,15 +921,16 @@ fetchGlobalRelations()
 
 .path-node strong {
   overflow: hidden;
-  color: #111827;
+  color: var(--text-main);
   font-weight: 600;
+  font-family: var(--font-family-display);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .path-node span {
   margin-top: 5px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -920,7 +947,7 @@ fetchGlobalRelations()
   flex: 0 0 92px;
   align-items: center;
   justify-content: center;
-  color: #2563eb;
+  color: var(--primary-color);
   font-size: 13px;
   font-weight: 600;
 }
@@ -931,7 +958,7 @@ fetchGlobalRelations()
   top: 50%;
   width: 24px;
   height: 1px;
-  background: #93c5fd;
+  background: rgba(14, 165, 233, 0.4);
   content: "";
 }
 
@@ -946,9 +973,9 @@ fetchGlobalRelations()
 .path-edge span {
   z-index: 1;
   padding: 2px 8px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid rgba(14, 165, 233, 0.2);
   border-radius: 999px;
-  background: #eff6ff;
+  background: var(--bg-color);
 }
 
 .relation-tree__header {
@@ -959,12 +986,13 @@ fetchGlobalRelations()
 }
 
 .relation-tree__header strong {
-  color: #111827;
+  color: var(--text-main);
   font-size: 15px;
+  font-family: var(--font-family-display);
 }
 
 .relation-tree__header span {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
@@ -1000,7 +1028,7 @@ fetchGlobalRelations()
   align-items: center;
   justify-content: center;
   min-height: 42px;
-  color: #2563eb;
+  color: var(--primary-color);
   font-size: 13px;
   font-weight: 600;
 }
@@ -1011,7 +1039,7 @@ fetchGlobalRelations()
   top: 50%;
   width: 22px;
   height: 1px;
-  background: #93c5fd;
+  background: rgba(14, 165, 233, 0.4);
   content: "";
 }
 
@@ -1026,17 +1054,23 @@ fetchGlobalRelations()
 .relation-line span {
   z-index: 1;
   padding: 2px 8px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid rgba(14, 165, 233, 0.2);
   border-radius: 999px;
-  background: #eff6ff;
+  background: var(--bg-color);
 }
 
 .relation-node {
   min-width: 0;
   padding: 12px 14px;
-  border: 1px solid #dbe3ef;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.relation-node:hover {
+  border-color: var(--secondary-color);
+  transform: translateY(-1px);
 }
 
 .relation-node strong,
@@ -1046,21 +1080,22 @@ fetchGlobalRelations()
 
 .relation-node strong {
   overflow: hidden;
-  color: #111827;
+  color: var(--text-main);
   font-weight: 600;
+  font-family: var(--font-family-display);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .relation-node span {
   margin-top: 4px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
 .relation-node--parent {
-  border-color: #bfdbfe;
-  background: #eff6ff;
+  border-color: rgba(14, 165, 233, 0.2);
+  background: var(--bg-color);
 }
 
 .relation-node--child {
@@ -1071,8 +1106,8 @@ fetchGlobalRelations()
 }
 
 .relation-node--active {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.14);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 2px rgba(3, 105, 161, 0.14);
 }
 
 .relation-node__tags {
@@ -1109,12 +1144,12 @@ fetchGlobalRelations()
 }
 
 .type-cell strong {
-  color: #111827;
+  color: var(--text-main);
   font-weight: 600;
 }
 
 .type-cell span {
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 12px;
 }
 
@@ -1144,10 +1179,10 @@ fetchGlobalRelations()
   align-items: center;
   justify-content: space-between;
   padding: 12px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: #f9fafb;
-  color: #374151;
+  background: var(--bg-color);
+  color: var(--text-main);
   font-size: 14px;
 }
 

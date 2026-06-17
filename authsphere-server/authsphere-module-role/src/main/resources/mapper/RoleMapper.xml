@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.role.mapper.RoleMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.role.model.Role">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="realmId" column="realm_id" jdbcType="BIGINT"/>
+            <result property="subjectId" column="subject_id" jdbcType="BIGINT"/>
+            <result property="clientId" column="client_id" jdbcType="BIGINT"/>
+            <result property="roleName" column="role_name" jdbcType="VARCHAR"/>
+            <result property="roleCode" column="role_code" jdbcType="VARCHAR"/>
+            <result property="roleType" column="role_type" jdbcType="VARCHAR"/>
+            <result property="dataScope" column="data_scope" jdbcType="VARCHAR"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="remark" column="remark" jdbcType="VARCHAR"/>
+            <result property="createdBy" column="created_by" jdbcType="BIGINT"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updatedBy" column="updated_by" jdbcType="BIGINT"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+            <result property="deleted" column="deleted" jdbcType="TINYINT"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,realm_id,subject_id,
+        client_id,role_name,role_code,role_type,
+        data_scope,status,remark,
+        created_by,create_time,updated_by,
+        update_time,deleted
+    </sql>
+
+    <select id="page" resultMap="BaseResultMap">
+        select
+        <include refid="Base_Column_List"/>
+        from role
+        where deleted = 0
+        <if test="request.realmId != null">
+            and realm_id = #{request.realmId}
+        </if>
+        <if test="request.subjectId != null">
+            and subject_id = #{request.subjectId}
+        </if>
+        <if test="request.clientId != null">
+            and client_id = #{request.clientId}
+        </if>
+        <if test="request.status != null">
+            and status = #{request.status}
+        </if>
+        <if test="request.keyword != null and request.keyword != ''">
+            and (
+            role_name like concat('%', #{request.keyword}, '%')
+            or role_code like concat('%', #{request.keyword}, '%')
+            )
+        </if>
+        order by create_time desc, id desc
+    </select>
+</mapper>

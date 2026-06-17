@@ -2,14 +2,13 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
-  ArrowLeft, Edit, Delete, VideoPause, 
-  Menu as IconMenu, Lock, Box, Monitor, Clock,
-  DocumentCopy, TopRight,
-  ElementPlus
+  ArrowLeft, Edit, VideoPause,
+  Box, Monitor, Clock,
+  DocumentCopy, TopRight
 } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { appApi, type AppPayload, type AppRecord } from '@/api/app'
-import { appClientApi, type AppClientRecord } from '@/api/appClient'
+import type { AppPayload, AppRecord } from '@/api/app'
+import type { AppClientRecord } from '@/api/appClient'
 
 const router = useRouter()
 const route = useRoute()
@@ -26,19 +25,209 @@ const editDialogVisible = ref(false)
 const submitLoading = ref(false)
 const selectedClients = ref<AppClientRecord[]>([])
 
+const mockAppDetails: AppRecord[] = [
+  {
+    id: '10001',
+    appName: '认证授权中心',
+    appCode: 'admin-console',
+    appType: 'WEB',
+    entryUrl: 'http://localhost:5173',
+    status: 1,
+    clientSize: 3,
+    instanceSize: 1,
+    createTime: '2026-06-10 09:20:00',
+    updateTime: '2026-06-16 17:28:00',
+    description: 'IAM 管理后台，用于维护身份域、账号、主体和授权策略。'
+  },
+  {
+    id: '10002',
+    appName: '商城应用',
+    appCode: 'ecommerce',
+    appType: 'WEB',
+    entryUrl: 'https://mall.example.com',
+    status: 1,
+    clientSize: 4,
+    instanceSize: 2,
+    createTime: '2026-06-11 14:05:00',
+    updateTime: '2026-06-16 16:10:00',
+    description: '包含平台端、商家端、消费者 H5 与开放 API。'
+  },
+  {
+    id: '10003',
+    appName: '消费者移动端',
+    appCode: 'mobile-app',
+    appType: 'MOBILE',
+    entryUrl: 'app://mall/home',
+    status: 1,
+    clientSize: 2,
+    instanceSize: 2,
+    createTime: '2026-06-12 10:35:00',
+    updateTime: '2026-06-16 12:18:00',
+    description: '小程序与 H5 移动登录入口测试数据。'
+  },
+  {
+    id: '10004',
+    appName: '开放平台',
+    appCode: 'open-platform',
+    appType: 'API',
+    entryUrl: 'https://open.example.com',
+    status: 1,
+    clientSize: 2,
+    instanceSize: 1,
+    createTime: '2026-06-13 16:12:00',
+    updateTime: '2026-06-15 18:22:00',
+    description: '面向第三方系统的 API 接入应用。'
+  },
+  {
+    id: '10005',
+    appName: '报表系统',
+    appCode: 'report-system',
+    appType: 'WEB',
+    entryUrl: 'https://report.example.com',
+    status: 2,
+    clientSize: 1,
+    instanceSize: 1,
+    createTime: '2026-06-14 11:40:00',
+    updateTime: '2026-06-14 18:45:00',
+    description: '租户 B 的数据报表系统，当前禁用。'
+  },
+  {
+    id: '10006',
+    appName: '客户自有登录系统',
+    appCode: 'customer-login',
+    appType: 'THIRD_PARTY',
+    entryUrl: 'https://customer.example.com/login',
+    status: 1,
+    clientSize: 1,
+    instanceSize: 1,
+    createTime: '2026-06-15 08:30:00',
+    updateTime: '2026-06-16 09:05:00',
+    description: '用于测试外部登录页跳转和 API_ONLY 接入。'
+  }
+]
+
+const mockClientsByApp: Record<string, AppClientRecord[]> = {
+  '10001': [
+    {
+      id: 'client_10001_admin',
+      appId: '10001',
+      appCode: 'admin-console',
+      clientCode: 'admin_web',
+      clientName: '管理后台 Web',
+      clientType: 1,
+      realmName: '平台身份域',
+      loginMode: 'IAM_HOSTED',
+      loginPageId: 'login_admin',
+      loginPageName: '平台统一登录模板',
+      authPolicyName: '平台强认证策略',
+      defaultEntryUrl: 'http://localhost:5173/login',
+      status: 1,
+      description: '认证中心管理端客户端',
+      updateTime: '2026-06-16 17:28:00'
+    },
+    {
+      id: 'client_10001_service',
+      appId: '10001',
+      appCode: 'admin-console',
+      clientCode: 'iam_service',
+      clientName: 'IAM 内部服务',
+      clientType: 6,
+      realmName: '平台身份域',
+      loginMode: 'SERVICE',
+      authPolicyName: 'Client Credentials',
+      defaultEntryUrl: 'http://localhost:8080/api',
+      status: 1,
+      description: '内部服务间调用客户端',
+      updateTime: '2026-06-16 17:28:00'
+    }
+  ],
+  '10002': [
+    {
+      id: 'client_10002_admin',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'mall_admin_client',
+      clientName: '商城平台端',
+      clientType: 1,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'IAM_HOSTED',
+      loginPageName: '商城平台登录模板',
+      authPolicyName: '账号密码 + TOTP',
+      defaultEntryUrl: 'https://mall.example.com/admin/login',
+      status: 1,
+      description: '平台运营后台',
+      updateTime: '2026-06-16 16:10:00'
+    },
+    {
+      id: 'client_10002_open',
+      appId: '10002',
+      appCode: 'ecommerce',
+      clientCode: 'mall_open_api',
+      clientName: '开放 API',
+      clientType: 5,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'SERVICE',
+      authPolicyName: 'Client Credentials',
+      defaultEntryUrl: 'https://mall.example.com/openapi',
+      status: 1,
+      description: '服务端接口认证',
+      updateTime: '2026-06-16 16:10:00'
+    }
+  ],
+  '10006': [
+    {
+      id: 'client_10006_customer',
+      appId: '10006',
+      appCode: 'customer-login',
+      clientCode: 'customer_owned_login',
+      clientName: '客户自有登录入口',
+      clientType: 2,
+      realmName: '租户身份域 (租户A)',
+      loginMode: 'EXTERNAL_REDIRECT',
+      externalLoginUrl: 'https://customer.example.com/login',
+      authPolicyName: '外部登录回调校验',
+      defaultEntryUrl: 'https://customer.example.com',
+      status: 1,
+      description: '使用客户系统自己的登录页',
+      updateTime: '2026-06-16 09:05:00'
+    }
+  ]
+}
+
+const getMockAppDetail = (appId: string) => {
+  return mockAppDetails.find(item => item.id === appId) || mockAppDetails[0]
+}
+
+const getMockClients = (appId: string) => {
+  return mockClientsByApp[appId] || [
+    {
+      id: `client_${appId}_default`,
+      appId,
+      appCode: getMockAppDetail(appId).appCode,
+      clientCode: 'default_web',
+      clientName: '默认 Web 客户端',
+      clientType: 1,
+      realmName: '平台身份域',
+      loginMode: 'IAM_HOSTED',
+      loginPageName: '默认登录入口模板',
+      authPolicyName: '默认认证策略',
+      defaultEntryUrl: getMockAppDetail(appId).entryUrl || '',
+      status: getMockAppDetail(appId).status,
+      description: '详情页本地初始化客户端数据',
+      updateTime: getMockAppDetail(appId).updateTime
+    }
+  ]
+}
+
 const fetchAppDetail = async () => {
   const appId = route.params.id as string
   if (!appId) return
 
   loading.value = true
-  try {
-    const data = await appApi.detail(appId)
-    appInfo.value = data
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取应用详情失败')
-  } finally {
+  window.setTimeout(() => {
+    appInfo.value = { ...getMockAppDetail(appId) }
     loading.value = false
-  }
+  }, 120)
 }
 
 const handleBack = () => {
@@ -48,29 +237,26 @@ const handleBack = () => {
 const handleOpenEdit = async () => {
   if (!appInfo.value) return
   submitLoading.value = true
-  try {
-    selectedClients.value = await appClientApi.listByApp(appInfo.value.id)
+  window.setTimeout(() => {
+    selectedClients.value = getMockClients(appInfo.value!.id).map(item => ({ ...item }))
     editDialogVisible.value = true
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取应用客户端失败')
-  } finally {
     submitLoading.value = false
-  }
+  }, 120)
 }
 
 const submitEditForm = async (payload: AppPayload) => {
   if (!appInfo.value) return
   submitLoading.value = true
-  try {
-    await appApi.update(appInfo.value.id, payload)
+  window.setTimeout(() => {
+    appInfo.value = {
+      ...appInfo.value!,
+      ...payload,
+      updateTime: '2026-06-17 10:00:00'
+    }
     ElMessage.success('应用已更新')
     editDialogVisible.value = false
-    await fetchAppDetail()
-  } catch (error: any) {
-    ElMessage.error(error.message || '更新应用失败')
-  } finally {
     submitLoading.value = false
-  }
+  }, 120)
 }
 
 const toggleStatus = async () => {
@@ -79,13 +265,8 @@ const toggleStatus = async () => {
   const action = enabled ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确认${action}应用「${appInfo.value.appName}」？`, '提示', { type: 'warning' })
-    if (enabled) {
-      await appApi.disable(appInfo.value.id)
-    } else {
-      await appApi.enable(appInfo.value.id)
-    }
+    appInfo.value.status = enabled ? 2 : 1
     ElMessage.success(`应用已${action}`)
-    fetchAppDetail()
   } catch (error: any) {
     if (error === 'cancel' || error === 'close') return
     ElMessage.error(error.message || `${action}应用失败`)
@@ -115,7 +296,7 @@ onMounted(() => {
           <!-- App Icon -->
           <div class="app-icon-large-container">
             <div class="app-icon-large">
-              <el-icon><ElementPlus /></el-icon>
+              <el-icon><Monitor /></el-icon>
             </div>
           </div>
           

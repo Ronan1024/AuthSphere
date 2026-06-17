@@ -4,7 +4,7 @@ import com.authsphere.server.app.dto.MemberRoleAssignRequest;
 import com.authsphere.server.app.error.AppErrorCode;
 import com.authsphere.server.app.mapper.AppClientInstanceMapper;
 import com.authsphere.server.app.mapper.MemberRoleMapper;
-import com.authsphere.server.app.mapper.RoleMapper;
+//import com.authsphere.server.app.mapper.RoleMapper;
 import com.authsphere.server.app.model.AppClientInstance;
 import com.authsphere.server.app.model.MemberRole;
 import com.authsphere.server.app.model.Role;
@@ -34,7 +34,7 @@ public class MemberRoleServiceImpl extends ServiceImpl<MemberRoleMapper, MemberR
 
     private final MemberRoleMapper memberRoleMapper;
     private final AppClientInstanceMapper clientInstanceMapper;
-    private final RoleMapper roleMapper;
+//    private final RoleMapper roleMapper;
     private final SubjectMemberMapper subjectMemberMapper;
 
     @Override
@@ -55,25 +55,25 @@ public class MemberRoleServiceImpl extends ServiceImpl<MemberRoleMapper, MemberR
         if (CollectionUtils.isEmpty(request.getRoleIds())) {
             return Boolean.TRUE;
         }
-        List<Role> roles = roleMapper.selectBatchIds(request.getRoleIds());
-        if (roles.size() != request.getRoleIds().size()) {
-            throw new BizException(AppErrorCode.MEMBER_ROLE_SCOPE_ERROR);
-        }
-        for (Role role : roles) {
-            if (!Objects.equals(role.getClientInstanceId(), clientInstanceId)
-                    || !Objects.equals(role.getStatus(), StatusEnum.NORMAL.getCode())) {
-                throw new BizException(AppErrorCode.MEMBER_ROLE_SCOPE_ERROR);
-            }
-            MemberRole memberRole = new MemberRole();
-            memberRole.setMemberId(member.getId());
-            memberRole.setRoleId(role.getId());
-            memberRole.setAppInstanceId(clientInstance.getAppInstanceId());
-            memberRole.setClientInstanceId(clientInstanceId);
-            memberRole.setGrantedByAccountId(request.getGrantedByAccountId());
-            memberRole.setGrantedAt(LocalDateTime.now());
-            memberRole.setStatus(StatusEnum.NORMAL.getCode());
-            memberRoleMapper.insert(memberRole);
-        }
+//        List<Role> roles = roleMapper.selectBatchIds(request.getRoleIds());
+//        if (roles.size() != request.getRoleIds().size()) {
+//            throw new BizException(AppErrorCode.MEMBER_ROLE_SCOPE_ERROR);
+//        }
+//        for (Role role : roles) {
+//            if (!Objects.equals(role.getClientInstanceId(), clientInstanceId)
+//                    || !Objects.equals(role.getStatus(), StatusEnum.NORMAL.getCode())) {
+//                throw new BizException(AppErrorCode.MEMBER_ROLE_SCOPE_ERROR);
+//            }
+//            MemberRole memberRole = new MemberRole();
+//            memberRole.setMemberId(member.getId());
+//            memberRole.setRoleId(role.getId());
+//            memberRole.setAppInstanceId(clientInstance.getAppInstanceId());
+//            memberRole.setClientInstanceId(clientInstanceId);
+//            memberRole.setGrantedByAccountId(request.getGrantedByAccountId());
+//            memberRole.setGrantedAt(LocalDateTime.now());
+//            memberRole.setStatus(StatusEnum.NORMAL.getCode());
+//            memberRoleMapper.insert(memberRole);
+//        }
         return Boolean.TRUE;
     }
 

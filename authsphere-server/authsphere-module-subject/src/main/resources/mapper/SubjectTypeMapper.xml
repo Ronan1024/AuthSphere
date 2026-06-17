@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.authsphere.server.subject.mapper.SubjectTypeMapper">
+
+    <resultMap id="BaseResultMap" type="com.authsphere.server.subject.model.SubjectType">
+            <id property="id" column="id" jdbcType="BIGINT"/>
+            <result property="code" column="code" jdbcType="VARCHAR"/>
+            <result property="name" column="name" jdbcType="VARCHAR"/>
+            <result property="category" column="category" jdbcType="VARCHAR"/>
+            <result property="canHaveMembers" column="can_have_members" jdbcType="BIT"/>
+            <result property="canOpenApp" column="can_open_app" jdbcType="BIT"/>
+            <result property="canAssignRole" column="can_assign_role" jdbcType="BIT"/>
+            <result property="canBeRoot" column="can_be_root" jdbcType="BIT"/>
+            <result property="builtIn" column="built_in" jdbcType="BIT"/>
+            <result property="status" column="status" jdbcType="TINYINT"/>
+            <result property="description" column="description" jdbcType="VARCHAR"/>
+            <result property="createTime" column="create_time" jdbcType="TIMESTAMP"/>
+            <result property="updateTime" column="update_time" jdbcType="TIMESTAMP"/>
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,code,name,
+        category,can_have_members,can_open_app,
+        can_assign_role,can_be_root,built_in,
+        status,description,create_time,
+        update_time
+    </sql>
+
+    <sql id="Response_Column_List">
+        id,
+        code,
+        name,
+        category,
+        can_have_members as canHaveMembers,
+        can_open_app as canOpenApp,
+        can_assign_role as canAssignRole,
+        can_be_root as canBeRoot,
+        built_in as builtIn,
+        status,
+        description,
+        create_time,
+        update_time
+    </sql>
+
+    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectTypeResponse">
+        select
+        id,
+        code,
+        name,
+        category,
+        can_have_members as canHaveMembers,
+        can_open_app as canOpenApp,
+        can_assign_role as canAssignRole,
+        can_be_root as canBeRoot,
+        built_in as builtIn,
+        status,
+        create_time,
+        update_time
+        from subject_type
+        <where>
+            <if test="request.name != null and request.name != ''">
+                and `name` like concat('%', #{request.name}, '%')
+            </if>
+            <if test="request.code != null and request.code != ''">
+                and `code` = #{request.code}
+            </if>
+            <if test="request.category != null and request.category != ''">
+                and `category` = #{request.category}
+            </if>
+            <if test="request.status != null">
+                and `status` = #{request.status}
+            </if>
+        </where>
+        order by create_time desc
+    </select>
+
+    <select id="listAll" resultType="com.authsphere.server.subject.dto.SubjectTypeResponse">
+        select
+        <include refid="Response_Column_List"/>
+        from subject_type
+        where status = 1
+        order by create_time desc
+    </select>
+</mapper>
