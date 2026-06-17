@@ -459,7 +459,7 @@ onMounted(() => {
           <el-tabs v-model="activeDetailTab" class="custom-detail-tabs">
             <!-- Tab 1: Basic Info -->
             <el-tab-pane label="基础信息" name="basic">
-              <div class="basic-grid-layout">
+              <div>
                 <!-- Left: Attributes -->
                 <div class="pane-card">
                   <div class="pane-header">
@@ -496,53 +496,6 @@ onMounted(() => {
                     <div class="info-item full-width">
                       <label>备注</label>
                       <span class="desc-text">{{ currentDetail.description || '租户A 作为业务主体，承载商城、支付、仓储等应用实例和数据边界。' }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Right: Note & Flow Diagram -->
-                <div class="pane-card">
-                  <div class="pane-header">
-                    <h3>关系说明</h3>
-                  </div>
-                  <div class="note-box">
-                    父子主体只表达管理归属，不等于自动继承权限。账号加入主体后仍需在“应用实例 + 客户端”下分配角色。
-                  </div>
-                  <div class="visual-flow-container">
-                    <div class="flow-step">
-                      <strong class="step-num">1</strong>
-                      <span>账号</span>
-                      <small>lisi</small>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                      <strong class="step-num bg-purple">2</strong>
-                      <span>加入主体</span>
-                      <small>{{ currentDetail.name }}</small>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                      <strong class="step-num bg-green">3</strong>
-                      <span>开通应用</span>
-                      <small>商城实例</small>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                      <strong class="step-num">4</strong>
-                      <span>访问入口</span>
-                      <small>商城平台端</small>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step text-orange">
-                      <strong class="step-num bg-orange">5</strong>
-                      <span>分配角色</span>
-                      <small>商城管理员</small>
-                    </div>
-                    <div class="flow-arrow">→</div>
-                    <div class="flow-step">
-                      <strong class="step-num bg-blue">6</strong>
-                      <span>返回权限</span>
-                      <small>菜单/按钮/接口</small>
                     </div>
                   </div>
                 </div>

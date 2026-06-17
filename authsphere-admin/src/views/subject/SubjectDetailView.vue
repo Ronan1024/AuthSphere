@@ -100,7 +100,7 @@ const removeMember = async (row: SubjectMemberRecord) => {
   await ElMessageBox.confirm(`确定要移除成员「${row.displayName || row.username}」吗？`, '移除成员', {
     confirmButtonText: '移除',
     cancelButtonText: '取消',
-    type: 'danger'
+    type: 'warning'
   })
 
   try {

@@ -87,6 +87,16 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'accounts/create',
+        name: 'AccountCreate',
+        component: () => import('@/views/account/AccountCreateView.vue'),
+        meta: {
+          title: '新增账号',
+          breadcrumb: ['用户管理', '用户列表', '新增账号'],
+          moduleDescription: '只创建登录账号，不直接分配应用角色。',
+        },
+      },
+      {
         path: 'subjects/types',
         name: 'SubjectTypeManagement',
         component: () => import('@/views/subject/SubjectTypeView.vue'),

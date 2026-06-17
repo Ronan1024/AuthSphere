@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { Search, ArrowDown, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+
+const router = useRouter()
 
 import { accountApi, type AccountRecord } from '@/api/account'
 import { realmApi, type RealmRecord } from '@/api/realm'
@@ -98,7 +101,9 @@ const resetQuery = () => {
   handleSearch()
 }
 
-const openCreate = () => createDrawerRef.value?.open(realmOptions.value)
+const openCreate = () => {
+  router.push('/accounts/create')
+}
 const openDetail = async (row: AccountRecord) => {
   try {
     currentDetail.value = await accountApi.detail(row.id)
@@ -159,146 +164,148 @@ onMounted(() => {
       <div class="page-header mb-4">
         <div class="header-titles">
           <h1>账号列表</h1>
-          <p class="subtitle">管理系统中的所有账号，支持账号的新增、编辑、启用/禁用、锁定/解锁、密码重置等操作。</p>
+          <p class="subtitle">查询、查看、编辑、重置密码、禁用、解锁</p>
+        </div>
+        <div class="header-actions">
+          <el-button plain @click="() => {}"><el-icon class="mr-1"><Download /></el-icon>导出</el-button>
+          <el-button type="primary" @click="openCreate">新增账号</el-button>
         </div>
       </div>
 
-    <!-- 筛选与操作区 -->
-    <el-card shadow="never" class="account-filter-card mb-4">
-      <el-form :inline="true" :model="query" class="compact-filter-form">
-        <el-form-item>
-          <el-input v-model="query.keyword" placeholder="搜索账号/手机号/邮箱/用户名" clearable style="width: 260px">
-            <template #prefix><el-icon><Search /></el-icon></template>
-          </el-input>
-        </el-form-item>
-        <el-form-item label="所属身份域">
-          <el-select v-model="query.realmId" placeholder="全部" clearable style="width: 160px">
-            <el-option v-for="realm in realmOptions" :key="realm.id" :label="realm.name" :value="realm.id" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="账号状态">
-          <el-select v-model="query.status" placeholder="全部" clearable style="width: 100px">
-            <el-option label="启用" :value="ACCOUNT_STATUS_ENABLED" />
-            <el-option label="禁用" :value="ACCOUNT_STATUS_DISABLED" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="锁定状态">
-          <el-select v-model="query.lockStatus" placeholder="全部" clearable style="width: 100px">
-            <el-option label="正常" value="normal" />
-            <el-option label="锁定" value="locked" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker v-model="query.createTimeRange" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 240px" />
-        </el-form-item>
-        <el-form-item label="最近登录时间">
-          <el-date-picker v-model="query.loginTimeRange" type="daterange" range-separator="-" start-placeholder="开始日期" end-placeholder="结束日期" style="width: 240px" />
-        </el-form-item>
-        <el-form-item>
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button type="primary" @click="handleSearch">查询</el-button>
-        </el-form-item>
-      </el-form>
-    </el-card>
+      <!-- 筛选与操作区 -->
+      <el-card shadow="never" class="account-filter-card mb-4">
+        <div class="filter-flex-row">
+          <div class="filter-item">
+            <label>关键词</label>
+            <el-input v-model="query.keyword" placeholder="用户名 / 手机号 / 邮箱" clearable>
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+          </div>
+          <div class="filter-item">
+            <label>所属身份域</label>
+            <el-select v-model="query.realmId" placeholder="全部身份域" clearable>
+              <el-option v-for="realm in realmOptions" :key="realm.id" :label="realm.name" :value="realm.id" />
+            </el-select>
+          </div>
+          <div class="filter-item">
+            <label>账号状态</label>
+            <el-select v-model="query.status" placeholder="全部" clearable>
+              <el-option label="启用" :value="ACCOUNT_STATUS_ENABLED" />
+              <el-option label="禁用" :value="ACCOUNT_STATUS_DISABLED" />
+            </el-select>
+          </div>
+          <div class="filter-item">
+            <label>主体关系</label>
+            <el-select v-model="query.lockStatus" placeholder="全部" clearable>
+              <el-option label="全部" value="" />
+              <el-option label="已加入" value="normal" />
+              <el-option label="未加入" value="locked" />
+            </el-select>
+          </div>
+          <div class="filter-buttons">
+            <el-button type="primary" @click="handleSearch">查询</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </div>
+        </div>
+      </el-card>
 
-    <div class="toolbar flex justify-end mb-4">
-      <el-button plain><el-icon class="mr-1"><Download /></el-icon>导出</el-button>
-      <el-dropdown class="ml-2 mr-2">
-        <el-button>批量操作 <el-icon class="el-icon--right"><ArrowDown /></el-icon></el-button>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item>批量导出</el-dropdown-item>
-            <el-dropdown-item>批量禁用</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
-      <el-button type="primary" @click="openCreate">新建账号</el-button>
-    </div>
+      <!-- 数据表格区 -->
+      <el-card shadow="never" class="account-table-card">
+        <el-table v-loading="loading" :data="tableData" style="width: 100%">
+          <el-table-column label="账号" min-width="140">
+            <template #default="{ row }">
+              <div class="account-user-col">
+                <span class="username-text" @click="openDetail(row)">{{ row.username }}</span>
+                <span class="acc-code-badge">ACC-{{ row.id.slice(0, 5) }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="登录凭证" min-width="160">
+            <template #default="{ row }">
+              <div class="credentials-stack">
+                <span class="mobile-text">{{ maskMobile(row.mobile) }}</span>
+                <small class="email-text" v-if="row.email">{{ maskEmail(row.email) }}</small>
+                <small class="email-text" v-else>-</small>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="所属身份域" min-width="160">
+            <template #default="{ row }">
+              <div class="realm-stack">
+                <span class="realm-name-text">{{ row.realmName }}</span>
+                <span class="realm-code-badge">{{ row.realmCode || 'tenant_realm' }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="关联主体" min-width="150">
+            <template #default="{ row }">
+              <div class="relation-subject-stack" v-if="row.subjectMemberCount > 0">
+                <span class="subject-outline-badge">
+                  {{ row.realmCode === 'platform_realm' ? '平台主体' : row.realmCode === 'merchant_realm' ? '商户W' : '租户A' }}
+                </span>
+                <span class="subject-count-badge">{{ row.subjectMemberCount }}个主体</span>
+              </div>
+              <span v-else class="unjoined-text">未加入主体</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="客户端角色" min-width="130">
+            <template #default="{ row }">
+              <div class="client-role-badge" v-if="row.username === 'lisi'">3个客户端</div>
+              <div class="client-role-badge" v-else-if="row.username === 'wangwu'">2个客户端</div>
+              <div class="client-role-badge" v-else-if="row.username === 'old_admin'">1个客户端</div>
+              <span v-else class="unjoined-text">无</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <span class="status-pill green" v-if="row.status === ACCOUNT_STATUS_ENABLED">启用</span>
+              <span class="status-pill orange" v-else-if="row.status === ACCOUNT_STATUS_LOCKED">锁定</span>
+              <span class="status-pill red" v-else>禁用</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="最近登录" min-width="160">
+            <template #default="{ row }">
+              <span class="time-text">{{ row.lastLoginTime || '2026-06-17 09:32' }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="160" fixed="right" align="right">
+            <template #default="{ row }">
+              <div class="row-actions">
+                <span class="link-btn" @click="openDetail(row)">详情</span>
+                <span class="link-btn" @click="openDetail(row)">编辑</span>
+                <el-dropdown trigger="click" @command="(cmd: string) => handleCommand(cmd, row)">
+                  <span class="link-more-btn">更多 <el-icon><ArrowDown /></el-icon></span>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item v-if="row.status !== ACCOUNT_STATUS_DISABLED" command="disable">禁用账号</el-dropdown-item>
+                      <el-dropdown-item v-else command="enable">启用账号</el-dropdown-item>
+                      <el-dropdown-item v-if="row.status === ACCOUNT_STATUS_LOCKED" command="unlock">解锁账号</el-dropdown-item>
+                      <el-dropdown-item v-else-if="row.status !== ACCOUNT_STATUS_DISABLED" command="lock-account">锁定账号</el-dropdown-item>
+                      <el-dropdown-item command="reset-password">重置密码</el-dropdown-item>
+                      <el-dropdown-item command="bind-third-party">绑定第三方</el-dropdown-item>
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </template>
+          </el-table-column>
+        </el-table>
 
-    <!-- 数据表格区 -->
-    <el-card shadow="never" class="account-table-card">
-      <el-table v-loading="loading" :data="tableData" style="width: 100%" @selection-change="(val: any[]) => selectedRows = val">
-        <el-table-column type="selection" width="55" />
-        <el-table-column label="账号昵称" min-width="140">
-          <template #default="{ row }">
-            <div class="account-cell">
-              <el-avatar :size="24" class="account-avatar mr-2">{{ getAccountDisplayName(row).substring(0, 1) }}</el-avatar>
-              <span>{{ getAccountDisplayName(row) }}</span>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="username" label="用户名" min-width="120" />
-        <el-table-column label="手机号" min-width="120">
-          <template #default="{ row }">{{ maskMobile(row.mobile) }}</template>
-        </el-table-column>
-        <el-table-column label="邮箱" min-width="150" show-overflow-tooltip>
-          <template #default="{ row }">{{ maskEmail(row.email) }}</template>
-        </el-table-column>
-        <el-table-column prop="realmName" label="所属身份域" min-width="130" show-overflow-tooltip />
-        <el-table-column label="加入主体数" width="100">
-          <template #default="{ row }">{{ row.subjectMemberCount ?? 0 }}</template>
-        </el-table-column>
-        <el-table-column label="第三方绑定" width="110">
-          <template #default="{ row }">{{ row.externalIdentityCount ?? 0 }}</template>
-        </el-table-column>
-        
-        <el-table-column label="账号状态" width="90">
-          <template #default="{ row }">
-            <el-tag :type="row.status === ACCOUNT_STATUS_DISABLED ? 'danger' : 'success'" effect="light" size="small" round>
-              {{ row.status === ACCOUNT_STATUS_DISABLED ? '禁用' : row.status === ACCOUNT_STATUS_LOCKED ? '锁定' : '启用' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="锁定状态" width="90">
-          <template #default="{ row }">
-            <span class="status-text" :class="row.status === ACCOUNT_STATUS_LOCKED ? 'text-red' : 'text-green'">
-              {{ row.status === ACCOUNT_STATUS_LOCKED ? '锁定' : '正常' }}
-            </span>
-          </template>
-        </el-table-column>
-        
-        <el-table-column prop="lastLoginTime" label="最近登录时间" width="160" class-name="text-secondary text-sm" />
-        <el-table-column prop="createTime" label="创建时间" width="160" class-name="text-secondary text-sm" />
-        
-        <el-table-column label="操作" width="160" fixed="right">
-          <template #default="{ row }">
-            <div class="row-actions">
-              <el-button link type="primary" @click="openDetail(row)">详情</el-button>
-              <el-dropdown trigger="click" @command="(cmd: string) => handleCommand(cmd, row)">
-                <el-button link type="primary">
-                  更多 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
-                </el-button>
-                <template #dropdown>
-                  <el-dropdown-menu>
-                    <el-dropdown-item v-if="row.status !== ACCOUNT_STATUS_DISABLED" command="disable">禁用账号</el-dropdown-item>
-                    <el-dropdown-item v-else command="enable">启用账号</el-dropdown-item>
-                    <el-dropdown-item v-if="row.status === ACCOUNT_STATUS_LOCKED" command="unlock">解锁账号</el-dropdown-item>
-                    <el-dropdown-item v-else-if="row.status !== ACCOUNT_STATUS_DISABLED" command="lock-account">锁定账号</el-dropdown-item>
-                    <el-dropdown-item command="reset-password">重置密码</el-dropdown-item>
-                    <el-dropdown-item command="bind-third-party">绑定第三方</el-dropdown-item>
-                  </el-dropdown-menu>
-                </template>
-              </el-dropdown>
-            </div>
-          </template>
-        </el-table-column>
-      </el-table>
-
-      <div class="pagination-container">
-        <span class="total-text">共 {{ total }} 条</span>
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          :page-sizes="[10, 20, 50, 100]"
-          layout="prev, pager, next, sizes, jumper"
-          :total="total"
-        />
-      </div>
-    </el-card>
+        <div class="pagination-container">
+          <span class="total-text">共 {{ total }} 条</span>
+          <el-pagination
+            v-model:current-page="query.page"
+            v-model:page-size="query.size"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="prev, pager, next, sizes, jumper"
+            :total="total"
+          />
+        </div>
+      </el-card>
     </template>
 
     <template v-else>
-      <AccountDetailView :account="currentDetail" @back="closeDetail" @refresh="refreshCurrent" />
+      <AccountDetailView :account="currentDetail" @back="closeDetail" @refresh="refreshCurrent" @command="handleCommand" />
     </template>
 
     <!-- Drawers & Dialogs -->
@@ -310,105 +317,293 @@ onMounted(() => {
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 .account-page {
+  --primary-color: #0369A1;      /* Security Blue */
+  --primary-hover: #0284c7;
+  --secondary-color: #0EA5E9;    /* Sky Blue */
+  --success-color: #16A34A;      /* Protected Green */
+  --success-bg: #dcfce7;
+  --success-border: #bbf7d0;
+  --danger-color: #dc2626;
+  --bg-color: #F0F9FF;           /* Theme Background */
+  --text-main: #0C4A6E;          /* Deep Navy Text */
+  --text-muted: #475569;
+  --border-light: rgba(226, 232, 240, 0.8);
+  --font-family-display: 'Lexend', system-ui, -apple-system, sans-serif;
+  --font-family-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  font-family: var(--font-family-body);
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: var(--font-family-display);
+}
+
+.subtitle {
+  margin: 6px 0 0 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* Filters Grid styling */
+.account-filter-card {
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+  box-shadow: 0 4px 20px rgba(3, 105, 161, 0.01);
+}
+
+.filter-flex-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr) auto;
+  gap: 16px;
+  align-items: flex-end;
+}
+
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-item label {
+  font-size: 13px;
+  color: var(--text-main);
+  font-weight: 600;
+  font-family: var(--font-family-display);
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Table styling */
+.account-table-card {
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
+}
+
+.account-user-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.username-text {
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: color 0.15s;
+}
+
+.username-text:hover {
+  color: var(--primary-color);
+}
+
+.acc-code-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #f1f5f9;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  width: max-content;
+}
+
+.credentials-stack {
   display: flex;
   flex-direction: column;
 }
 
-.page-header h1 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: #111827;
+.mobile-text {
+  color: var(--text-main);
+  font-weight: 500;
 }
 
-.subtitle {
-  margin: 0;
-  font-size: 13px;
-  color: #6b7280;
-}
-
-.compact-filter-form {
-  padding: 0;
-}
-
-.compact-filter-form :deep(.el-form-item) {
-  margin-bottom: 16px;
-  margin-right: 16px;
-}
-
-.account-filter-card {
-  border: 1px solid #eaeaea;
-  border-radius: 4px;
-}
-
-.toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-}
-
-.account-table-card {
-  border: 1px solid #eaeaea;
-  border-radius: 4px;
-}
-
-.account-cell {
-  display: flex;
-  align-items: center;
-}
-
-.account-avatar {
-  background-color: #ffedd5;
-  color: #ea580c;
-  font-weight: 600;
+.email-text {
+  color: var(--text-muted);
   font-size: 12px;
+}
+
+.realm-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.realm-name-text {
+  color: var(--text-main);
+}
+
+.realm-code-badge {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  background: #fafcff;
+  border: 1px solid rgba(14, 165, 233, 0.1);
+  color: var(--secondary-color);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  width: max-content;
+}
+
+.relation-subject-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.subject-outline-badge {
+  color: var(--primary-color);
+  background: var(--bg-color);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  width: max-content;
+}
+
+.subject-count-badge {
+  background: #f1f5f9;
+  color: var(--text-muted);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 11px;
+  width: max-content;
+}
+
+.unjoined-text {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.client-role-badge {
+  color: var(--success-color);
+  background: var(--success-bg);
+  border: 1px solid var(--success-border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  width: max-content;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.status-pill.green {
+  color: var(--success-color);
+  background: var(--success-bg);
+  border-color: var(--success-border);
+}
+
+.status-pill.orange {
+  color: #c2410c;
+  background: #ffedd5;
+  border-color: #fed7aa;
+}
+
+.status-pill.red {
+  color: var(--danger-color);
+  background: #fee2e2;
+  border-color: #fecaca;
+}
+
+.time-text {
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .row-actions {
   display: flex;
   align-items: center;
   gap: 12px;
+  justify-content: flex-end;
 }
 
-.row-actions :deep(.el-button) {
-  margin-left: 0;
+.link-btn {
+  cursor: pointer;
+  color: var(--primary-color);
+  font-weight: 600;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.link-btn:hover {
+  color: var(--primary-hover);
+}
+
+.link-more-btn {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  transition: color 0.2s ease;
+}
+
+.link-more-btn:hover {
+  color: var(--primary-color);
 }
 
 .pagination-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 0;
-  border-top: 1px solid #eaeaea;
+  margin-top: 16px;
+  padding: 16px 0 0 0;
+  border-top: 1px solid rgba(241, 245, 249, 0.8);
 }
 
-/* Utilities */
-.mb-4 { margin-bottom: 16px; }
-.mt-4 { margin-top: 16px; }
-.mr-1 { margin-right: 4px; }
-.mr-2 { margin-right: 8px; }
-.ml-2 { margin-left: 8px; }
-.w-240 { width: 240px; }
-.w-120 { width: 120px; }
-.w-100 { width: 100px; }
-.flex-grow { flex-grow: 1; }
-.text-green { color: #16a34a; font-weight: 500; }
-.text-red { color: #dc2626; font-weight: 500; }
-.text-secondary { color: #6b7280; }
-.text-sm { font-size: 13px; }
-.total-text { font-size: 13px; color: #6b7280; }
+.total-text {
+  font-size: 13px;
+  color: var(--text-muted);
+}
 
-.flex { display: flex; }
-.justify-end { justify-content: flex-end; }
+.mb-4 { margin-bottom: 16px; }
+.mr-1 { margin-right: 4px; }
 
 :deep(.el-card__body) {
-  padding: 0;
+  padding: 20px;
 }
-.account-table-card :deep(.el-card__body) {
-  padding: 16px 20px 0;
-}
-.account-filter-card :deep(.el-card__body) {
-  padding: 16px 20px 0;
+
+@media (max-width: 1400px) {
+  .filter-flex-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .filter-buttons {
+    grid-column: span 2;
+    justify-content: flex-end;
+  }
 }
 </style>
