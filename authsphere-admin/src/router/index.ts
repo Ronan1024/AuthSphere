@@ -117,6 +117,26 @@ const routes: RouteRecordRaw[] = [
         },
       },
       {
+        path: 'subjects/create',
+        name: 'SubjectCreate',
+        component: () => import('@/views/subject/SubjectCreateView.vue'),
+        meta: {
+          title: '新增主体',
+          breadcrumb: ['主体管理', '主体列表', '新增主体'],
+          moduleDescription: '创建业务主体，用于承载成员账号、应用开通和数据边界。',
+        },
+      },
+      {
+        path: 'subjects/detail/:id',
+        name: 'SubjectDetail',
+        component: () => import('@/views/subject/SubjectDetailView.vue'),
+        meta: {
+          title: '主体详情',
+          breadcrumb: ['主体管理', '主体列表', '主体详情'],
+          moduleDescription: '查看主体的基础信息、配置入口、成员账号与应用实例授权权限。',
+        },
+      },
+      {
         path: 'organizations',
         name: 'OrganizationManagement',
         component: () => import('@/views/common/ModulePlaceholder.vue'),

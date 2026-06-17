@@ -456,10 +456,24 @@ fetchData()
 </template>
 
 <style scoped>
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
+
 .subject-type-page {
+  --primary-color: #0369A1;      /* Security Blue */
+  --primary-hover: #0284c7;
+  --secondary-color: #0EA5E9;    /* Sky Blue */
+  --success-color: #16A34A;      /* Protected Green */
+  --bg-color: #F0F9FF;           /* Theme Background */
+  --text-main: #0C4A6E;          /* Deep Navy Text */
+  --text-muted: #475569;
+  --border-light: rgba(226, 232, 240, 0.8);
+  --font-family-display: 'Lexend', system-ui, -apple-system, sans-serif;
+  --font-family-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+
   display: flex;
   flex-direction: column;
   gap: 16px;
+  font-family: var(--font-family-body);
 }
 
 .page-heading,
@@ -472,27 +486,30 @@ fetchData()
 
 .page-heading {
   padding: 24px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
   background: #ffffff;
+  box-shadow: 0 4px 30px rgba(3, 105, 161, 0.03);
 }
 
 .page-heading h1 {
   margin: 0;
-  color: #111827;
+  color: var(--text-main);
   font-size: 22px;
-  font-weight: 600;
+  font-weight: 700;
+  font-family: var(--font-family-display);
 }
 
 .page-heading p,
 .section-intro span {
   margin: 8px 0 0;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 13px;
 }
 
 .section-card {
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border-light);
 }
 
 .section-intro {
@@ -503,8 +520,10 @@ fetchData()
 
 .section-intro strong {
   display: block;
-  color: #111827;
+  color: var(--text-main);
   font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-family-display);
 }
 
 .section-intro span {
@@ -558,11 +577,18 @@ fetchData()
   justify-content: space-between;
   gap: 16px;
   padding: 12px 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border-light);
   border-radius: 8px;
-  background: #f9fafb;
-  color: #374151;
+  background: var(--bg-color);
+  color: var(--text-main);
   font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.switch-grid label:hover {
+  border-color: var(--secondary-color);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(3, 105, 161, 0.03);
 }
 
 .switch-grid label > span {
@@ -575,13 +601,14 @@ fetchData()
 }
 
 .switch-grid strong {
-  color: #1f2937;
+  color: var(--text-main);
   font-weight: 600;
+  font-family: var(--font-family-display);
 }
 
 .switch-grid small {
   margin-top: 4px;
-  color: #6b7280;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
 }
