@@ -3,9 +3,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Search, Refresh, Download, ArrowDown, ArrowUp, Monitor, Iphone, Coin, Tools } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { appApi, type AppPayload, type AppRecord } from '@/api/app'
-import { appClientApi, type AppClientRecord } from '@/api/appClient'
-import { realmApi, type RealmRecord } from '@/api/realm'
+import type { AppRecord } from '@/api/app'
+import type { RealmRecord } from '@/api/realm'
 
 const router = useRouter()
 const isExpanded = ref(false)
@@ -25,6 +24,121 @@ const loading = ref(false)
 const tableData = ref<AppRecord[]>([])
 const total = ref(0)
 const realmOptions = ref<RealmRecord[]>([])
+
+type MockAppRecord = AppRecord & {
+  realmId?: string
+}
+
+const mockRealms: RealmRecord[] = [
+  {
+    id: 'realm_platform',
+    code: 'platform_realm',
+    name: '平台身份域',
+    realmTypeId: 'platform',
+    registerEnabled: false,
+    ssoEnabled: true,
+    status: 1
+  },
+  {
+    id: 'realm_tenant_a',
+    code: 'tenant_a_realm',
+    name: '租户身份域 (租户A)',
+    realmTypeId: 'tenant',
+    registerEnabled: true,
+    ssoEnabled: true,
+    status: 1
+  },
+  {
+    id: 'realm_tenant_b',
+    code: 'tenant_b_realm',
+    name: '租户身份域 (租户B)',
+    realmTypeId: 'tenant',
+    registerEnabled: true,
+    ssoEnabled: false,
+    status: 1
+  }
+]
+
+const mockApplications: MockAppRecord[] = [
+  {
+    id: '10001',
+    appName: '认证授权中心',
+    appCode: 'admin-console',
+    appType: 'WEB',
+    entryUrl: 'http://localhost:5173',
+    status: 1,
+    realmId: 'realm_platform',
+    clientSize: 3,
+    instanceSize: 1,
+    createTime: '2026-06-10 09:20:00',
+    description: 'IAM 管理后台，用于维护身份域、账号、主体和授权策略。'
+  },
+  {
+    id: '10002',
+    appName: '商城应用',
+    appCode: 'ecommerce',
+    appType: 'WEB',
+    entryUrl: 'https://mall.example.com',
+    status: 1,
+    realmId: 'realm_tenant_a',
+    clientSize: 4,
+    instanceSize: 2,
+    createTime: '2026-06-11 14:05:00',
+    description: '包含平台端、商家端、消费者 H5 与开放 API。'
+  },
+  {
+    id: '10003',
+    appName: '消费者移动端',
+    appCode: 'mobile-app',
+    appType: 'MOBILE',
+    entryUrl: 'app://mall/home',
+    status: 1,
+    realmId: 'realm_tenant_a',
+    clientSize: 2,
+    instanceSize: 2,
+    createTime: '2026-06-12 10:35:00',
+    description: '小程序与 H5 移动登录入口测试数据。'
+  },
+  {
+    id: '10004',
+    appName: '开放平台',
+    appCode: 'open-platform',
+    appType: 'API',
+    entryUrl: 'https://open.example.com',
+    status: 1,
+    realmId: 'realm_platform',
+    clientSize: 2,
+    instanceSize: 1,
+    createTime: '2026-06-13 16:12:00',
+    description: '面向第三方系统的 API 接入应用。'
+  },
+  {
+    id: '10005',
+    appName: '报表系统',
+    appCode: 'report-system',
+    appType: 'WEB',
+    entryUrl: 'https://report.example.com',
+    status: 2,
+    realmId: 'realm_tenant_b',
+    clientSize: 1,
+    instanceSize: 1,
+    createTime: '2026-06-14 11:40:00',
+    description: '租户 B 的数据报表系统，当前禁用。'
+  },
+  {
+    id: '10006',
+    appName: '客户自有登录系统',
+    appCode: 'customer-login',
+    appType: 'THIRD_PARTY',
+    entryUrl: 'https://customer.example.com/login',
+    status: 1,
+    realmId: 'realm_tenant_a',
+    clientSize: 1,
+    instanceSize: 1,
+    createTime: '2026-06-15 08:30:00',
+    description: '用于测试外部登录页跳转和 API_ONLY 接入。'
+  }
+]
 
 const appTypeOptions = [
   { label: 'Web 应用', value: 'WEB' },
@@ -63,17 +177,8 @@ const getAppIcon = (type?: string) => {
 }
 
 const getMockRealmText = (row: AppRecord) => {
-  const code = row.appCode
-  if (code === 'user-center' || code === 'oa-system' || code === 'admin-console' || code === 'open-platform') {
-    return '平台身份域'
-  }
-  if (code === 'ecommerce' || code === 'mobile-app') {
-    return '租户身份域 (租户A)'
-  }
-  if (code === 'report-system') {
-    return '租户身份域 (租户B)'
-  }
-  return '平台身份域'
+  const realmId = (row as MockAppRecord).realmId
+  return mockRealms.find(item => item.id === realmId)?.name || '平台身份域'
 }
 
 const getStatusText = (status: number) => {
@@ -83,30 +188,32 @@ const getStatusText = (status: number) => {
 const fetchData = async () => {
   loading.value = true
   try {
-    const params: any = {
-      page: query.page,
-      size: query.size
-    }
-    if (query.appName && query.appName.trim() !== '') params.appName = query.appName.trim()
-    if (query.appCode && query.appCode.trim() !== '') params.appCode = query.appCode.trim()
-    if (query.appType) params.appType = query.appType
-    if (typeof query.status === 'number') params.status = query.status
-
-    const result = await appApi.page(params)
-    tableData.value = result.records || []
-    total.value = result.total || 0
-  } catch (error: any) {
-    ElMessage.error(error.message || '获取应用列表失败')
+    const nameKeyword = query.appName.trim().toLowerCase()
+    const codeKeyword = query.appCode.trim().toLowerCase()
+    const [startDate, endDate] = query.createTimeRange || []
+    const filtered = mockApplications.filter(item => {
+      const matchedName = !nameKeyword || item.appName.toLowerCase().includes(nameKeyword)
+      const matchedCode = !codeKeyword || item.appCode.toLowerCase().includes(codeKeyword)
+      const matchedType = !query.appType || item.appType === query.appType
+      const matchedStatus = typeof query.status !== 'number' || item.status === query.status
+      const matchedRealm = !query.realmId || item.realmId === query.realmId
+      const createdAt = item.createTime ? new Date(item.createTime.replace(/-/g, '/')).getTime() : 0
+      const matchedStart = !startDate || createdAt >= new Date(startDate).setHours(0, 0, 0, 0)
+      const matchedEnd = !endDate || createdAt <= new Date(endDate).setHours(23, 59, 59, 999)
+      return matchedName && matchedCode && matchedType && matchedStatus && matchedRealm && matchedStart && matchedEnd
+    })
+    total.value = filtered.length
+    const start = (query.page - 1) * query.size
+    tableData.value = filtered.slice(start, start + query.size)
   } finally {
-    loading.value = false
+    window.setTimeout(() => {
+      loading.value = false
+    }, 120)
   }
 }
 
 const fetchRealms = async () => {
-  try {
-    const result = await realmApi.page({ page: 1, size: 50 })
-    realmOptions.value = result.records || []
-  } catch (error) {}
+  realmOptions.value = mockRealms
 }
 
 const handleReset = () => {
@@ -134,10 +241,9 @@ const toggleStatus = async (row: AppRecord) => {
   const action = enabled ? '禁用' : '启用'
   try {
     await ElMessageBox.confirm(`确认${action}应用「${row.appName}」？`, '提示', { type: 'warning' })
-    if (enabled) {
-      await appApi.disable(row.id)
-    } else {
-      await appApi.enable(row.id)
+    const target = mockApplications.find(item => item.id === row.id)
+    if (target) {
+      target.status = enabled ? 2 : 1
     }
     ElMessage.success(`应用已${action}`)
     fetchData()

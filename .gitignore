@@ -42,6 +42,8 @@ build/
 
 */log
 
+*.csv
+
 ### Frontend ###
 node_modules/
 dist/
