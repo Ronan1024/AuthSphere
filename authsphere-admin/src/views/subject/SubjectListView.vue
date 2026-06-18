@@ -98,6 +98,56 @@ const availableSubjectOptions = computed(() =>
   subjectOptions.value.filter((item) => item.id !== editingId.value),
 )
 
+const permissionsList = ref([
+  {
+    id: 1,
+    subjectName: '租户A',
+    appInstanceName: '租户A商城实例',
+    clientName: '商城平台端',
+    roles: ['商城管理员', '商城运营'],
+    roleType: '自定义',
+    status: '启用',
+    authTime: '2026-05-01'
+  },
+  {
+    id: 2,
+    subjectName: '租户A',
+    appInstanceName: '租户A支付实例',
+    clientName: '支付平台端',
+    roles: ['支付管理员'],
+    roleType: '自定义',
+    status: '启用',
+    authTime: '2026-05-03'
+  },
+  {
+    id: 3,
+    subjectName: '支付服务商A',
+    appInstanceName: '服务商支付实例',
+    clientName: '支付商户端',
+    roles: [] as string[],
+    roleType: '-',
+    status: '无',
+    authTime: '-'
+  }
+])
+
+const handleAdjustRole = (row: any) => {
+  ElMessage.info(`调整角色: ${row.appInstanceName}`)
+}
+
+const handleRemoveRole = (row: any) => {
+  ElMessageBox.confirm(`确定要移除在 ${row.appInstanceName} 下的客户端角色吗？`, '提示', {
+    type: 'warning'
+  }).then(() => {
+    permissionsList.value = permissionsList.value.filter(item => item.id !== row.id)
+    ElMessage.success('已移除')
+  }).catch(() => {})
+}
+
+const handleAssignRole = () => {
+  ElMessage.success('调起客户端角色分配向导...')
+}
+
 const rules: FormRules<SubjectPayload> = {
   subjectTypeId: [{ required: true, message: '请选择主体类型', trigger: 'change' }],
   realmId: [{ required: true, message: '请选择身份域', trigger: 'change' }],
@@ -535,34 +585,44 @@ onMounted(() => {
                 <div class="pane-card">
                   <div class="pane-header">
                     <h3>应用权限</h3>
-                    <el-button type="primary" size="small" @click="openOpenAppDrawer(currentDetail!)">开通应用</el-button>
+                    <el-button type="primary" size="small" @click="handleAssignRole">授权客户端</el-button>
                   </div>
-                  <div class="summary-list-box">
-                    <div class="summary-app-card">
-                      <div class="app-left">
-                        <h4>{{ currentDetail.name }}商城实例</h4>
-                        <p>应用：商城应用 · 编码：tenant_a_mall</p>
-                        <div class="pills-row">
-                          <span class="pill-badge">商城平台端</span>
-                          <span class="pill-badge">商家后台</span>
-                          <span class="pill-badge">消费者端</span>
+                  <el-table :data="permissionsList" style="width: 100%" class="custom-permissions-table">
+                    <el-table-column prop="subjectName" label="主体" min-width="90" />
+                    <el-table-column prop="appInstanceName" label="应用实例" min-width="130" />
+                    <el-table-column prop="clientName" label="客户端" min-width="110" />
+                    <el-table-column label="角色" min-width="140">
+                      <template #default="{ row }">
+                        <div class="roles-tags-flex" v-if="row.roles && row.roles.length > 0">
+                          <el-tag v-for="role in row.roles" :key="role" size="small" class="role-badge-tag" style="margin-right: 4px; margin-bottom: 4px;">
+                            {{ role }}
+                          </el-tag>
                         </div>
-                      </div>
-                      <span class="custom-badge green">启用</span>
-                    </div>
-
-                    <div class="summary-app-card" style="margin-top: 10px;">
-                      <div class="app-left">
-                        <h4>{{ currentDetail.name }}支付实例</h4>
-                        <p>应用：支付应用 · 编码：tenant_a_payment</p>
-                        <div class="pills-row">
-                          <span class="pill-badge">支付平台端</span>
-                          <span class="pill-badge">支付开放 API</span>
+                        <span class="status-pill orange-light" v-else>待分配</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="roleType" label="角色类型" width="85" />
+                    <el-table-column label="状态" width="70">
+                      <template #default="{ row }">
+                        <span class="status-pill green-pill" v-if="row.status === '启用'">启用</span>
+                        <span class="status-pill gray-pill" v-else>无</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="authTime" label="授权时间" width="100" />
+                    <el-table-column label="操作" width="130" fixed="right" align="right">
+                      <template #default="{ row }">
+                        <div class="row-actions-flex">
+                          <template v-if="row.roles && row.roles.length > 0">
+                            <span class="action-btn-link" @click="handleAdjustRole(row)">调整角色</span>
+                            <span class="action-btn-link danger" @click="handleRemoveRole(row)">移除</span>
+                          </template>
+                          <template v-else>
+                            <span class="action-btn-link" @click="handleAssignRole">分配角色</span>
+                          </template>
                         </div>
-                      </div>
-                      <span class="custom-badge green">启用</span>
-                    </div>
-                  </div>
+                      </template>
+                    </el-table-column>
+                  </el-table>
                 </div>
               </div>
             </el-tab-pane>
@@ -581,40 +641,44 @@ onMounted(() => {
               <div class="pane-card" style="min-height: 400px;">
                 <div class="pane-header">
                   <h3>应用权限</h3>
-                  <el-button type="primary" @click="openOpenAppDrawer(currentDetail!)">开通应用</el-button>
+                  <el-button type="primary" @click="handleAssignRole">授权客户端</el-button>
                 </div>
-                <div class="apps-grid-box">
-                  <div class="summary-app-card full-card">
-                    <div class="app-left">
-                      <h4>{{ currentDetail.name }}商城实例</h4>
-                      <p>应用：商城应用 · 编码：tenant_a_mall</p>
-                      <div class="pills-row">
-                        <span class="pill-badge">商城平台端</span>
-                        <span class="pill-badge">商家后台</span>
-                        <span class="pill-badge">消费者端</span>
+                <el-table :data="permissionsList" style="width: 100%" class="custom-permissions-table">
+                  <el-table-column prop="subjectName" label="主体" min-width="120" />
+                  <el-table-column prop="appInstanceName" label="应用实例" min-width="150" />
+                  <el-table-column prop="clientName" label="客户端" min-width="130" />
+                  <el-table-column label="角色" min-width="180">
+                    <template #default="{ row }">
+                      <div class="roles-tags-flex" v-if="row.roles && row.roles.length > 0">
+                        <el-tag v-for="role in row.roles" :key="role" size="default" class="role-badge-tag" style="margin-right: 6px; margin-bottom: 6px;">
+                          {{ role }}
+                        </el-tag>
                       </div>
-                    </div>
-                    <div class="app-right-col">
-                      <span class="custom-badge green">启用</span>
-                      <span class="link-btn-text" @click="copyText('tenant_a_mall')" style="margin-top: 8px;">复制编码</span>
-                    </div>
-                  </div>
-
-                  <div class="summary-app-card full-card">
-                    <div class="app-left">
-                      <h4>{{ currentDetail.name }}支付实例</h4>
-                      <p>应用：支付应用 · 编码：tenant_a_payment</p>
-                      <div class="pills-row">
-                        <span class="pill-badge">支付平台端</span>
-                        <span class="pill-badge">支付开放 API</span>
+                      <span class="status-pill orange-light" v-else>待分配</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="roleType" label="角色类型" width="100" />
+                  <el-table-column label="状态" width="100">
+                    <template #default="{ row }">
+                      <span class="status-pill green-pill" v-if="row.status === '启用'">启用</span>
+                      <span class="status-pill gray-pill" v-else>无</span>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="authTime" label="授权时间" width="140" />
+                  <el-table-column label="操作" width="160" fixed="right" align="right">
+                    <template #default="{ row }">
+                      <div class="row-actions-flex">
+                        <template v-if="row.roles && row.roles.length > 0">
+                          <span class="action-btn-link" @click="handleAdjustRole(row)">调整角色</span>
+                          <span class="action-btn-link danger" @click="handleRemoveRole(row)">移除</span>
+                        </template>
+                        <template v-else>
+                          <span class="action-btn-link" @click="handleAssignRole">分配角色</span>
+                        </template>
                       </div>
-                    </div>
-                    <div class="app-right-col">
-                      <span class="custom-badge green">启用</span>
-                      <span class="link-btn-text" @click="copyText('tenant_a_payment')" style="margin-top: 8px;">复制编码</span>
-                    </div>
-                  </div>
-                </div>
+                    </template>
+                  </el-table-column>
+                </el-table>
               </div>
             </el-tab-pane>
 
@@ -1775,5 +1839,75 @@ onMounted(() => {
     grid-column: span 2;
     justify-content: flex-end;
   }
+}
+
+/* App Permissions Custom Table Styles */
+.custom-permissions-table {
+  margin-top: 12px;
+}
+
+.roles-tags-flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.role-badge-tag {
+  background: #e0f2fe !important;
+  color: #0369a1 !important;
+  border: 1px solid #bae6fd !important;
+  border-radius: 6px !important;
+  font-weight: 600;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.status-pill.green-pill {
+  color: var(--success-color);
+  background: var(--success-bg);
+}
+
+.status-pill.gray-pill {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+.status-pill.orange-light {
+  color: #c2410c;
+  background: #ffedd5;
+  border: 1px solid #fed7aa;
+}
+
+.row-actions-flex {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.action-btn-link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-color);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.action-btn-link:hover {
+  color: var(--primary-hover);
+}
+
+.action-btn-link.danger {
+  color: #dc2626;
+}
+
+.action-btn-link.danger:hover {
+  color: #b91c1c;
 }
 </style>

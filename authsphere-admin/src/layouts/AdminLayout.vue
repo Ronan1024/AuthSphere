@@ -150,7 +150,6 @@ const menuItems = [
       { index: '/realm/login-pages', label: '登录页管理' },
       { index: '/realm/auth-methods', label: '认证方式' },
       { index: '/realm/auth-policies', label: '认证策略' },
-      { index: '/organizations', label: '组织管理' },
     ],
   },
   {
@@ -179,38 +178,6 @@ const menuItems = [
       { index: '/applications', label: '应用列表' },
       { index: '/applications/instances', label: '应用实例' },
       { index: '/applications/clients', label: '应用客户端' },
-    ],
-  },
-  {
-    index: 'permission-center',
-    label: '权限中心',
-    icon: Lock,
-    children: [
-      { index: '/permission/roles', label: '角色管理' },
-      { index: '/permission/resources', label: '权限资源' },
-      { index: '/permission/policies', label: '授权策略' },
-    ],
-  },
-  {
-    index: 'security-center',
-    label: '安全中心',
-    icon: Setting,
-    children: [
-      { index: '/security/password-policy', label: '密码策略' },
-      { index: '/security/mfa-policy', label: 'MFA策略' },
-      { index: '/security/session-policy', label: '会话策略' },
-      { index: '/security/risk-control', label: '风险控制' },
-    ],
-  },
-  {
-    index: 'audit-ops',
-    label: '审计与运维',
-    icon: Operation,
-    children: [
-      { index: '/ops/login-logs', label: '登录日志' },
-      { index: '/ops/operation-logs', label: '操作日志' },
-      { index: '/ops/token-management', label: 'Token管理' },
-      { index: '/ops/system-config', label: '系统配置' },
     ],
   },
 ] satisfies MenuGroup[]
