@@ -267,6 +267,36 @@ class RealmServiceImplTest {
         assertEquals("R1", result.get(0).getName());
     }
 
+    @Test
+    void createShouldThrowExceptionWhenSsoSingleLogoutIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setSsoSingleLogout("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("单点退出策略值无效"));
+    }
+
+    @Test
+    void createShouldThrowExceptionWhenExistingSessionHandlerIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setExistingSessionHandler("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("已存在会话处理方式值无效"));
+    }
+
+    @Test
+    void createShouldThrowExceptionWhenNoClientIdHandlerIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setNoClientIdHandler("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("无 client_id 时的处理方式值无效"));
+    }
+
     private CreateRealmRequest createRequest(String code, String name) {
         CreateRealmRequest request = new CreateRealmRequest();
         request.setCode(code);

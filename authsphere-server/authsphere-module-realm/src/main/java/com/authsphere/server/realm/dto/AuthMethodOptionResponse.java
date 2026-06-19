@@ -20,6 +20,8 @@ public class AuthMethodOptionResponse {
 
     private String name;
 
+    private String description;
+
     private List<String> positions;
 
     @JsonIgnore

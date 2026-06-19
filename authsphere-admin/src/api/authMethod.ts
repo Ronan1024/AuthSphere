@@ -54,6 +54,7 @@ export interface AuthMethodOptionResponse {
   id: string
   code: string
   name: string
+  description?: string
 }
 
 export interface AuthMethodTemplateResponse {

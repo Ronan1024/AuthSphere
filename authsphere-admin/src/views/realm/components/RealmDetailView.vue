@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ArrowLeft, EditPen, Warning, InfoFilled } from '@element-plus/icons-vue'
 import type { RealmRecord } from '@/api/realm'
+import { authMethodApi, type AuthMethodOptionResponse } from '@/api/authMethod'
 
 const props = defineProps<{
   realm: RealmRecord
@@ -9,6 +10,19 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits(['back', 'edit'])
+
+const availableAuthMethods = ref<AuthMethodOptionResponse[]>([])
+
+const fetchAvailableAuthMethods = async () => {
+  try {
+    const res = await authMethodApi.list()
+    availableAuthMethods.value = res || []
+  } catch (error) {
+    console.error('Failed to load authentication methods', error)
+  }
+}
+
+onMounted(fetchAvailableAuthMethods)
 
 // Map category type text
 const displayType = computed(() => {
@@ -41,7 +55,9 @@ const detailForm = computed(() => {
     ssoSingleLogout: (row as any).ssoSingleLogout || 'enabled',
     existingSessionHandler: (row as any).existingSessionHandler || 'auto_redirect',
     noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
-    authMethods: isPlatform ? ['password', 'sms'] : ['password', 'mfa'],
+    authMethods: row.authMethodList && row.authMethodList.length > 0
+      ? row.authMethodList.map(m => m.code)
+      : (isPlatform ? ['password', 'sms'] : ['password', 'mfa']),
     authPolicy: 'default',
     sessionTimeout: 8,
     tokenTimeout: 120,
@@ -54,7 +70,9 @@ const detailForm = computed(() => {
     policyName: row.name + '默认认证策略',
     policyCode: row.code + '_default_auth_policy',
     policyStatus: 1,
-    policyMethods: isPlatform ? ['password', 'sms'] : ['password', 'mfa'],
+    policyMethods: row.authMethodList && row.authMethodList.length > 0
+      ? row.authMethodList.map(m => m.code)
+      : (isPlatform ? ['password', 'sms'] : ['password', 'mfa']),
     policyDefaultMethod: 'password',
     policyMfa: 'none',
     policyCaptcha: 'threshold',
@@ -276,23 +294,19 @@ const mockImpactObjects = computed(() => {
                 <div class="full-width-field">
                   <el-form-item label="主登录认证方式">
                     <div class="checkbox-cards-grid-3" style="pointer-events: none;">
-                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('password') }">
-                        <el-checkbox :model-value="detailForm.policyMethods.includes('password')" disabled>
-                          <span class="checkbox-title">账号密码登录</span>
+                      <div
+                        v-for="method in availableAuthMethods"
+                        :key="method.code"
+                        class="checkbox-card-item"
+                        :class="{ checked: detailForm.policyMethods.includes(method.code) }"
+                      >
+                        <el-checkbox
+                          :model-value="detailForm.policyMethods.includes(method.code)"
+                          disabled
+                        >
+                          <span class="checkbox-title">{{ method.name }}</span>
                         </el-checkbox>
-                        <p class="checkbox-desc">系统内置，适合后台登录</p>
-                      </div>
-                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('sms') }">
-                        <el-checkbox :model-value="detailForm.policyMethods.includes('sms')" disabled>
-                          <span class="checkbox-title">短信验证码登录</span>
-                        </el-checkbox>
-                        <p class="checkbox-desc">可作为主登录或备用登录</p>
-                      </div>
-                      <div class="checkbox-card-item" :class="{ checked: detailForm.policyMethods.includes('wechat') }">
-                        <el-checkbox :model-value="detailForm.policyMethods.includes('wechat')" disabled>
-                          <span class="checkbox-title">微信小程序登录</span>
-                        </el-checkbox>
-                        <p class="checkbox-desc">小程序端客户端常用</p>
+                        <p class="checkbox-desc">{{ method.description || '自定义认证方式' }}</p>
                       </div>
                     </div>
                   </el-form-item>
@@ -301,9 +315,12 @@ const mockImpactObjects = computed(() => {
                 <div class="grid-3-col mt-16">
                   <el-form-item label="默认认证方式">
                     <el-select :model-value="detailForm.policyDefaultMethod" disabled>
-                      <el-option label="账号密码登录" value="password" />
-                      <el-option label="短信验证码登录" value="sms" />
-                      <el-option label="微信小程序登录" value="wechat" />
+                      <el-option
+                        v-for="method in availableAuthMethods.filter(m => detailForm.policyMethods.includes(m.code))"
+                        :key="method.code"
+                        :label="method.name"
+                        :value="method.code"
+                      />
                     </el-select>
                   </el-form-item>
                   <el-form-item label="MFA 认证方式">

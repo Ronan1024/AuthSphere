@@ -18,6 +18,9 @@ import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.service.AuthPolicyService;
 import com.authsphere.server.realm.service.RealmService;
+import com.authsphere.server.realm.enums.SsoSingleLogoutEnum;
+import com.authsphere.server.realm.enums.ExistingSessionHandlerEnum;
+import com.authsphere.server.realm.enums.NoClientIdHandlerEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +65,7 @@ public class RealmServiceImpl implements RealmService {
         }
         validateAuthPolicy(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
+        validateSsoConfig(createRealmRequest);
 
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
         realm.setStatus(NORMAL.getCode());
@@ -79,6 +83,7 @@ public class RealmServiceImpl implements RealmService {
         Realm realm = findById(id);
         validateAuthPolicy(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
+        validateSsoConfig(createRealmRequest);
         RealmConvert.INSTANCE.copyByModel(createRealmRequest, realm);
         realmMapper.updateById(realm);
         return Boolean.TRUE;
@@ -142,6 +147,7 @@ public class RealmServiceImpl implements RealmService {
                         .map(method -> {
                             AuthMethodInfoResponse info = new AuthMethodInfoResponse();
                             info.setId(method.getId());
+                            info.setCode(method.getCode());
                             info.setName(method.getName());
                             info.setDescription(method.getDescription());
                             return info;
@@ -163,6 +169,24 @@ public class RealmServiceImpl implements RealmService {
         }
     }
 
+    private void validateSsoConfig(CreateRealmRequest request) {
+        if (request.getSsoSingleLogout() != null && !request.getSsoSingleLogout().isBlank()) {
+            if (!SsoSingleLogoutEnum.isValid(request.getSsoSingleLogout())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "单点退出策略值无效");
+            }
+        }
+        if (request.getExistingSessionHandler() != null && !request.getExistingSessionHandler().isBlank()) {
+            if (!ExistingSessionHandlerEnum.isValid(request.getExistingSessionHandler())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "已存在会话处理方式值无效");
+            }
+        }
+        if (request.getNoClientIdHandler() != null && !request.getNoClientIdHandler().isBlank()) {
+            if (!NoClientIdHandlerEnum.isValid(request.getNoClientIdHandler())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "无 client_id 时的处理方式值无效");
+            }
+        }
+    }
+
     private void fillSsoDefaults(CreateRealmRequest request) {
         if (request.getSsoEnabled() == null) {
             request.setSsoEnabled(Boolean.TRUE);
@@ -174,13 +198,13 @@ public class RealmServiceImpl implements RealmService {
             request.setSsoIdleTimeout(30);
         }
         if (request.getSsoSingleLogout() == null || request.getSsoSingleLogout().isBlank()) {
-            request.setSsoSingleLogout("enabled");
+            request.setSsoSingleLogout(SsoSingleLogoutEnum.ENABLED.getCode());
         }
         if (request.getExistingSessionHandler() == null || request.getExistingSessionHandler().isBlank()) {
-            request.setExistingSessionHandler("auto_redirect");
+            request.setExistingSessionHandler(ExistingSessionHandlerEnum.AUTO_REDIRECT.getCode());
         }
         if (request.getNoClientIdHandler() == null || request.getNoClientIdHandler().isBlank()) {
-            request.setNoClientIdHandler("show_app_list");
+            request.setNoClientIdHandler(NoClientIdHandlerEnum.SHOW_APP_LIST.getCode());
         }
     }
 

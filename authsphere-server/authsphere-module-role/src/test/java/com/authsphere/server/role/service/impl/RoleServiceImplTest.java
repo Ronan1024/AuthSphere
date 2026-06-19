@@ -99,6 +99,11 @@ class RoleServiceImplTest {
 
     @Test
     void assignAccountRolesShouldRejectRolesOutsideClient() {
+        com.authsphere.server.account.model.Account account = new com.authsphere.server.account.model.Account();
+        account.setId(1000L);
+        account.setStatus(StatusEnum.NORMAL.getCode());
+        when(accountMapper.selectById(1000L)).thenReturn(account);
+
         AppClient client = enabledClient(10L);
         when(appClientMapper.selectById(10L)).thenReturn(client);
 

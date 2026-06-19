@@ -8,6 +8,7 @@ import { realmApi, type RealmRecord } from '@/api/realm'
 import { typeCategoryApi, type TypeCategoryRecord } from '@/api/typeCategory'
 import { passwordPolicyApi, type PasswordPolicyListItem } from '@/api/passwordPolicy'
 import { authPolicyApi } from '@/api/authPolicy'
+import { authMethodApi, type AuthMethodOptionResponse } from '@/api/authMethod'
 
 import RealmDetailView from './components/RealmDetailView.vue'
 
@@ -39,6 +40,7 @@ const formTitle = computed(() => isEditing.value ? '编辑身份域' : '新增�
 const submitLoading = ref(false)
 const createFormRef = ref()
 const passwordPolicyOptions = ref<PasswordPolicyListItem[]>([])
+const availableAuthMethods = ref<AuthMethodOptionResponse[]>([])
 
 // Custom confirmation modal state
 const isConfirmDialogVisible = ref(false)
@@ -294,65 +296,6 @@ const handleTabClick = (tabName: string) => {
   }
 }
 
-const mockDataFallback = ref<RealmRecord[]>([
-  {
-    id: '1001',
-    name: '租户身份域',
-    code: 'tenant_realm',
-    typeCategoryId: '',
-    registerEnabled: true,
-    ssoEnabled: true,
-    authPolicyName: '租户默认认证策略',
-    ssoClientCount: 8,
-    accountCount: 128,
-    status: 1,
-    createTime: '2026-05-28',
-    description: '租户后台统一身份空间'
-  },
-  {
-    id: '1002',
-    name: '平台身份域',
-    code: 'platform_realm',
-    typeCategoryId: '',
-    registerEnabled: true,
-    ssoEnabled: true,
-    authPolicyName: '平台默认认证策略',
-    ssoClientCount: 3,
-    accountCount: 42,
-    status: 1,
-    createTime: '2026-05-28',
-    description: '平台管理后台统一身份空间'
-  },
-  {
-    id: '1003',
-    name: '商户身份域',
-    code: 'merchant_realm',
-    typeCategoryId: '',
-    registerEnabled: false,
-    ssoEnabled: true,
-    authPolicyName: '商户默认认证策略',
-    ssoClientCount: 4,
-    accountCount: 86,
-    status: 1,
-    createTime: '2026-05-29',
-    description: '商户管理后台统一身份空间'
-  },
-  {
-    id: '1004',
-    name: '消费者身份域',
-    code: 'consumer_realm',
-    typeCategoryId: '',
-    registerEnabled: true,
-    ssoEnabled: true,
-    authPolicyName: '消费者默认认证策略',
-    ssoClientCount: 2,
-    accountCount: 0,
-    status: 2,
-    createTime: '2026-05-30',
-    description: '消费者移动端身份空间'
-  }
-])
-
 const fetchData = async () => {
   loading.value = true
   try {
@@ -366,39 +309,17 @@ const fetchData = async () => {
     if (typeof query.status === 'number') params.status = query.status
 
     const result = await realmApi.page(params)
-    let records = result.records || []
+    const records = result.records || []
     
-    // Auto map mock items with category ids if they match from database categories
-    if (records.length === 0 && !query.name && !query.code && !query.typeCategoryId && !query.status) {
-      // populate type category ids dynamically in mock data based on names
-      mockDataFallback.value.forEach(mockItem => {
-        let matchName = '租户'
-        if (mockItem.code.includes('platform')) matchName = '平台'
-        if (mockItem.code.includes('merchant')) matchName = '商户'
-        if (mockItem.code.includes('consumer')) matchName = '消费者'
-        
-        const cat = typeCategoryOptions.value.find(c => c.name.includes(matchName))
-        if (cat) {
-          mockItem.typeCategoryId = cat.id
-        }
-      })
-      records = mockDataFallback.value
-      total.value = mockDataFallback.value.length
-    } else {
-      total.value = result.total || 0
-    }
+    total.value = result.total || 0
     tableData.value = records.map(item => ({
       ...item,
       typeCategoryId: item.typeCategoryId ?? item.realmTypeId
     }))
   } catch (error: any) {
-    // Fail-safe mock data loader
-    mockDataFallback.value.forEach(mockItem => {
-      const cat = typeCategoryOptions.value.find(c => c.name.includes(mockItem.code.split('_')[0] === 'tenant' ? '租户' : '平台'))
-      if (cat) mockItem.typeCategoryId = cat.id
-    })
-    tableData.value = mockDataFallback.value
-    total.value = mockDataFallback.value.length
+    ElMessage.error(error.message || '获取数据失败')
+    tableData.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
@@ -698,10 +619,20 @@ const submitRealmForm = async (continueCreating: boolean) => {
   }
 }
 
+const fetchAvailableAuthMethods = async () => {
+  try {
+    const res = await authMethodApi.list()
+    availableAuthMethods.value = res || []
+  } catch (error) {
+    console.error('Failed to load authentication methods', error)
+  }
+}
+
 const init = async () => {
   if (route.query.typeCategoryId) {
     query.typeCategoryId = String(route.query.typeCategoryId)
   }
+  await fetchAvailableAuthMethods()
   await fetchTypeCategories()
   if (isCreating.value || isEditing.value) {
     const draft = sessionStorage.getItem(getDraftKey())
@@ -710,6 +641,12 @@ const init = async () => {
         Object.assign(createForm, JSON.parse(draft))
       } catch (error) {
         sessionStorage.removeItem(getDraftKey())
+      }
+    } else {
+      if (!isEditing.value && availableAuthMethods.value.length > 0) {
+        createForm.policyMethods = availableAuthMethods.value
+          .map(m => m.code)
+          .filter(code => code === 'password' || code === 'sms')
       }
     }
     loadPasswordPolicies()
@@ -880,23 +817,20 @@ onMounted(init)
                     <div class="full-width-field mt-16">
                       <el-form-item label="主登录认证方式">
                         <div class="checkbox-cards-grid-3">
-                          <div class="checkbox-card-item" :class="{ checked: createForm.policyMethods.includes('password') }" @click="togglePolicyMethod('password')">
-                            <el-checkbox :model-value="createForm.policyMethods.includes('password')" @click.stop="togglePolicyMethod('password')">
-                              <span class="checkbox-title">账号密码登录</span>
+                          <div
+                            v-for="method in availableAuthMethods"
+                            :key="method.code"
+                            class="checkbox-card-item"
+                            :class="{ checked: createForm.policyMethods.includes(method.code) }"
+                            @click="togglePolicyMethod(method.code)"
+                          >
+                            <el-checkbox
+                              :model-value="createForm.policyMethods.includes(method.code)"
+                              @click.stop="togglePolicyMethod(method.code)"
+                            >
+                              <span class="checkbox-title">{{ method.name }}</span>
                             </el-checkbox>
-                            <p class="checkbox-desc">系统内置，适合后台登录</p>
-                          </div>
-                          <div class="checkbox-card-item" :class="{ checked: createForm.policyMethods.includes('sms') }" @click="togglePolicyMethod('sms')">
-                            <el-checkbox :model-value="createForm.policyMethods.includes('sms')" @click.stop="togglePolicyMethod('sms')">
-                              <span class="checkbox-title">短信验证码登录</span>
-                            </el-checkbox>
-                            <p class="checkbox-desc">可作为主登录或备用登录</p>
-                          </div>
-                          <div class="checkbox-card-item" :class="{ checked: createForm.policyMethods.includes('wechat') }" @click="togglePolicyMethod('wechat')">
-                            <el-checkbox :model-value="createForm.policyMethods.includes('wechat')" @click.stop="togglePolicyMethod('wechat')">
-                              <span class="checkbox-title">微信小程序登录</span>
-                            </el-checkbox>
-                            <p class="checkbox-desc">小程序端客户端常用</p>
+                            <p class="checkbox-desc">{{ method.description || '自定义认证方式' }}</p>
                           </div>
                         </div>
                       </el-form-item>
@@ -905,9 +839,12 @@ onMounted(init)
                     <div class="grid-3-col mt-16">
                       <el-form-item label="默认认证方式">
                         <el-select v-model="createForm.policyDefaultMethod" placeholder="选择默认认证方式">
-                          <el-option label="账号密码登录" value="password" v-if="createForm.policyMethods.includes('password')" />
-                          <el-option label="短信验证码登录" value="sms" v-if="createForm.policyMethods.includes('sms')" />
-                          <el-option label="微信小程序登录" value="wechat" v-if="createForm.policyMethods.includes('wechat')" />
+                          <el-option
+                            v-for="method in availableAuthMethods.filter(m => createForm.policyMethods.includes(m.code))"
+                            :key="method.code"
+                            :label="method.name"
+                            :value="method.code"
+                          />
                         </el-select>
                       </el-form-item>
                       <el-form-item label="MFA 认证方式">

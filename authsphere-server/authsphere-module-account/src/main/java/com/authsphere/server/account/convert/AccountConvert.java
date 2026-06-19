@@ -25,7 +25,7 @@ public interface AccountConvert {
     @Mapping(target = "createTime", ignore = true)
     Account toAccount(AccountCreateRequest request);
 
-    void copyToAccount(@MappingTarget AccountCreateRequest request, Account account);
+    void copyToAccount(AccountCreateRequest request, @MappingTarget Account account);
 
     @Mapping(target = "subjectMemberCount", ignore = true)
     @Mapping(target = "realmName", ignore = true)

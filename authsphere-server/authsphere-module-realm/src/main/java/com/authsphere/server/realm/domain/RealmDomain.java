@@ -43,12 +43,6 @@ public class RealmDomain implements RealmApi {
         );
     }
 
-    /**
-     * 身份域不再绑定登录页，保留方法用于兼容旧调用。
-     */
-    public List<Realm> findListByLoginPage(List<Long> loginPageIdList) {
-        return List.of();
-    }
 
     /**
      * 获取身份域信息
@@ -73,15 +67,5 @@ public class RealmDomain implements RealmApi {
         return RealmConvert.INSTANCE.toRealmInfoResponse(realms);
     }
 
-    /**
-     * 根据类型ID获取身份域列表
-     *
-     * @param typeIdList 身份域类型
-     */
-    public List<Realm> findListByType(List<Long> typeIdList) {
-        return realmMapper.selectList(new LambdaQueryWrapper<Realm>()
-                .in(Realm::getRealmTypeId, typeIdList)
-        );
-    }
 
 }

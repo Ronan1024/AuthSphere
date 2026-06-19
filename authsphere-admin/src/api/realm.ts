@@ -44,7 +44,7 @@ export interface RealmRecord extends RealmPayload {
   authPolicyName?: string
   ssoClientCount?: number
   accountCount?: number
-  authMethodList?: { id: string | number; name: string; description?: string }[]
+  authMethodList?: { id: string | number; code: string; name: string; description?: string }[]
   status?: number
   createTime?: string
   updateTime?: string

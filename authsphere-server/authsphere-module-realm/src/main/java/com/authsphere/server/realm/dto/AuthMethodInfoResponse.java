@@ -14,6 +14,11 @@ public class AuthMethodInfoResponse {
     private Long id;
 
     /**
+     * 认证方式编码。
+     */
+    private String code;
+
+    /**
      * 认证方式名称。
      */
     private String name;

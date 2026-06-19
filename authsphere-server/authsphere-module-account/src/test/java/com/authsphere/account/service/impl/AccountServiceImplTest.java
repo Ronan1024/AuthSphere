@@ -11,6 +11,7 @@ import com.authsphere.server.account.service.impl.AccountServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import org.junit.jupiter.api.Test;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -83,8 +85,7 @@ class AccountServiceImplTest {
     void createShouldInsertAccountWhenUsernameNotExistsInRealm() {
         AccountCreateRequest request = createRequest();
         request.setStatus(null);
-        when(accountMapper.countEnabledRealmById(1L)).thenReturn(1L);
-        when(accountMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(realmApi.info(1L)).thenReturn(new RealmInfoResponse());
 
         Boolean result = accountService.create(request);
 
@@ -102,8 +103,9 @@ class AccountServiceImplTest {
     @Test
     void createShouldThrowBizExceptionWhenUsernameExistsInRealm() {
         AccountCreateRequest request = createRequest();
-        when(accountMapper.countEnabledRealmById(1L)).thenReturn(1L);
-        when(accountMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(new Account()));
+        when(realmApi.info(1L)).thenReturn(new RealmInfoResponse());
+        Mockito.doThrow(new BizException(AccountErrorCode.ACCOUNT_USERNAME_EXISTS))
+                .when(accountDomain).checkUsernameExists(null, request);
 
         BizException exception = assertThrows(BizException.class, () -> accountService.create(request));
 
@@ -118,8 +120,7 @@ class AccountServiceImplTest {
         existingAccount.setId(1L);
         existingAccount.setRealmId(1L);
         existingAccount.setUsername("old");
-        when(accountMapper.selectById(1L)).thenReturn(existingAccount);
-        when(accountMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(accountDomain.findById(1L)).thenReturn(existingAccount);
 
         AccountCreateRequest request = createRequest();
         request.setUsername("new");
@@ -142,7 +143,7 @@ class AccountServiceImplTest {
         Account account = new Account();
         account.setId(1L);
         account.setStatus(StatusEnum.NORMAL.getCode());
-        when(accountMapper.selectById(1L)).thenReturn(account);
+        when(accountDomain.findById(1L)).thenReturn(account);
 
         Boolean result = accountService.editStatus(1L);
 
@@ -157,7 +158,7 @@ class AccountServiceImplTest {
         Account account = new Account();
         account.setId(1L);
         account.setStatus(AccountStatus.DISABLED.getCode());
-        when(accountMapper.selectById(1L)).thenReturn(account);
+        when(accountDomain.findById(1L)).thenReturn(account);
 
         Boolean result = accountService.editStatus(1L);
 
