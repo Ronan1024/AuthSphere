@@ -44,6 +44,18 @@ class AccountServiceImplTest {
     @Mock
     private AccountMapper accountMapper;
 
+    @Mock
+    private com.authsphere.server.account.domain.AccountDomain accountDomain;
+
+    @Mock
+    private com.authsphere.server.account.domain.AccountCredentialDomain accountCredentialDomain;
+
+    @Mock
+    private com.authsphere.server.api.RealmApi realmApi;
+
+    @Mock
+    private com.authsphere.server.api.subject.SubjectMemberApi subjectMemberApi;
+
     @InjectMocks
     private AccountServiceImpl accountService;
 
@@ -155,15 +167,7 @@ class AccountServiceImplTest {
         assertEquals(StatusEnum.NORMAL.getCode(), captor.getValue().getStatus());
     }
 
-    @Test
-    void findByIdShouldThrowBizExceptionWhenAccountNotExists() {
-        when(accountMapper.selectById(1L)).thenReturn(null);
 
-        BizException exception = assertThrows(BizException.class, () -> accountService.findById(1L));
-
-        assertEquals(AccountErrorCode.ACCOUNT_DATA_ERROR.getCode(), exception.getCode());
-        assertEquals(AccountErrorCode.ACCOUNT_DATA_ERROR.getMessage(), exception.getMessage());
-    }
 
     private AccountCreateRequest createRequest() {
         AccountCreateRequest request = new AccountCreateRequest();

@@ -214,6 +214,9 @@ const getPolicyStatus = (row: RealmRecord) => {
 }
 
 const getAuthMethodsText = (row: RealmRecord) => {
+  if (row.authMethodList && row.authMethodList.length > 0) {
+    return row.authMethodList.map(item => item.name).join(' / ')
+  }
   const code = row.code
   if (code === 'platform_realm') return '密码 / 短信'
   if (code === 'tenant_realm') return '密码 / MFA'
@@ -591,8 +594,7 @@ const executeConfirmAction = async () => {
       }
       ElMessage.success('身份域已成功禁用')
     } else {
-      // Mock delete
-      tableData.value = tableData.value.filter(item => item.id !== activeRealmForConfirm.value!.id)
+      await realmApi.delete(activeRealmForConfirm.value.id)
       ElMessage.success('身份域已成功删除')
     }
     isConfirmDialogVisible.value = false

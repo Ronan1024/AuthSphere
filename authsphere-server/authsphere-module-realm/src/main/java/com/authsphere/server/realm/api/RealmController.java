@@ -1,6 +1,7 @@
 package com.authsphere.server.realm.api;
 
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.service.RealmService;
@@ -8,6 +9,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 /**
  * 身份域管理
@@ -59,6 +61,22 @@ public class RealmController {
     @PutMapping("/status/{id}")
     public Boolean status(@PathVariable Long id) {
         return realmService.editStatus(id);
+    }
+
+    /**
+     * 删除身份域
+     */
+    @DeleteMapping("/{id}")
+    public Boolean delete(@PathVariable Long id) {
+        return realmService.delete(id);
+    }
+
+    /**
+     * 获取启用状态的身份域列表
+     */
+    @GetMapping("/list")
+    public List<RealmListResponse> list() {
+        return realmService.list();
     }
 
 }

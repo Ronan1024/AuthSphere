@@ -26,4 +26,10 @@ public interface SubjectMemberService extends IService<SubjectMember> {
     Boolean disable(Long id);
 
     Boolean remove(Long id);
+
+    /**
+     * 将指定成员记录设为该账号的默认主体。
+     * 同一账号在所有主体中最多只有一条 isDefault=1，操作是原子的。
+     */
+    Boolean setDefault(Long id);
 }

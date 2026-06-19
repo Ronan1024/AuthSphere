@@ -51,4 +51,23 @@
         </where>
         order by r.update_time desc, r.create_time desc
     </select>
+
+    <select id="listAll" resultType="com.authsphere.server.realm.dto.RealmListResponse">
+        select
+            id,
+            code,
+            name,
+            status
+        from realm
+        where status = 1
+        order by create_time desc
+    </select>
+
+    <select id="countAccountReferences" resultType="int">
+        select count(1) from account where realm_id = #{realmId}
+    </select>
+
+    <select id="countClientReferences" resultType="int">
+        select count(1) from app_client where default_realm_id = #{realmId}
+    </select>
 </mapper>

@@ -163,8 +163,7 @@ public class SubjectMemberServiceImpl extends ServiceImpl<SubjectMemberMapper, S
         if (account == null) {
             throw new BizException(AccountErrorCode.ACCOUNT_DATA_ERROR);
         }
-        if (!Objects.equals(account.getStatus(), StatusEnum.NORMAL.getCode())
-                || Objects.equals(account.getStatus(), ACCOUNT_LOCKED_STATUS)) {
+        if (!Objects.equals(account.getStatus(), StatusEnum.NORMAL.getCode())) {
             throw new BizException(SubjectErrorCode.SUBJECT_MEMBER_ACCOUNT_STATUS_DENIED);
         }
         return account;
@@ -263,5 +262,24 @@ public class SubjectMemberServiceImpl extends ServiceImpl<SubjectMemberMapper, S
                 .eq(SubjectMember::getSubjectId, subjectId)
                 .eq(SubjectMember::getMemberType, SubjectMemberType.OWNER.getCode())
                 .eq(SubjectMember::getStatus, SubjectMemberStatus.ENABLED.getCode()));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean setDefault(Long id) {
+        // 1. 校验成员记录存在且未被移除
+        SubjectMember member = findActiveOrDisabledById(id);
+        // 2. 只有启用状态的成员才能设为默认
+        if (!Objects.equals(member.getStatus(), SubjectMemberStatus.ENABLED.getCode())) {
+            throw new BizException(SubjectErrorCode.SUBJECT_MEMBER_STATUS_INVALID);
+        }
+        // 3. 幂等：已经是默认则直接返回
+        if (Objects.equals(member.getIsDefault(), 1)) {
+            return Boolean.TRUE;
+        }
+        // 4. 原子性：先清除该账号所有默认标记，再设置新默认
+        subjectMemberMapper.clearDefault(member.getAccountId());
+        subjectMemberMapper.setDefault(id);
+        return Boolean.TRUE;
     }
 }

@@ -28,6 +28,11 @@ public interface SubjectMapper extends BaseMapper<Subject> {
     SubjectResponse detail(@Param("id") Long id);
 
     Long countRealmById(@Param("realmId") Long realmId);
+
+    /**
+     * 查询指定父主体的直接子主体列表。
+     */
+    List<SubjectResponse> listChildren(@Param("parentId") Long parentId);
 }
 
 

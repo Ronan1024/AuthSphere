@@ -1,9 +1,11 @@
 package com.authsphere.server.realm.service;
 
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import java.util.List;
 
 /**
  * @author longjiangran
@@ -36,5 +38,17 @@ public interface RealmService {
      * 身份域分页列表
      */
     Page<RealmPageResponse> page(RealmPageRequest realmPageRequest);
+
+    /**
+     * 删除身份域
+     *
+     * @param id 身份域ID
+     */
+    Boolean delete(Long id);
+
+    /**
+     * 查询启用状态的身份域列表
+     */
+    List<RealmListResponse> list();
 
 }

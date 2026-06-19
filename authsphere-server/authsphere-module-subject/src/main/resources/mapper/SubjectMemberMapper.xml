@@ -28,6 +28,9 @@
         sm.subject_id as subjectId,
         s.code as subjectCode,
         s.name as subjectName,
+        st.code as subjectTypeCode,
+        st.name as subjectTypeName,
+        sm.is_default as isDefault,
         sm.account_id as accountId,
         a.realm_id as realmId,
         r.code as realmCode,
@@ -56,6 +59,7 @@
         sm.update_time
         from subject_member sm
         inner join subject s on s.id = sm.subject_id
+        left join subject_type st on st.id = s.subject_type_id
         inner join account a on a.id = sm.account_id
         left join realm r on r.id = a.realm_id
         left join account joined_by on joined_by.id = sm.joined_by_account_id
@@ -104,6 +108,21 @@
         <foreach collection="accountId" open="(" close=")" separator="," item="id">
             #{id}
         </foreach>
-        group by account_id;
+        and status != 3
+        group by account_id
     </select>
+
+    <update id="clearDefault">
+        update subject_member
+        set is_default = 0
+        where account_id = #{accountId}
+          and is_default = 1
+    </update>
+
+    <update id="setDefault">
+        update subject_member
+        set is_default = 1
+        where id = #{id}
+    </update>
+
 </mapper>

@@ -50,4 +50,9 @@ public interface SubjectService extends IService<Subject> {
      * 删除主体。
      */
     Boolean delete(Long id);
+
+    /**
+     * 查询指定父主体的直接子主体列表。
+     */
+    List<SubjectResponse> listChildren(Long parentId);
 }

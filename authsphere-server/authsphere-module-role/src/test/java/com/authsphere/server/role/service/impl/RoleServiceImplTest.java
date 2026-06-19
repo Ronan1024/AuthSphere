@@ -43,6 +43,10 @@ class RoleServiceImplTest {
     private AppMenuMapper appMenuMapper;
     @Mock
     private AppPermissionMapper appPermissionMapper;
+    @Mock
+    private com.authsphere.server.account.mapper.AccountMapper accountMapper;
+    @Mock
+    private com.authsphere.server.subject.mapper.SubjectMapper subjectMapper;
 
     private RoleServiceImpl roleService;
 
@@ -54,7 +58,9 @@ class RoleServiceImplTest {
                 accountRoleMapper,
                 appClientMapper,
                 appMenuMapper,
-                appPermissionMapper
+                appPermissionMapper,
+                accountMapper,
+                subjectMapper
         );
     }
 

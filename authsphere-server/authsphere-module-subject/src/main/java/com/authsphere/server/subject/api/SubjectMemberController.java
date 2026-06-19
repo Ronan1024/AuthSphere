@@ -57,6 +57,15 @@ public class SubjectMemberController {
         return subjectMemberService.disable(id);
     }
 
+    /**
+     * 将指定主体成员记录设为该账号的默认主体。
+     * 同一账号只能有一个默认主体，此接口会原子性切换。
+     */
+    @PutMapping("/{id}/set-default")
+    public Boolean setDefault(@PathVariable Long id) {
+        return subjectMemberService.setDefault(id);
+    }
+
     @DeleteMapping("/{id}")
     public Boolean remove(@PathVariable Long id) {
         return subjectMemberService.remove(id);
