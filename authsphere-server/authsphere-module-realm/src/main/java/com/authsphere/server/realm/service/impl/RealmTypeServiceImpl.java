@@ -48,14 +48,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
 
     @Override
     public List<RealmTypePageResponse> listAll() {
-        List<RealmTypePageResponse> list = realmTypeMapper.listAll();
-        if (!CollectionUtils.isEmpty(list)) {
-            list.forEach(record -> {
-                List<Realm> refs = realmDomain.findListByType(record.getId());
-//                record.setReferenceCount(CollectionUtils.isEmpty(refs) ? 0 : refs.size());
-            });
-        }
-        return list;
+        return realmTypeMapper.listAll();
     }
 
     /**
@@ -68,9 +61,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
         RealmType realmType = findById(id);
         RealmTypeInfoResponse response = RealmTypeConvert.INSTANCE.infoResponse(realmType);
         List<Realm> refs = realmDomain.findListByType(id);
-        int referenceCount = CollectionUtils.isEmpty(refs) ? 0 : refs.size();
         int disabledCount = CollectionUtils.isEmpty(refs) ? 0 : Math.toIntExact(refs.stream().filter(realm -> DISABLED.getCode().equals(realm.getStatus())).count());
-//        response.setReferenceCount(referenceCount);
         response.setDisabledCount(disabledCount);
         response.setRealmList(RealmConvert.INSTANCE.toRealmListResponse(refs));
         return response;

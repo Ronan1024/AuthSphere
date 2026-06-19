@@ -25,6 +25,15 @@ public class SubjectMemberResponse extends BaseDataBaseModel {
 
     private String subjectName;
 
+    private String subjectTypeCode;
+
+    private String subjectTypeName;
+
+    /**
+     * 是否为该账号的默认主体：0 否，1 是。
+     */
+    private Integer isDefault;
+
     @JsonSerialize(using = ToStringSerializer.class)
     private Long accountId;
 

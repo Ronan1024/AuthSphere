@@ -9,6 +9,8 @@ import com.authsphere.server.realm.dto.LoginPagePreviewResponse;
 import com.authsphere.server.realm.dto.LoginPageRequest;
 import com.authsphere.server.realm.dto.LoginPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
+import com.authsphere.server.realm.enums.LayoutModeEnum;
+import com.authsphere.server.realm.enums.FailurePromptModeEnum;
 import com.authsphere.server.realm.mapper.LoginPageMapper;
 import com.authsphere.server.realm.mapper.RealmTypeMapper;
 import com.authsphere.server.realm.model.LoginPage;
@@ -84,6 +86,16 @@ public class LoginPageDomain {
         if (Boolean.TRUE.equals(request.getShowRegister())
                 && !StringUtils.hasText(request.getRegisterUrl())) {
             throw new BizException(RealmErrorCode.LOGIN_PAGE_REGISTER_URL_REQUIRED);
+        }
+        if (request.getLayoutMode() != null && !request.getLayoutMode().isBlank()) {
+            if (!LayoutModeEnum.isValid(request.getLayoutMode())) {
+                throw new BizException(RealmErrorCode.LOGIN_PAGE_DATA_ERROR.getCode(), "页面布局模式值无效");
+            }
+        }
+        if (request.getFailurePromptMode() != null && !request.getFailurePromptMode().isBlank()) {
+            if (!FailurePromptModeEnum.isValid(request.getFailurePromptMode())) {
+                throw new BizException(RealmErrorCode.LOGIN_PAGE_DATA_ERROR.getCode(), "登录失败提示方式值无效");
+            }
         }
         request.setAuthMethods(authMethods);
     }

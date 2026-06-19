@@ -43,6 +43,10 @@ class RoleServiceImplTest {
     private AppMenuMapper appMenuMapper;
     @Mock
     private AppPermissionMapper appPermissionMapper;
+    @Mock
+    private com.authsphere.server.account.mapper.AccountMapper accountMapper;
+    @Mock
+    private com.authsphere.server.subject.mapper.SubjectMapper subjectMapper;
 
     private RoleServiceImpl roleService;
 
@@ -54,7 +58,9 @@ class RoleServiceImplTest {
                 accountRoleMapper,
                 appClientMapper,
                 appMenuMapper,
-                appPermissionMapper
+                appPermissionMapper,
+                accountMapper,
+                subjectMapper
         );
     }
 
@@ -93,6 +99,11 @@ class RoleServiceImplTest {
 
     @Test
     void assignAccountRolesShouldRejectRolesOutsideClient() {
+        com.authsphere.server.account.model.Account account = new com.authsphere.server.account.model.Account();
+        account.setId(1000L);
+        account.setStatus(StatusEnum.NORMAL.getCode());
+        when(accountMapper.selectById(1000L)).thenReturn(account);
+
         AppClient client = enabledClient(10L);
         when(appClientMapper.selectById(10L)).thenReturn(client);
 

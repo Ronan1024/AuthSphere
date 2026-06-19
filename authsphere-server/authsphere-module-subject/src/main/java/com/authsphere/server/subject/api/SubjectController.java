@@ -83,4 +83,12 @@ public class SubjectController {
     public Boolean delete(@PathVariable Long id) {
         return subjectService.delete(id);
     }
+
+    /**
+     * 查询指定父主体的直接子主体列表。
+     */
+    @GetMapping("/{id}/children")
+    public List<SubjectResponse> children(@PathVariable Long id) {
+        return subjectService.listChildren(id);
+    }
 }

@@ -59,6 +59,9 @@ class RealmServiceImplTest {
     @Mock
     private com.authsphere.server.realm.service.AuthPolicyService authPolicyService;
 
+    @Mock
+    private com.authsphere.server.realm.mapper.AuthMethodMapper authMethodMapper;
+
     @InjectMocks
     private RealmServiceImpl realmService;
 
@@ -200,6 +203,7 @@ class RealmServiceImplTest {
         mockType.setId(10L);
         mockType.setName("测试类型");
         when(realmTypeDomain.findByIdList(any(List.class))).thenReturn(List.of(mockType));
+        when(authMethodMapper.selectList(any())).thenReturn(List.of());
 
         Page<RealmPageResponse> result = realmService.page(request);
 
@@ -209,6 +213,88 @@ class RealmServiceImplTest {
         IPage<RealmPageResponse> mapperPage = pageCaptor.getValue();
         assertEquals(2, mapperPage.getCurrent());
         assertEquals(20, mapperPage.getSize());
+    }
+
+    @Test
+    void deleteShouldDeleteRealmWhenNoReferencesExist() {
+        Realm realm = new Realm();
+        realm.setId(1L);
+        when(realmMapper.selectById(1L)).thenReturn(realm);
+        when(realmMapper.countAccountReferences(1L)).thenReturn(0);
+        when(realmMapper.countClientReferences(1L)).thenReturn(0);
+
+        Boolean result = realmService.delete(1L);
+
+        assertTrue(result);
+        verify(realmMapper).deleteById(1L);
+    }
+
+    @Test
+    void deleteShouldThrowExceptionWhenAccountReferencesExist() {
+        Realm realm = new Realm();
+        realm.setId(1L);
+        when(realmMapper.selectById(1L)).thenReturn(realm);
+        when(realmMapper.countAccountReferences(1L)).thenReturn(5);
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.delete(1L));
+        assertTrue(exception.getMessage().contains("账号"));
+        verify(realmMapper, never()).deleteById(1L);
+    }
+
+    @Test
+    void deleteShouldThrowExceptionWhenClientReferencesExist() {
+        Realm realm = new Realm();
+        realm.setId(1L);
+        when(realmMapper.selectById(1L)).thenReturn(realm);
+        when(realmMapper.countAccountReferences(1L)).thenReturn(0);
+        when(realmMapper.countClientReferences(1L)).thenReturn(3);
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.delete(1L));
+        assertTrue(exception.getMessage().contains("客户端"));
+        verify(realmMapper, never()).deleteById(1L);
+    }
+
+    @Test
+    void listShouldReturnAllRealms() {
+        com.authsphere.server.realm.dto.RealmListResponse r1 = new com.authsphere.server.realm.dto.RealmListResponse();
+        r1.setId(1L);
+        r1.setName("R1");
+        when(realmMapper.listAll()).thenReturn(List.of(r1));
+
+        List<com.authsphere.server.realm.dto.RealmListResponse> result = realmService.list();
+
+        assertEquals(1, result.size());
+        assertEquals("R1", result.get(0).getName());
+    }
+
+    @Test
+    void createShouldThrowExceptionWhenSsoSingleLogoutIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setSsoSingleLogout("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("单点退出策略值无效"));
+    }
+
+    @Test
+    void createShouldThrowExceptionWhenExistingSessionHandlerIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setExistingSessionHandler("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("已存在会话处理方式值无效"));
+    }
+
+    @Test
+    void createShouldThrowExceptionWhenNoClientIdHandlerIsInvalid() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setNoClientIdHandler("invalid_val");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+        assertTrue(exception.getMessage().contains("无 client_id 时的处理方式值无效"));
     }
 
     private CreateRealmRequest createRequest(String code, String name) {

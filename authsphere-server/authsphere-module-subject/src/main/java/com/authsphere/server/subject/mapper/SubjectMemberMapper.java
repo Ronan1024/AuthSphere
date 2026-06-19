@@ -22,6 +22,16 @@ public interface SubjectMemberMapper extends BaseMapper<SubjectMember> {
                                      @Param("request") SubjectMemberPageRequest request);
 
     /**
+     * 清除指定账号所有主体成员记录的默认标记。
+     */
+    void clearDefault(@Param("accountId") Long accountId);
+
+    /**
+     * 将指定主体成员记录设为默认。
+     */
+    void setDefault(@Param("id") Long id);
+
+    /**
      * 获取当前账号加入的主体数量
      */
     List<AccountSubjectCountResponse> accountSubjectMemberCount(@Param("accountId") List<Long> accountId);

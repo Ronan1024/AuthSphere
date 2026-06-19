@@ -113,4 +113,13 @@
         from realm
         where id = #{realmId}
     </select>
+
+    <select id="listChildren" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+        select
+        <include refid="Response_Column_List"/>
+        <include refid="Response_From"/>
+        where s.parent_subject_id = #{parentId}
+        order by s.create_time asc
+    </select>
+
 </mapper>

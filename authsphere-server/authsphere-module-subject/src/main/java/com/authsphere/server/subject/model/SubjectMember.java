@@ -46,6 +46,12 @@ public class SubjectMember extends BaseDataBaseModel {
     private String remark;
 
     /**
+     * 是否为该账号的默认主体：0 否，1 是。
+     * 同一账号在所有主体中最多只有一条为 1。
+     */
+    private Integer isDefault;
+
+    /**
      * 成员状态：1 启用，2 禁用，3 移除。
      */
     private Integer status;

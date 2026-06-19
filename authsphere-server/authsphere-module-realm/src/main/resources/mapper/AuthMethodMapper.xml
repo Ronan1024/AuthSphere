@@ -42,7 +42,7 @@
     </select>
 
     <select id="listEnabled" resultType="com.authsphere.server.realm.dto.AuthMethodOptionResponse">
-        select id, code, name, positions as positionsText
+        select id, code, name, description, positions as positionsText
         from auth_method
         where deleted = 0
           and status = 1

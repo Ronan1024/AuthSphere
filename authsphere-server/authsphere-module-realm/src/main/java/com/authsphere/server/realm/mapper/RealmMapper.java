@@ -1,5 +1,6 @@
 package com.authsphere.server.realm.mapper;
 
+import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.model.Realm;
@@ -8,6 +9,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import java.util.List;
 
 /**
  * @author longjiangran
@@ -19,7 +21,23 @@ import org.apache.ibatis.annotations.Param;
 public interface RealmMapper extends BaseMapper<Realm> {
 
     Page<RealmPageResponse> page(@Param("page") IPage<RealmPageResponse> page, @Param("realmPageRequest") RealmPageRequest realmPageRequest);
+
+    /**
+     * 查询全部启用身份域，用于下拉选择。
+     */
+    List<RealmListResponse> listAll();
+
+    /**
+     * 统计引用该身份域的账号数量。
+     */
+    int countAccountReferences(@Param("realmId") Long realmId);
+
+    /**
+     * 统计引用该身份域的客户端（应用）数量。
+     */
+    int countClientReferences(@Param("realmId") Long realmId);
 }
+
 
 
 

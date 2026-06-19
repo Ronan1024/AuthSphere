@@ -44,6 +44,7 @@ export interface RealmRecord extends RealmPayload {
   authPolicyName?: string
   ssoClientCount?: number
   accountCount?: number
+  authMethodList?: { id: string | number; code: string; name: string; description?: string }[]
   status?: number
   createTime?: string
   updateTime?: string
@@ -61,5 +62,11 @@ export const realmApi = {
   },
   toggleStatus(id: string) {
     return http.put<unknown, boolean>(`/admin/realm/status/${id}`)
+  },
+  list() {
+    return http.get<unknown, RealmRecord[]>('/admin/realm/list')
+  },
+  delete(id: string) {
+    return http.delete<unknown, boolean>(`/admin/realm/${id}`)
   },
 }

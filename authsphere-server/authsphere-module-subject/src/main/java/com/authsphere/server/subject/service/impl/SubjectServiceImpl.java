@@ -88,6 +88,12 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
         return Boolean.TRUE;
     }
 
+    @Override
+    public List<SubjectResponse> listChildren(Long parentId) {
+        subjectDomain.findById(parentId);
+        return subjectMapper.listChildren(parentId);
+    }
+
     private void validateSubject(Long currentId, SubjectRequest request) {
         subjectTypeDomain.findById(request.getSubjectTypeId());
         checkRealmExists(request.getRealmId());

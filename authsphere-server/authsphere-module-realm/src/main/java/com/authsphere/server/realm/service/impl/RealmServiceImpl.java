@@ -13,17 +13,25 @@ import com.authsphere.server.realm.mapper.AuthPolicyMapper;
 import com.authsphere.server.realm.model.AuthPolicy;
 import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.model.RealmType;
+import com.authsphere.server.realm.dto.RealmListResponse;
+import com.authsphere.server.realm.mapper.AuthMethodMapper;
+import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.service.AuthPolicyService;
 import com.authsphere.server.realm.service.RealmService;
+import com.authsphere.server.realm.enums.SsoSingleLogoutEnum;
+import com.authsphere.server.realm.enums.ExistingSessionHandlerEnum;
+import com.authsphere.server.realm.enums.NoClientIdHandlerEnum;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import static com.authsphere.server.common.enums.StatusEnum.DISABLED;
@@ -42,6 +50,7 @@ public class RealmServiceImpl implements RealmService {
     private final RealmTypeDomain realmTypeDomain;
     private final AuthPolicyMapper authPolicyMapper;
     private final AuthPolicyService authPolicyService;
+    private final AuthMethodMapper authMethodMapper;
 
     /**
      * 创建身份域信息
@@ -56,6 +65,7 @@ public class RealmServiceImpl implements RealmService {
         }
         validateAuthPolicy(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
+        validateSsoConfig(createRealmRequest);
 
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
         realm.setStatus(NORMAL.getCode());
@@ -73,6 +83,7 @@ public class RealmServiceImpl implements RealmService {
         Realm realm = findById(id);
         validateAuthPolicy(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
+        validateSsoConfig(createRealmRequest);
         RealmConvert.INSTANCE.copyByModel(createRealmRequest, realm);
         realmMapper.updateById(realm);
         return Boolean.TRUE;
@@ -116,23 +127,36 @@ public class RealmServiceImpl implements RealmService {
                 : authPolicyMapper.selectBatchIds(authPolicyIds).stream()
                         .collect(Collectors.toMap(AuthPolicy::getId, e -> e));
 
+        List<AuthMethod> allAuthMethods = authMethodMapper.selectList(new LambdaQueryWrapper<AuthMethod>()
+                .eq(AuthMethod::getStatus, NORMAL.getCode()));
+        Map<String, AuthMethod> authMethodMap = allAuthMethods.stream()
+                .collect(Collectors.toMap(AuthMethod::getCode, e -> e, (v1, v2) -> v1));
+
         records.forEach(e -> {
             RealmType realmType = realmTypeMap.get(e.getRealmTypeId());
             e.setRealmTypeName(realmType == null ? null : realmType.getName());
             AuthPolicy authPolicy = authPolicyMap.get(e.getAuthPolicyId());
             e.setAuthPolicyName(authPolicy == null ? null : authPolicy.getName());
 
-            // TODO 认证方式处理
-            AuthMethodInfoResponse authMethodInfoResponse = new AuthMethodInfoResponse();
-            authMethodInfoResponse.setId(1L);
-            authMethodInfoResponse.setName("密码");
-
-            AuthMethodInfoResponse authMethodInfoResponse2 = new AuthMethodInfoResponse();
-            authMethodInfoResponse2.setId(2L);
-            authMethodInfoResponse2.setName("短信");
-
-            List<AuthMethodInfoResponse> list = Arrays.asList(authMethodInfoResponse, authMethodInfoResponse2);
-            e.setAuthMethodList(list);
+            if (authPolicy != null && authPolicy.getAuthMethods() != null) {
+                List<AuthMethodInfoResponse> methodList = Arrays.stream(authPolicy.getAuthMethods().split(","))
+                        .map(String::trim)
+                        .filter(code -> !code.isEmpty())
+                        .map(authMethodMap::get)
+                        .filter(Objects::nonNull)
+                        .map(method -> {
+                            AuthMethodInfoResponse info = new AuthMethodInfoResponse();
+                            info.setId(method.getId());
+                            info.setCode(method.getCode());
+                            info.setName(method.getName());
+                            info.setDescription(method.getDescription());
+                            return info;
+                        })
+                        .collect(Collectors.toList());
+                e.setAuthMethodList(methodList);
+            } else {
+                e.setAuthMethodList(java.util.Collections.emptyList());
+            }
         });
 
 
@@ -142,6 +166,24 @@ public class RealmServiceImpl implements RealmService {
     private void validateAuthPolicy(Long authPolicyId) {
         if (authPolicyId != null) {
             authPolicyService.validateEnabled(authPolicyId);
+        }
+    }
+
+    private void validateSsoConfig(CreateRealmRequest request) {
+        if (request.getSsoSingleLogout() != null && !request.getSsoSingleLogout().isBlank()) {
+            if (!SsoSingleLogoutEnum.isValid(request.getSsoSingleLogout())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "单点退出策略值无效");
+            }
+        }
+        if (request.getExistingSessionHandler() != null && !request.getExistingSessionHandler().isBlank()) {
+            if (!ExistingSessionHandlerEnum.isValid(request.getExistingSessionHandler())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "已存在会话处理方式值无效");
+            }
+        }
+        if (request.getNoClientIdHandler() != null && !request.getNoClientIdHandler().isBlank()) {
+            if (!NoClientIdHandlerEnum.isValid(request.getNoClientIdHandler())) {
+                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "无 client_id 时的处理方式值无效");
+            }
         }
     }
 
@@ -156,13 +198,13 @@ public class RealmServiceImpl implements RealmService {
             request.setSsoIdleTimeout(30);
         }
         if (request.getSsoSingleLogout() == null || request.getSsoSingleLogout().isBlank()) {
-            request.setSsoSingleLogout("enabled");
+            request.setSsoSingleLogout(SsoSingleLogoutEnum.ENABLED.getCode());
         }
         if (request.getExistingSessionHandler() == null || request.getExistingSessionHandler().isBlank()) {
-            request.setExistingSessionHandler("auto_redirect");
+            request.setExistingSessionHandler(ExistingSessionHandlerEnum.AUTO_REDIRECT.getCode());
         }
         if (request.getNoClientIdHandler() == null || request.getNoClientIdHandler().isBlank()) {
-            request.setNoClientIdHandler("show_app_list");
+            request.setNoClientIdHandler(NoClientIdHandlerEnum.SHOW_APP_LIST.getCode());
         }
     }
 
@@ -175,6 +217,25 @@ public class RealmServiceImpl implements RealmService {
         }
 
         return realm;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean delete(Long id) {
+        Realm realm = findById(id);
+        if (realmMapper.countAccountReferences(id) > 0) {
+            throw new BizException("该身份域下存在关联的账号，无法删除");
+        }
+        if (realmMapper.countClientReferences(id) > 0) {
+            throw new BizException("该身份域下存在关联的客户端，无法删除");
+        }
+        realmMapper.deleteById(id);
+        return Boolean.TRUE;
+    }
+
+    @Override
+    public List<RealmListResponse> list() {
+        return realmMapper.listAll();
     }
 }
 
