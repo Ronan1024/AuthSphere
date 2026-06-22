@@ -21,7 +21,7 @@ public class AuthPolicyRequest {
      * 认证策略编码，创建后作为策略的稳定业务标识。
      */
     @NotBlank(message = "认证策略编码不能为空")
-    @Pattern(regexp = "^[a-z][a-z0-9_]{1,63}$", message = "认证策略编码需以小写字母开头，仅支持小写字母、数字和下划线")
+    @Pattern(regexp = "^[a-zA-Z][a-zA-Z0-9_-]{1,63}$", message = "认证策略编码需以字母开头，仅支持字母、数字、下划线和长横线")
     private String code;
 
     /**

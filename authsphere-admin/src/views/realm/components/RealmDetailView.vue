@@ -57,9 +57,9 @@ const detailForm = computed(() => {
     noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
     authMethods: row.authMethodList && row.authMethodList.length > 0
       ? row.authMethodList.map(m => m.code)
-      : (isPlatform ? ['password', 'sms'] : ['password', 'mfa']),
+      : (isPlatform ? ['password_login', 'totp_login'] : ['password_login', 'totp_login']),
     authPolicy: 'default',
-    sessionTimeout: 8,
+    sessionTimeout: (row as any).ssoSessionTimeout || 8,
     tokenTimeout: 120,
     passwordPolicy: row.passwordPolicy || '',
     sslRequired: true,
@@ -72,8 +72,8 @@ const detailForm = computed(() => {
     policyStatus: 1,
     policyMethods: row.authMethodList && row.authMethodList.length > 0
       ? row.authMethodList.map(m => m.code)
-      : (isPlatform ? ['password', 'sms'] : ['password', 'mfa']),
-    policyDefaultMethod: 'password',
+      : (isPlatform ? ['password_login', 'totp_login'] : ['password_login', 'totp_login']),
+    policyDefaultMethod: (row as any).defaultAuthMethod || (row.authMethodList && row.authMethodList.length > 0 ? row.authMethodList[0].code : 'password_login'),
     policyMfa: 'none',
     policyCaptcha: 'threshold',
 
@@ -98,16 +98,19 @@ const detailForm = computed(() => {
     loginFailAutoUnlock: 'open',
     
     // Session Security
-    sessionIdleTimeout: 30,
+    sessionIdleTimeout: (row as any).ssoIdleTimeout || 30,
     sessionMultiDevice: 'allow',
     sessionMaxDevices: 5
   }
 })
 
 const getMethodLabel = (method: string) => {
-  if (method === 'password') return '账号密码'
+  if (method === 'password_login' || method === 'password') return '账号密码'
+  if (method === 'totp_login' || method === 'totp') return 'TOTP 动态口令'
+  if (method === 'extended_login' || method === 'extended') return '扩展登录'
+  if (method === 'client_credentials') return 'Client Credentials'
   if (method === 'sms') return '短信'
-  if (method === 'wechat') return '微信小程序'
+  if (method === 'email') return '邮箱'
   return method
 }
 
@@ -316,6 +319,11 @@ const mockImpactObjects = computed(() => {
                   <el-form-item label="默认认证方式">
                     <el-select :model-value="detailForm.policyDefaultMethod" disabled>
                       <el-option
+                        v-if="!detailForm.policyMethods.includes(detailForm.policyDefaultMethod) && detailForm.policyDefaultMethod"
+                        :label="getMethodLabel(detailForm.policyDefaultMethod)"
+                        :value="detailForm.policyDefaultMethod"
+                      />
+                      <el-option
                         v-for="method in availableAuthMethods.filter(m => detailForm.policyMethods.includes(m.code))"
                         :key="method.code"
                         :label="method.name"
@@ -338,12 +346,6 @@ const mockImpactObjects = computed(() => {
                       <el-option label="每次登录都启用" value="always" />
                     </el-select>
                   </el-form-item>
-                </div>
-              </div>
-              <div class="alert-banner-custom mt-16">
-                <span class="vertical-bar"></span>
-                <div class="alert-content-text">
-                  优先级：客户端认证策略 > 身份域默认认证策略 > 系统默认认证策略。
                 </div>
               </div>
             </div>
@@ -387,16 +389,26 @@ const mockImpactObjects = computed(() => {
                 </div>
                 <div class="grid-4-col mt-12">
                   <el-form-item label="首次登录改密">
-                    <el-select :model-value="detailForm.passwordForceChangeOnFirstLogin" disabled>
-                      <el-option label="是" value="yes" />
-                      <el-option label="否" value="no" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.passwordForceChangeOnFirstLogin"
+                      active-value="yes"
+                      inactive-value="no"
+                      active-text="是"
+                      inactive-text="否"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                   <el-form-item label="重置后改密">
-                    <el-select :model-value="detailForm.passwordForceChangeOnReset" disabled>
-                      <el-option label="是" value="yes" />
-                      <el-option label="否" value="no" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.passwordForceChangeOnReset"
+                      active-value="yes"
+                      inactive-value="no"
+                      active-text="是"
+                      inactive-text="否"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                 </div>
               </div>
@@ -419,16 +431,26 @@ const mockImpactObjects = computed(() => {
                     </el-input>
                   </el-form-item>
                   <el-form-item label="Refresh 轮换">
-                    <el-select :model-value="detailForm.tokenRotationEnabled" disabled>
-                      <el-option label="开启" value="open" />
-                      <el-option label="关闭" value="close" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.tokenRotationEnabled"
+                      active-value="open"
+                      inactive-value="close"
+                      active-text="开启"
+                      inactive-text="关闭"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                   <el-form-item label="Token 黑名单">
-                    <el-select :model-value="detailForm.tokenBlacklistEnabled" disabled>
-                      <el-option label="开启" value="open" />
-                      <el-option label="关闭" value="close" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.tokenBlacklistEnabled"
+                      active-value="open"
+                      inactive-value="close"
+                      active-text="开启"
+                      inactive-text="关闭"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                 </div>
               </div>
@@ -458,10 +480,15 @@ const mockImpactObjects = computed(() => {
                     </el-input>
                   </el-form-item>
                   <el-form-item label="自动解锁">
-                    <el-select :model-value="detailForm.loginFailAutoUnlock" disabled>
-                      <el-option label="开启" value="open" />
-                      <el-option label="关闭" value="close" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.loginFailAutoUnlock"
+                      active-value="open"
+                      inactive-value="close"
+                      active-text="开启"
+                      inactive-text="关闭"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                 </div>
               </div>
@@ -484,10 +511,15 @@ const mockImpactObjects = computed(() => {
                     </el-input>
                   </el-form-item>
                   <el-form-item label="多端登录">
-                    <el-select :model-value="detailForm.sessionMultiDevice" disabled>
-                      <el-option label="允许" value="allow" />
-                      <el-option label="限制" value="limit" />
-                    </el-select>
+                    <el-switch
+                      :model-value="detailForm.sessionMultiDevice"
+                      active-value="allow"
+                      inactive-value="limit"
+                      active-text="允许"
+                      inactive-text="限制"
+                      inline-prompt
+                      disabled
+                    />
                   </el-form-item>
                   <el-form-item label="最大设备数">
                     <el-input :model-value="detailForm.sessionMaxDevices" disabled>
@@ -698,6 +730,34 @@ const mockImpactObjects = computed(() => {
   border: 1px solid #E2E8F0;
   border-radius: 6px;
   box-shadow: none !important;
+}
+.form-left-column :deep(.el-input-group) {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background-color: #fff;
+  overflow: hidden;
+  display: inline-flex;
+  width: 100%;
+}
+.form-left-column :deep(.el-input-group .el-input__wrapper) {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: 34px;
+}
+.form-left-column :deep(.el-input-group__append) {
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: #F8FAFC !important;
+  color: #64748B !important;
+  padding: 0 12px !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 1px solid #E2E8F0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 .form-left-column :deep(.el-textarea__inner) {
   border: 1px solid #E2E8F0;

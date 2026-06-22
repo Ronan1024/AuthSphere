@@ -2,6 +2,8 @@ package com.authsphere.server.realm.service.impl;
 
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.convert.RealmConvert;
+import com.authsphere.server.realm.domain.AuthPolicyDomain;
+import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.domain.RealmTypeDomain;
 import com.authsphere.server.realm.dto.AuthMethodInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
@@ -27,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,9 +50,12 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 @RequiredArgsConstructor
 public class RealmServiceImpl implements RealmService {
     private final RealmMapper realmMapper;
+    private final RealmDomain realmDomain;
     private final RealmTypeDomain realmTypeDomain;
     private final AuthPolicyMapper authPolicyMapper;
     private final AuthPolicyService authPolicyService;
+    private final AuthPolicyDomain authPolicyDomain;
+
     private final AuthMethodMapper authMethodMapper;
 
     /**
@@ -63,14 +69,12 @@ public class RealmServiceImpl implements RealmService {
         if (!CollectionUtils.isEmpty(realms)) {
             throw new BizException(RealmErrorCode.REALM_CODE_EXISTS);
         }
-        validateAuthPolicy(createRealmRequest.getAuthPolicyId());
+        authPolicyDomain.checkEnabled(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
         validateSsoConfig(createRealmRequest);
-
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
         realm.setStatus(NORMAL.getCode());
-        realmMapper.insert(realm);
-        return Boolean.TRUE;
+        return realmMapper.insert(realm) > 0;
     }
 
     /**
@@ -81,7 +85,7 @@ public class RealmServiceImpl implements RealmService {
     @Override
     public Boolean update(Long id, CreateRealmRequest createRealmRequest) {
         Realm realm = findById(id);
-        validateAuthPolicy(createRealmRequest.getAuthPolicyId());
+        authPolicyDomain.checkEnabled(createRealmRequest.getAuthPolicyId());
         fillSsoDefaults(createRealmRequest);
         validateSsoConfig(createRealmRequest);
         RealmConvert.INSTANCE.copyByModel(createRealmRequest, realm);
@@ -125,7 +129,7 @@ public class RealmServiceImpl implements RealmService {
         Map<Long, AuthPolicy> authPolicyMap = CollectionUtils.isEmpty(authPolicyIds)
                 ? java.util.Collections.emptyMap()
                 : authPolicyMapper.selectBatchIds(authPolicyIds).stream()
-                        .collect(Collectors.toMap(AuthPolicy::getId, e -> e));
+                .collect(Collectors.toMap(AuthPolicy::getId, e -> e));
 
         List<AuthMethod> allAuthMethods = authMethodMapper.selectList(new LambdaQueryWrapper<AuthMethod>()
                 .eq(AuthMethod::getStatus, NORMAL.getCode()));
@@ -163,30 +167,26 @@ public class RealmServiceImpl implements RealmService {
         return result;
     }
 
-    private void validateAuthPolicy(Long authPolicyId) {
-        if (authPolicyId != null) {
-            authPolicyService.validateEnabled(authPolicyId);
-        }
-    }
 
+    /**
+     * 校验 SSO 配置合法性
+     */
     private void validateSsoConfig(CreateRealmRequest request) {
-        if (request.getSsoSingleLogout() != null && !request.getSsoSingleLogout().isBlank()) {
-            if (!SsoSingleLogoutEnum.isValid(request.getSsoSingleLogout())) {
-                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "单点退出策略值无效");
-            }
+        if (StringUtils.hasText(request.getSsoSingleLogout()) && !SsoSingleLogoutEnum.isValid(request.getSsoSingleLogout())) {
+            throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "单点退出策略值无效");
         }
-        if (request.getExistingSessionHandler() != null && !request.getExistingSessionHandler().isBlank()) {
-            if (!ExistingSessionHandlerEnum.isValid(request.getExistingSessionHandler())) {
-                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "已存在会话处理方式值无效");
-            }
+        if (StringUtils.hasText(request.getExistingSessionHandler()) && !ExistingSessionHandlerEnum.isValid(request.getExistingSessionHandler())) {
+            throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "已存在会话处理方式值无效");
         }
-        if (request.getNoClientIdHandler() != null && !request.getNoClientIdHandler().isBlank()) {
-            if (!NoClientIdHandlerEnum.isValid(request.getNoClientIdHandler())) {
-                throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "无 client_id 时的处理方式值无效");
-            }
+        if (StringUtils.hasText(request.getNoClientIdHandler()) && !NoClientIdHandlerEnum.isValid(request.getNoClientIdHandler())) {
+            throw new BizException(RealmErrorCode.REALM_DATA_ERROR.getCode(), "无 client_id 时的处理方式值无效");
         }
     }
 
+    /**
+     * 填充默认值
+     *
+     */
     private void fillSsoDefaults(CreateRealmRequest request) {
         if (request.getSsoEnabled() == null) {
             request.setSsoEnabled(Boolean.TRUE);
@@ -197,13 +197,13 @@ public class RealmServiceImpl implements RealmService {
         if (request.getSsoIdleTimeout() == null) {
             request.setSsoIdleTimeout(30);
         }
-        if (request.getSsoSingleLogout() == null || request.getSsoSingleLogout().isBlank()) {
+        if (!StringUtils.hasText(request.getSsoSingleLogout())) {
             request.setSsoSingleLogout(SsoSingleLogoutEnum.ENABLED.getCode());
         }
-        if (request.getExistingSessionHandler() == null || request.getExistingSessionHandler().isBlank()) {
+        if (!StringUtils.hasText(request.getExistingSessionHandler())) {
             request.setExistingSessionHandler(ExistingSessionHandlerEnum.AUTO_REDIRECT.getCode());
         }
-        if (request.getNoClientIdHandler() == null || request.getNoClientIdHandler().isBlank()) {
+        if (!StringUtils.hasText(request.getNoClientIdHandler())) {
             request.setNoClientIdHandler(NoClientIdHandlerEnum.SHOW_APP_LIST.getCode());
         }
     }

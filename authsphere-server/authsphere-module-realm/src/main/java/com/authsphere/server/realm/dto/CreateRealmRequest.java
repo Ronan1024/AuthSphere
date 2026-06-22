@@ -74,21 +74,6 @@ public class CreateRealmRequest {
     private String noClientIdHandler;
 
     /**
-     * 密码策略id。
-     */
-    private Long passwordPolicy;
-
-    /**
-     * MFA 策略id。
-     */
-    private Long mfaPolicy;
-
-    /**
-     * 账号唯一性规则id。
-     */
-    private Long uniquePolicy;
-
-    /**
      * 描述
      */
     private String description;
