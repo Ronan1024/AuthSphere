@@ -1,6 +1,7 @@
 package com.authsphere.server.common.exception;
 
 import com.authsphere.server.common.enums.ResponseCode;
+import lombok.Getter;
 
 /**
  * @program: AuthSphere
@@ -8,6 +9,7 @@ import com.authsphere.server.common.enums.ResponseCode;
  * @author: L.J.Ran
  * @create: 2026/5/26
  */
+@Getter
 public class BizException extends RuntimeException {
 
     private final String code;
@@ -32,7 +34,4 @@ public class BizException extends RuntimeException {
         this.code = code;
     }
 
-    public String getCode() {
-        return code;
-    }
 }

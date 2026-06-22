@@ -43,18 +43,6 @@ public class RealmPageResponse extends BaseDataBaseModel {
     private String realmTypeName;
 
     /**
-     * 默认认证策略ID。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long authPolicyId;
-
-    /**
-     * 默认认证策略名称。
-     */
-    private String authPolicyName;
-
-
-    /**
      * 认证方式列表
      */
     private List<AuthMethodInfoResponse> authMethodList;
@@ -95,22 +83,21 @@ public class RealmPageResponse extends BaseDataBaseModel {
     private String noClientIdHandler;
 
     /**
-     * 密码策略 ID。
+     * 默认认证方式ID
      */
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long passwordPolicy;
+    private Long defaultAuthMethodId;
 
     /**
-     * MFA 策略 ID。
+     * 默认认证方式名称
      */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long mfaPolicy;
+    private String defaultAuthMethodName;
 
     /**
-     * 账号唯一性规则 ID。
+     * MFA认证方式ID
      */
     @JsonSerialize(using = ToStringSerializer.class)
-    private Long uniquePolicy;
+    private Long mfaAuthMethodId;
 
     /**
      * SSO 客户端数量。

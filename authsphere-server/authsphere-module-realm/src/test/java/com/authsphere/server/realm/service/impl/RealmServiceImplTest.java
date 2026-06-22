@@ -6,13 +6,16 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmDetailResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.domain.RealmTypeDomain;
+import com.authsphere.server.realm.mapper.RealmAuthMethodRelMapper;
+import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.model.Realm;
-import com.authsphere.server.realm.model.AuthPolicy;
+import com.authsphere.server.realm.model.RealmAuthMethodRel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -21,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -48,27 +52,37 @@ class RealmServiceImplTest {
     private RealmTypeDomain realmTypeDomain;
 
     @Mock
-    private com.authsphere.server.realm.mapper.LoginPageMapper loginPageMapper;
-
-    @Mock
-    private com.authsphere.server.realm.service.LoginPageService loginPageService;
-
-    @Mock
-    private com.authsphere.server.realm.mapper.AuthPolicyMapper authPolicyMapper;
-
-    @Mock
-    private com.authsphere.server.realm.service.AuthPolicyService authPolicyService;
-
-    @Mock
     private com.authsphere.server.realm.mapper.AuthMethodMapper authMethodMapper;
+
+    @Mock
+    private RealmAuthMethodRelMapper realmAuthMethodRelMapper;
 
     @InjectMocks
     private RealmServiceImpl realmService;
 
     @Test
+    void createRequestShouldExposeDirectSecurityFields() {
+        CreateRealmRequest request = new CreateRealmRequest();
+        request.setAuthMethodIds(List.of(1L, 2L));
+        request.setDefaultAuthMethodId(1L);
+        request.setMfaAuthMethodId(2L);
+        request.setCaptchaMode("threshold");
+        request.setCaptchaThreshold(3);
+
+        assertEquals(List.of(1L, 2L), request.getAuthMethodIds());
+        assertEquals(1L, request.getDefaultAuthMethodId());
+        assertEquals(2L, request.getMfaAuthMethodId());
+        assertEquals("threshold", request.getCaptchaMode());
+        assertEquals(3, request.getCaptchaThreshold());
+    }
+
+    @Test
     void createShouldInsertRealmWhenDatabaseHasNoSameCode() {
         CreateRealmRequest request = createRequest("main", "主身份域");
         when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(realmMapper.insert(any(Realm.class))).thenReturn(1);
+        mockRealmType();
+        mockAuthMethods();
 
         Boolean result = realmService.create(request);
 
@@ -85,8 +99,25 @@ class RealmServiceImplTest {
         assertEquals("enabled", savedRealm.getSsoSingleLogout());
         assertEquals("auto_redirect", savedRealm.getExistingSessionHandler());
         assertEquals("show_app_list", savedRealm.getNoClientIdHandler());
-        assertEquals(10L, savedRealm.getPasswordPolicy());
+        assertEquals(1L, savedRealm.getDefaultAuthMethodId());
+        assertEquals(2L, savedRealm.getMfaAuthMethodId());
+        assertEquals("threshold", savedRealm.getCaptchaMode());
+        assertEquals(3, savedRealm.getCaptchaThreshold());
         assertEquals("测试身份域", savedRealm.getDescription());
+    }
+
+    @Test
+    void createShouldRejectWhenDefaultAuthMethodNotInSelectedAuthMethods() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setAuthMethodIds(List.of(1L));
+        request.setDefaultAuthMethodId(2L);
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
+        mockAuthMethods();
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+
+        assertTrue(exception.getMessage().contains("默认认证方式"));
     }
 
     @Test
@@ -108,6 +139,8 @@ class RealmServiceImplTest {
         existingRealm.setCode("old");
         existingRealm.setName("旧身份域");
         when(realmMapper.selectById(1L)).thenReturn(existingRealm);
+        mockRealmType();
+        mockAuthMethods();
 
         CreateRealmRequest request = createRequest("new", "新身份域");
         Boolean result = realmService.update(1L, request);
@@ -127,7 +160,8 @@ class RealmServiceImplTest {
         assertEquals("enabled", updatedRealm.getSsoSingleLogout());
         assertEquals("auto_redirect", updatedRealm.getExistingSessionHandler());
         assertEquals("show_app_list", updatedRealm.getNoClientIdHandler());
-        assertEquals(10L, updatedRealm.getPasswordPolicy());
+        assertEquals(1L, updatedRealm.getDefaultAuthMethodId());
+        assertEquals(2L, updatedRealm.getMfaAuthMethodId());
         assertEquals("测试身份域", updatedRealm.getDescription());
     }
 
@@ -183,6 +217,31 @@ class RealmServiceImplTest {
     }
 
     @Test
+    void detailShouldContainAuthMethodIds() {
+        Realm realm = new Realm();
+        realm.setId(1L);
+        realm.setCode("main");
+        realm.setName("主身份域");
+        realm.setRealmTypeId(10L);
+        realm.setDefaultAuthMethodId(1L);
+        when(realmMapper.selectById(1L)).thenReturn(realm);
+        mockRealmType();
+        mockAuthMethods();
+        RealmAuthMethodRel rel1 = new RealmAuthMethodRel();
+        rel1.setRealmId(1L);
+        rel1.setAuthMethodId(1L);
+        RealmAuthMethodRel rel2 = new RealmAuthMethodRel();
+        rel2.setRealmId(1L);
+        rel2.setAuthMethodId(2L);
+        when(realmAuthMethodRelMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(rel1, rel2), List.of(rel1, rel2));
+        when(realmMapper.countAccountReferences(1L)).thenReturn(0);
+        when(realmMapper.countClientReferences(1L)).thenReturn(0);
+
+        RealmDetailResponse detail = realmService.detail(1L);
+        assertEquals(List.of(1L, 2L), detail.getAuthMethodIds());
+    }
+
+    @Test
     void pageShouldDelegateToMapperWithPageAndQueryCondition() {
         RealmPageRequest request = new RealmPageRequest();
         request.setPage(2);
@@ -198,12 +257,20 @@ class RealmServiceImplTest {
         response.setRealmTypeId(10L);
         mapperResult.setRecords(List.of(response));
         when(realmMapper.page(any(Page.class), same(request))).thenReturn(mapperResult);
+        RealmAuthMethodRel rel1 = new RealmAuthMethodRel();
+        rel1.setRealmId(1L);
+        rel1.setAuthMethodId(1L);
+        when(realmAuthMethodRelMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(rel1), List.of(rel1));
 
         com.authsphere.server.realm.model.RealmType mockType = new com.authsphere.server.realm.model.RealmType();
         mockType.setId(10L);
         mockType.setName("测试类型");
         when(realmTypeDomain.findByIdList(any(List.class))).thenReturn(List.of(mockType));
-        when(authMethodMapper.selectList(any())).thenReturn(List.of());
+        AuthMethod method = new AuthMethod();
+        method.setId(1L);
+        method.setCode("password_login");
+        method.setName("账号密码");
+        when(authMethodMapper.selectBatchIds(any())).thenReturn(List.of(method));
 
         Page<RealmPageResponse> result = realmService.page(request);
 
@@ -272,6 +339,7 @@ class RealmServiceImplTest {
         CreateRealmRequest request = createRequest("main", "主身份域");
         request.setSsoSingleLogout("invalid_val");
         when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
 
         BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
         assertTrue(exception.getMessage().contains("单点退出策略值无效"));
@@ -282,6 +350,7 @@ class RealmServiceImplTest {
         CreateRealmRequest request = createRequest("main", "主身份域");
         request.setExistingSessionHandler("invalid_val");
         when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
 
         BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
         assertTrue(exception.getMessage().contains("已存在会话处理方式值无效"));
@@ -292,18 +361,48 @@ class RealmServiceImplTest {
         CreateRealmRequest request = createRequest("main", "主身份域");
         request.setNoClientIdHandler("invalid_val");
         when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
 
         BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
         assertTrue(exception.getMessage().contains("无 client_id 时的处理方式值无效"));
+    }
+
+    private void mockRealmType() {
+        com.authsphere.server.realm.model.RealmType realmType = new com.authsphere.server.realm.model.RealmType();
+        realmType.setId(10L);
+        realmType.setName("测试类型");
+        when(realmTypeDomain.findByIdList(any(List.class))).thenReturn(List.of(realmType));
+    }
+
+    private void mockAuthMethods() {
+        AuthMethod authMethod1 = new AuthMethod();
+        authMethod1.setId(1L);
+        authMethod1.setCode("password_login");
+        authMethod1.setName("账号密码");
+        AuthMethod authMethod2 = new AuthMethod();
+        authMethod2.setId(2L);
+        authMethod2.setCode("totp_login");
+        authMethod2.setName("TOTP");
+        List<AuthMethod> methods = List.of(authMethod1, authMethod2);
+        when(authMethodMapper.selectBatchIds(any())).thenAnswer(invocation -> {
+            List<Long> ids = invocation.getArgument(0);
+            return methods.stream().filter(method -> ids.contains(method.getId())).collect(Collectors.toList());
+        });
     }
 
     private CreateRealmRequest createRequest(String code, String name) {
         CreateRealmRequest request = new CreateRealmRequest();
         request.setCode(code);
         request.setName(name);
+        request.setRealmTypeId(10L);
+        request.setStatus(StatusEnum.NORMAL.getCode());
         request.setRegisterEnabled(Boolean.TRUE);
         request.setSsoEnabled(Boolean.FALSE);
-        request.setPasswordPolicy(10L);
+        request.setAuthMethodIds(List.of(1L, 2L));
+        request.setDefaultAuthMethodId(1L);
+        request.setMfaAuthMethodId(2L);
+        request.setCaptchaMode("threshold");
+        request.setCaptchaThreshold(3);
         request.setDescription("测试身份域");
         return request;
     }

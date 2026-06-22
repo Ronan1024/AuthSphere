@@ -12,15 +12,47 @@ create table realm
     sso_single_logout varchar(32) null comment '单点退出策略',
     existing_session_handler varchar(32) null comment '已存在会话处理方式',
     no_client_id_handler varchar(32) null comment '无client_id时的处理方式',
+    default_auth_method_id bigint null comment '默认认证方式ID',
+    mfa_auth_method_id bigint null comment 'MFA认证方式ID',
+    captcha_mode varchar(32) null comment '图形验证码模式',
+    captcha_threshold int null comment '图形验证码阈值',
     status           tinyint(1)   null comment '状态',
     password_policy  bigint       null comment '密码策略',
     mfa_policy       bigint       null comment 'MFA 策略',
     unique_policy    bigint       null comment '账号唯一性规则',
+    password_min_length int       null comment '密码最小长度',
+    password_max_length int       null comment '密码最大长度',
+    password_complexity varchar(32) null comment '密码复杂度',
+    password_expire_days int      null comment '密码过期天数',
+    access_token_timeout int      null comment 'Access Token有效期(分钟)',
+    refresh_token_timeout int     null comment 'Refresh Token有效期(天)',
+    token_rotation_enabled bit(1) null comment '是否开启Refresh Token轮换',
+    token_blacklist_enabled bit(1) null comment '是否开启Token黑名单',
+    session_idle_timeout int      null comment '会话空闲超时(分钟)',
+    session_multi_device varchar(32) null comment '多端会话策略',
+    session_max_devices int       null comment '最大登录设备数',
+    login_fail_max_count int      null comment '登录失败最大次数',
+    login_fail_window_minutes int null comment '登录失败统计窗口(分钟)',
+    login_fail_lock_minutes int   null comment '登录失败锁定时长(分钟)',
+    login_fail_auto_unlock bit(1) null comment '是否自动解锁',
     description      varchar(500) null comment '描述',
     create_time      datetime     null,
     update_time      datetime     null
 )
     comment '身份域信息' engine = InnoDB;
+
+create table realm_auth_method_rel
+(
+    id             bigint   not null primary key,
+    realm_id       bigint   not null comment '身份域ID',
+    auth_method_id bigint   not null comment '认证方式ID',
+    create_time    datetime null,
+    update_time    datetime null,
+    constraint uk_realm_auth_method unique (realm_id, auth_method_id),
+    key idx_realm_auth_method_realm (realm_id),
+    key idx_realm_auth_method_method (auth_method_id)
+)
+    comment '身份域与认证方式关联表' engine = InnoDB;
 
 create table login_page
 (

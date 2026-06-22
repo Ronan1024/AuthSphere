@@ -35,11 +35,6 @@ public class Realm  extends BaseDataBaseModel {
     private Long realmTypeId;
 
     /**
-     * 默认认证策略ID。
-     */
-    private Long authPolicyId;
-
-    /**
      * 是否允许注册
      */
     private Boolean registerEnabled;
@@ -75,24 +70,104 @@ public class Realm  extends BaseDataBaseModel {
     private String noClientIdHandler;
 
     /**
+     * 默认认证方式ID
+     */
+    private Long defaultAuthMethodId;
+
+    /**
+     * MFA认证方式ID
+     */
+    private Long mfaAuthMethodId;
+
+    /**
+     * 图形验证码模式
+     */
+    private String captchaMode;
+
+    /**
+     * 图形验证码阈值
+     */
+    private Integer captchaThreshold;
+
+    /**
      * 状态
      */
     private Integer status;
 
     /**
-     * 密码策略
+     * 密码最小长度
      */
-    private Long passwordPolicy;
+    private Integer passwordMinLength;
 
     /**
-     * MFA 策略
+     * 密码最大长度
      */
-    private Long mfaPolicy;
+    private Integer passwordMaxLength;
 
     /**
-     * 账号唯一性规则
+     * 密码复杂度
      */
-    private Long uniquePolicy;
+    private String passwordComplexity;
+
+    /**
+     * 密码过期天数
+     */
+    private Integer passwordExpireDays;
+
+    /**
+     * Access Token有效期（分钟）
+     */
+    private Integer accessTokenTimeout;
+
+    /**
+     * Refresh Token有效期（天）
+     */
+    private Integer refreshTokenTimeout;
+
+    /**
+     * 是否开启Refresh Token轮换
+     */
+    private Boolean tokenRotationEnabled;
+
+    /**
+     * 是否开启Token黑名单
+     */
+    private Boolean tokenBlacklistEnabled;
+
+    /**
+     * 会话空闲超时（分钟）
+     */
+    private Integer sessionIdleTimeout;
+
+    /**
+     * 多端会话策略
+     */
+    private String sessionMultiDevice;
+
+    /**
+     * 最大登录设备数
+     */
+    private Integer sessionMaxDevices;
+
+    /**
+     * 登录失败最大次数
+     */
+    private Integer loginFailMaxCount;
+
+    /**
+     * 登录失败统计窗口（分钟）
+     */
+    private Integer loginFailWindowMinutes;
+
+    /**
+     * 登录失败锁定时长（分钟）
+     */
+    private Integer loginFailLockMinutes;
+
+    /**
+     * 是否自动解锁
+     */
+    private Boolean loginFailAutoUnlock;
 
     /**
      * 描述

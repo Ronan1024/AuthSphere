@@ -1,6 +1,7 @@
 package com.authsphere.server.realm.service;
 
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmDetailResponse;
 import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
@@ -50,5 +51,10 @@ public interface RealmService {
      * 查询启用状态的身份域列表
      */
     List<RealmListResponse> list();
+
+    /**
+     * 查询身份域详情
+     */
+    RealmDetailResponse detail(Long id);
 
 }

@@ -64,6 +64,8 @@ public class AuthPolicyDomain {
         request.setMfaMethods(normalize(request.getMfaMethods()));
     }
 
+
+
     /**
      * 校验策略编码是否可用。
      *
@@ -106,7 +108,8 @@ public class AuthPolicyDomain {
      * @param id 认证策略主键
      */
     public void checkEnabled(Long id) {
-        if (!StatusEnum.NORMAL.getCode().equals(findById(id).getStatus())) {
+        AuthPolicy authPolicy = findById(id);
+        if (!StatusEnum.NORMAL.getCode().equals(authPolicy.getStatus())) {
             throw new BizException(RealmErrorCode.AUTH_POLICY_DISABLED);
         }
     }

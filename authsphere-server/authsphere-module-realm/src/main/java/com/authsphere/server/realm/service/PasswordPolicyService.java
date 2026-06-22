@@ -39,16 +39,6 @@ public interface PasswordPolicyService {
     Boolean editStatus(Long id);
 
     /**
-     * 查询身份域绑定的密码策略模板。
-     */
-    PasswordPolicyResponse getRealmPolicy(Long realmId);
-
-    /**
-     * 绑定密码策略模板到身份域。
-     */
-    Boolean bindRealmPolicy(Long realmId, Long policyId);
-
-    /**
      * 获取所有的密码策略
      */
     List<PasswordPolicyListResponse> list();

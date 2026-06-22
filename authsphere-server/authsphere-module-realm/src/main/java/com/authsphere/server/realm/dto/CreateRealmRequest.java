@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * @program: AuthSphere
  * @description:
@@ -30,12 +32,13 @@ public class CreateRealmRequest {
      * 身份域类型id
      */
     @JsonAlias("typeCategoryId")
+    @NotNull(message = "身份域类型不能为空")
     private Long realmTypeId;
 
     /**
-     * 默认认证策略ID。
+     * 身份域状态
      */
-    private Long authPolicyId;
+    private Integer status;
 
     /**
      * 是否允许注册
@@ -74,19 +77,104 @@ public class CreateRealmRequest {
     private String noClientIdHandler;
 
     /**
-     * 密码策略id。
+     * 支持的认证方式ID列表
      */
-    private Long passwordPolicy;
+    private List<Long> authMethodIds;
 
     /**
-     * MFA 策略id。
+     * 默认认证方式ID
      */
-    private Long mfaPolicy;
+    private Long defaultAuthMethodId;
 
     /**
-     * 账号唯一性规则id。
+     * MFA认证方式ID
      */
-    private Long uniquePolicy;
+    private Long mfaAuthMethodId;
+
+    /**
+     * 图形验证码模式
+     */
+    private String captchaMode;
+
+    /**
+     * 图形验证码触发阈值
+     */
+    private Integer captchaThreshold;
+
+    /**
+     * 密码最小长度
+     */
+    private Integer passwordMinLength;
+
+    /**
+     * 密码最大长度
+     */
+    private Integer passwordMaxLength;
+
+    /**
+     * 密码复杂度
+     */
+    private String passwordComplexity;
+
+    /**
+     * 密码过期天数
+     */
+    private Integer passwordExpireDays;
+
+    /**
+     * Access Token有效期（分钟）
+     */
+    private Integer accessTokenTimeout;
+
+    /**
+     * Refresh Token有效期（天）
+     */
+    private Integer refreshTokenTimeout;
+
+    /**
+     * 是否开启Refresh Token轮换
+     */
+    private Boolean tokenRotationEnabled;
+
+    /**
+     * 是否开启Token黑名单
+     */
+    private Boolean tokenBlacklistEnabled;
+
+    /**
+     * 会话空闲超时（分钟）
+     */
+    private Integer sessionIdleTimeout;
+
+    /**
+     * 多端会话策略
+     */
+    private String sessionMultiDevice;
+
+    /**
+     * 最大登录设备数
+     */
+    private Integer sessionMaxDevices;
+
+    /**
+     * 登录失败最大次数
+     */
+    private Integer loginFailMaxCount;
+
+    /**
+     * 登录失败统计窗口（分钟）
+     */
+    private Integer loginFailWindowMinutes;
+
+    /**
+     * 登录失败锁定时长（分钟）
+     */
+    private Integer loginFailLockMinutes;
+
+    /**
+     * 是否自动解锁
+     */
+    private Boolean loginFailAutoUnlock;
 
     /**
      * 描述

@@ -4,18 +4,16 @@ import { Plus, Search, Refresh, ArrowDown, ArrowLeft, Connection, TopRight, Warn
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 
-import { realmApi, type RealmRecord } from '@/api/realm'
+import { realmApi, type RealmDetailRecord, type RealmRecord } from '@/api/realm'
 import { typeCategoryApi, type TypeCategoryRecord } from '@/api/typeCategory'
-import { passwordPolicyApi, type PasswordPolicyListItem } from '@/api/passwordPolicy'
-import { authPolicyApi } from '@/api/authPolicy'
-import { authMethodApi, type AuthMethodOptionResponse } from '@/api/authMethod'
+import { authMethodApi, type AuthMethodOptionResponse, type AuthMethodRecord } from '@/api/authMethod'
 
 import RealmDetailView from './components/RealmDetailView.vue'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
-const selectedRealm = ref<RealmRecord>()
+const selectedRealm = ref<RealmDetailRecord>()
 
 const query = reactive({
   page: 1,
@@ -39,7 +37,6 @@ const isFormPage = computed(() => isCreating.value || isEditing.value)
 const formTitle = computed(() => isEditing.value ? '编辑身份域' : '新增身份域')
 const submitLoading = ref(false)
 const createFormRef = ref()
-const passwordPolicyOptions = ref<PasswordPolicyListItem[]>([])
 const availableAuthMethods = ref<AuthMethodOptionResponse[]>([])
 
 // Custom confirmation modal state
@@ -61,22 +58,14 @@ const createForm = reactive({
   ssoSingleLogout: 'enabled',
   existingSessionHandler: 'auto_redirect',
   noClientIdHandler: 'show_app_list',
-  authMethods: ['password', 'sms'] as string[],
-  authPolicy: 'default',
+  authMethods: ['password_login', 'totp_login'] as string[],
   sessionTimeout: 8,
   tokenTimeout: 120,
-  passwordPolicy: '' as string | number,
   sslRequired: true,
-  mfaPolicy: 'default',
   loginFailLock: false,
   remark: '',
-  // Mandatory authentication policy fields for creation
-  configurePolicy: 'custom', // 'none' | 'custom'
-  policyName: '',
-  policyCode: '',
-  policyStatus: 1,
-  policyMethods: ['password', 'sms'] as string[],
-  policyDefaultMethod: 'password',
+  policyMethods: ['password_login', 'totp_login'] as string[],
+  policyDefaultMethod: 'password_login',
   policyMfa: 'none', // none, totp, sms, email
   policyCaptcha: 'threshold', // threshold, always, none
 
@@ -115,36 +104,40 @@ const createFormRules = {
   name: [{ required: true, message: '请输入身份域名称', trigger: 'blur' }],
   code: [
     { required: true, message: '请输入身份域编码', trigger: 'blur' },
-    { pattern: /^[a-z][a-z0-9-_]{1,31}$/, message: '只允许小写字母、数字、下划线、长横线 3-32', trigger: 'blur' }
+    { pattern: /^[a-zA-Z][a-zA-Z0-9-_]{1,31}$/, message: '只允许字母、数字、下划线、长横线 3-32', trigger: 'blur' }
   ],
-  typeCategoryId: [{ required: true, message: '请选择身份域类型', trigger: 'change' }],
-  policyName: [{ required: true, message: '请输入策略名称', trigger: 'blur' }],
-  policyCode: [
-    { required: true, message: '请输入策略编码', trigger: 'blur' },
-    { pattern: /^[a-z][a-z0-9-_]{1,63}$/, message: '只允许小写字母、数字、下划线、长横线 3-64', trigger: 'blur' }
-  ]
+  typeCategoryId: [{ required: true, message: '请选择身份域类型', trigger: 'change' }]
 }
-
-// Automatically populate policy name and code when realm name and code change
-watch(() => createForm.name, (newVal) => {
-  if (!isEditing.value && newVal) {
-    createForm.policyName = newVal + '默认认证策略'
-  }
-})
-
-watch(() => createForm.code, (newVal) => {
-  if (!isEditing.value && newVal) {
-    createForm.policyCode = newVal + '_default_auth_policy'
-  }
-})
 
 const getMethodLabel = (method: string) => {
-  if (method === 'password') return '账号密码'
+  if (method === 'password_login' || method === 'password') return '账号密码'
+  if (method === 'totp_login' || method === 'totp') return 'TOTP 动态口令'
+  if (method === 'extended_login' || method === 'extended') return '扩展登录'
+  if (method === 'client_credentials') return 'Client Credentials'
   if (method === 'sms') return '短信'
-  if (method === 'wechat') return '微信小程序'
-  if (method === 'email') return '微信小程序' // Handle legacy 'email' as wechat representation if fallback occurs
+  if (method === 'email') return '邮箱'
   return method
 }
+
+const mergeAuthMethodOptions = (options: AuthMethodOptionResponse[], selectedCodes: string[]) => {
+  const optionMap = new Map<string, AuthMethodOptionResponse>()
+  options.forEach(option => {
+    optionMap.set(option.code, option)
+  })
+  selectedCodes.forEach(code => {
+    if (!optionMap.has(code)) {
+      optionMap.set(code, {
+        id: code,
+        code,
+        name: getMethodLabel(code),
+        description: '当前身份域已绑定的认证方式'
+      })
+    }
+  })
+  return Array.from(optionMap.values())
+}
+
+const displayAuthMethods = computed(() => mergeAuthMethodOptions(availableAuthMethods.value, createForm.policyMethods))
 
 const getMfaLabel = (mfa: string) => {
   if (mfa === 'totp') return 'TOTP'
@@ -193,19 +186,13 @@ const togglePolicyMethod = (method: string) => {
   }
 }
 
-// Mock stats matching Screen 6 of design doc
+// Read actual counts from backend response record
 const getConfirmDetails = (row: RealmRecord | null) => {
-  if (!row) return { accounts: 0, subjects: 0, clients: 0 }
-  if (row.code === 'tenant_realm') {
-    return { accounts: 128, subjects: 12, clients: 8 }
+  if (!row) return { accounts: 0, clients: 0 }
+  return {
+    accounts: row.accountCount || 0,
+    clients: row.ssoClientCount || 0
   }
-  if (row.code === 'platform_realm') {
-    return { accounts: 42, subjects: 5, clients: 3 }
-  }
-  if (row.code === 'merchant_realm') {
-    return { accounts: 86, subjects: 8, clients: 4 }
-  }
-  return { accounts: 0, subjects: 0, clients: 0 }
 }
 
 const getPolicyStatus = (row: RealmRecord) => {
@@ -219,21 +206,16 @@ const getAuthMethodsText = (row: RealmRecord) => {
   if (row.authMethodList && row.authMethodList.length > 0) {
     return row.authMethodList.map(item => item.name).join(' / ')
   }
-  const code = row.code
-  if (code === 'platform_realm') return '密码 / 短信'
-  if (code === 'tenant_realm') return '密码 / MFA'
-  if (code === 'merchant_realm') return '密码 / 邮箱'
-  if (code === 'consumer_realm') return '短信 / 邮箱'
-  return '密码 / 短信'
+  return '-'
+}
+
+const getDefaultMethodLabel = (row: RealmRecord) => {
+  if (row.defaultAuthMethodName) return row.defaultAuthMethodName
+  return '未配置'
 }
 
 const getSsoClientCount = (row: RealmRecord) => {
   if (typeof row.ssoClientCount === 'number') return row.ssoClientCount
-  const code = row.code
-  if (code === 'tenant_realm') return 8
-  if (code === 'platform_realm') return 3
-  if (code === 'merchant_realm') return 4
-  if (code === 'consumer_realm') return 2
   return 0
 }
 
@@ -343,16 +325,6 @@ const handleTypeChange = (val: any) => {
   }
 }
 
-const loadPasswordPolicies = async () => {
-  try {
-    const list = await passwordPolicyApi.list()
-    passwordPolicyOptions.value = list || []
-    if (!createForm.passwordPolicy && list && list.length > 0) {
-      createForm.passwordPolicy = list[0].id
-    }
-  } catch (error) {}
-}
-
 const openTypeManager = () => {
   router.push('/realm/type-categories')
 }
@@ -385,20 +357,14 @@ const openCreateDialog = () => {
   createForm.ssoSingleLogout = 'enabled'
   createForm.existingSessionHandler = 'auto_redirect'
   createForm.noClientIdHandler = 'show_app_list'
-  createForm.authMethods = ['password', 'sms']
-  createForm.authPolicy = 'default'
+  createForm.authMethods = ['password_login', 'totp_login']
   createForm.sessionTimeout = 8
   createForm.tokenTimeout = 120
   createForm.sslRequired = true
-  createForm.mfaPolicy = 'default'
   createForm.loginFailLock = false
   createForm.remark = ''
-  createForm.configurePolicy = 'custom'
-  createForm.policyName = ''
-  createForm.policyCode = ''
-  createForm.policyStatus = 1
-  createForm.policyMethods = ['password', 'sms']
-  createForm.policyDefaultMethod = 'password'
+  createForm.policyMethods = ['password_login', 'totp_login']
+  createForm.policyDefaultMethod = 'password_login'
   createForm.policyMfa = 'none'
   createForm.policyCaptcha = 'threshold'
 
@@ -420,63 +386,60 @@ const openCreateDialog = () => {
   createForm.sessionIdleTimeout = 30
   createForm.sessionMultiDevice = 'allow'
   createForm.sessionMaxDevices = 5
-
-  loadPasswordPolicies()
   router.push('/realms/create')
 }
 
-const openEditPage = (row: RealmRecord) => {
-  selectedRealm.value = undefined
+const applyDetailToForm = (row: RealmDetailRecord) => {
+  const authMethodCodes = row.authMethodList && row.authMethodList.length > 0 ? row.authMethodList.map(m => m.code) : ['password_login']
+  const defaultMethodCode = row.authMethodList?.find(m => String(m.id) === String(row.defaultAuthMethodId))?.code || authMethodCodes[0] || 'password_login'
+  const mfaMethodCode = row.authMethodList?.find(m => String(m.id) === String(row.mfaAuthMethodId))?.code || 'none'
   Object.assign(createForm, {
     name: row.name,
     code: row.code,
-    typeCategoryId: row.typeCategoryId || '',
+    typeCategoryId: row.typeCategoryId || row.realmTypeId || '',
     typeCategoryCode: '',
     description: row.description || '',
     status: row.status || 1,
     sortNo: 10,
     ssoEnabled: row.ssoEnabled !== false,
-    ssoSessionTimeout: (row as any).ssoSessionTimeout || 8,
-    ssoSingleLogout: (row as any).ssoSingleLogout || 'enabled',
-    existingSessionHandler: (row as any).existingSessionHandler || 'auto_redirect',
-    noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
-    authMethods: row.code === 'platform_realm' ? ['password', 'sms'] : ['password', 'mfa'],
-    authPolicy: 'default',
-    sessionTimeout: 8,
-    tokenTimeout: 120,
-    passwordPolicy: row.passwordPolicy || '',
+    ssoSessionTimeout: row.ssoSessionTimeout || 8,
+    ssoSingleLogout: row.ssoSingleLogout || 'enabled',
+    existingSessionHandler: row.existingSessionHandler || 'auto_redirect',
+    noClientIdHandler: row.noClientIdHandler || 'show_app_list',
+    authMethods: authMethodCodes,
+    sessionTimeout: row.ssoSessionTimeout || 8,
+    tokenTimeout: row.accessTokenTimeout || 120,
     sslRequired: true,
-    mfaPolicy: row.mfaPolicy || 'default',
     loginFailLock: false,
     remark: row.description || '',
-    configurePolicy: 'custom',
-    policyName: row.name + '默认认证策略',
-    policyCode: row.code + '_default_auth_policy',
-    policyStatus: 1,
-    policyMethods: row.code === 'platform_realm' ? ['password', 'sms'] : ['password', 'mfa'],
-    policyDefaultMethod: 'password',
-    policyMfa: 'none',
-    policyCaptcha: 'threshold',
-
-    // Security config defaults or mapped
-    passwordMinLength: 8,
-    passwordMaxLength: 32,
-    passwordComplexity: 'letters_digits',
-    passwordExpireDays: 90,
+    policyMethods: authMethodCodes,
+    policyDefaultMethod: defaultMethodCode,
+    policyMfa: mfaMethodCode,
+    policyCaptcha: row.captchaMode || 'none',
+    passwordMinLength: row.passwordMinLength || 8,
+    passwordMaxLength: row.passwordMaxLength || 32,
+    passwordComplexity: row.passwordComplexity || 'letters_digits',
+    passwordExpireDays: row.passwordExpireDays || 90,
     passwordForceChangeOnFirstLogin: 'yes',
     passwordForceChangeOnReset: 'yes',
-    accessTokenTimeout: 120,
-    refreshTokenTimeout: 7,
-    tokenRotationEnabled: 'open',
-    tokenBlacklistEnabled: 'open',
-    loginFailMaxCount: '5',
-    loginFailWindowMinutes: 10,
-    loginFailLockMinutes: 30,
-    loginFailAutoUnlock: 'open',
-    sessionIdleTimeout: 30,
-    sessionMultiDevice: 'allow',
-    sessionMaxDevices: 5
+    accessTokenTimeout: row.accessTokenTimeout || 120,
+    refreshTokenTimeout: row.refreshTokenTimeout || 7,
+    tokenRotationEnabled: row.tokenRotationEnabled === false ? 'close' : 'open',
+    tokenBlacklistEnabled: row.tokenBlacklistEnabled === false ? 'close' : 'open',
+    loginFailMaxCount: String(row.loginFailMaxCount || 5),
+    loginFailWindowMinutes: row.loginFailWindowMinutes || 10,
+    loginFailLockMinutes: row.loginFailLockMinutes || 30,
+    loginFailAutoUnlock: row.loginFailAutoUnlock === false ? 'close' : 'open',
+    sessionIdleTimeout: row.sessionIdleTimeout || row.ssoIdleTimeout || 30,
+    sessionMultiDevice: row.sessionMultiDevice || 'allow',
+    sessionMaxDevices: row.sessionMaxDevices || 5
   })
+}
+
+const openEditPage = async (row: RealmRecord) => {
+  selectedRealm.value = undefined
+  const detail = await realmApi.detail(String(row.id))
+  applyDetailToForm(detail)
   const draftKey = `authsphere:realm-edit-draft:${row.id}`
   sessionStorage.setItem(draftKey, JSON.stringify(createForm))
   router.push(`/realms/${row.id}/edit`)
@@ -487,8 +450,8 @@ const closeFormPage = () => {
   router.push('/realms')
 }
 
-const openDetail = (row: RealmRecord) => {
-  selectedRealm.value = row
+const openDetail = async (row: RealmRecord) => {
+  selectedRealm.value = await realmApi.detail(String(row.id))
 }
 
 const closeDetail = () => {
@@ -507,12 +470,7 @@ const executeConfirmAction = async () => {
   confirmLoading.value = true
   try {
     if (confirmAction.value === 'disable') {
-      try {
-        await realmApi.toggleStatus(activeRealmForConfirm.value.id)
-      } catch (e) {
-        // Fallback for mock environment
-        activeRealmForConfirm.value.status = 2
-      }
+      await realmApi.toggleStatus(activeRealmForConfirm.value.id)
       ElMessage.success('身份域已成功禁用')
     } else {
       await realmApi.delete(activeRealmForConfirm.value.id)
@@ -533,71 +491,54 @@ const submitRealmForm = async (continueCreating: boolean) => {
 
   submitLoading.value = true
   try {
-    let policyId = ''
-    if (!isEditing.value && createForm.configurePolicy === 'custom') {
-      createForm.policyName = createForm.name + '默认认证策略'
-      createForm.policyCode = createForm.code + '_default_auth_policy'
-      // 1. Create the Authentication Policy first to obtain its ID
-      const policyPayload = {
-        code: createForm.policyCode,
-        name: createForm.policyName,
-        authMethods: createForm.policyMethods,
-        defaultAuthMethod: createForm.policyDefaultMethod,
-        captchaEnabled: createForm.policyCaptcha !== 'none',
-        captchaFailureThreshold: createForm.policyCaptcha === 'threshold' ? 3 : undefined,
-        captchaTtlSeconds: 120,
-        captchaErrorLimit: 5,
-        maxFailureCount: 5,
-        failureWindowMinutes: 10,
-        lockMinutes: 30,
-        notifyUser: false,
-        riskLogEnabled: false,
-        mfaEnabled: createForm.policyMfa !== 'none',
-        mfaMethods: createForm.policyMfa !== 'none' ? [createForm.policyMfa] : [],
-        mfaTriggers: createForm.policyMfa !== 'none' ? ['EVERY_LOGIN'] : [],
-        rememberDeviceEnabled: false,
-        ipRestrictionEnabled: false,
-        deviceCheckEnabled: false,
-        remoteLoginCheckEnabled: false,
-        abnormalTimeCheckEnabled: false,
-        status: createForm.policyStatus,
-        description: createForm.policyName
-      } as any
-      try {
-        policyId = await authPolicyApi.create(policyPayload)
-      } catch (e: any) {
-        console.error('API creation failed, using fallback ID:', e)
-        policyId = 'policy_' + Math.random().toString(36).substr(2, 9)
-      }
-    }
-
-    // 2. Create the Identity Realm with the authPolicyId bound
+    const selectedMethodIds = availableAuthMethods.value
+      .filter(m => createForm.policyMethods.includes(m.code))
+      .map(m => m.id)
+    const defaultMethodId = availableAuthMethods.value.find(m => m.code === createForm.policyDefaultMethod)?.id
+    const mfaMethodId = createForm.policyMfa === 'none'
+      ? undefined
+      : availableAuthMethods.value.find(m => m.code === createForm.policyMfa)?.id
     const payload = {
       code: createForm.code,
       name: createForm.name,
+      status: createForm.status,
       realmTypeId: createForm.typeCategoryId,
       typeCategoryId: createForm.typeCategoryId,
       registerEnabled: createForm.authMethods.includes('sms') || createForm.authMethods.includes('email'),
       ssoEnabled: createForm.ssoEnabled,
       ssoSessionTimeout: createForm.ssoSessionTimeout,
+      ssoIdleTimeout: createForm.sessionIdleTimeout,
       ssoSingleLogout: createForm.ssoSingleLogout,
       existingSessionHandler: createForm.existingSessionHandler,
       noClientIdHandler: createForm.noClientIdHandler,
-      description: createForm.description || undefined,
-      passwordPolicy: createForm.passwordPolicy || undefined,
-      mfaPolicy: createForm.mfaPolicy === 'default' ? 1 : undefined,
-      authPolicyId: policyId || undefined
+      authMethodIds: selectedMethodIds,
+      defaultAuthMethodId: defaultMethodId,
+      mfaAuthMethodId: mfaMethodId,
+      captchaMode: createForm.policyCaptcha,
+      captchaThreshold: createForm.policyCaptcha === 'threshold' ? 3 : undefined,
+      passwordMinLength: createForm.passwordMinLength,
+      passwordMaxLength: createForm.passwordMaxLength,
+      passwordComplexity: createForm.passwordComplexity,
+      passwordExpireDays: createForm.passwordExpireDays,
+      accessTokenTimeout: createForm.accessTokenTimeout,
+      refreshTokenTimeout: createForm.refreshTokenTimeout,
+      tokenRotationEnabled: createForm.tokenRotationEnabled === 'open',
+      tokenBlacklistEnabled: createForm.tokenBlacklistEnabled === 'open',
+      sessionIdleTimeout: createForm.sessionIdleTimeout,
+      sessionMultiDevice: createForm.sessionMultiDevice,
+      sessionMaxDevices: createForm.sessionMaxDevices,
+      loginFailMaxCount: Number(createForm.loginFailMaxCount),
+      loginFailWindowMinutes: createForm.loginFailWindowMinutes,
+      loginFailLockMinutes: createForm.loginFailLockMinutes,
+      loginFailAutoUnlock: createForm.loginFailAutoUnlock === 'open',
+      description: createForm.description || undefined
     } as any
 
     if (isEditing.value) {
-      try {
-        await realmApi.update(String(route.params.id), payload)
-      } catch (e) {}
+      await realmApi.update(String(route.params.id), payload)
       ElMessage.success('身份域更新成功')
     } else {
-      try {
-        await realmApi.create(payload)
-      } catch (e) {}
+      await realmApi.create(payload)
       ElMessage.success('身份域创建成功')
     }
 
@@ -606,8 +547,6 @@ const submitRealmForm = async (continueCreating: boolean) => {
       createForm.code = ''
       createForm.description = ''
       createForm.remark = ''
-      createForm.policyName = ''
-      createForm.policyCode = ''
     } else {
       closeFormPage()
     }
@@ -621,8 +560,23 @@ const submitRealmForm = async (continueCreating: boolean) => {
 
 const fetchAvailableAuthMethods = async () => {
   try {
-    const res = await authMethodApi.list()
-    availableAuthMethods.value = res || []
+    const res = await authMethodApi.list('主登录')
+    if (res && res.length > 0) {
+      availableAuthMethods.value = res
+      return
+    }
+    const page = await authMethodApi.page({
+      page: 1,
+      size: 100,
+      position: '主登录',
+      status: 1
+    })
+    availableAuthMethods.value = (page.records || []).map((item: AuthMethodRecord) => ({
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      description: item.description
+    }))
   } catch (error) {
     console.error('Failed to load authentication methods', error)
   }
@@ -644,12 +598,10 @@ const init = async () => {
       }
     } else {
       if (!isEditing.value && availableAuthMethods.value.length > 0) {
-        createForm.policyMethods = availableAuthMethods.value
-          .map(m => m.code)
-          .filter(code => code === 'password' || code === 'sms')
+        createForm.policyMethods = [availableAuthMethods.value[0].code]
+        createForm.policyDefaultMethod = availableAuthMethods.value[0].code
       }
     }
-    loadPasswordPolicies()
   }
   fetchData()
 }
@@ -792,33 +744,15 @@ onMounted(init)
               <div class="form-section-card-custom mt-20">
                 <div class="card-title-header-custom">
                   <h3>默认认证策略</h3>
-                  <p>配置该身份域的默认认证策略。主认证方式、默认认证方式、MFA 和图形验证码规则将在该身份域下生效。</p>
+                  <p>配置该身份域的主认证方式、默认认证方式、MFA 和图形验证码规则。</p>
                 </div>
                 <div class="card-body-custom">
-                  <!-- Card Choice selector -->
-                  <div class="checkbox-cards-grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
-                    <div class="checkbox-card-item" :class="{ checked: createForm.configurePolicy === 'none' }" @click="createForm.configurePolicy = 'none'">
-                      <div class="flex-align-center-row">
-                        <span class="custom-radio-circle" :class="{ checked: createForm.configurePolicy === 'none' }"></span>
-                        <span class="checkbox-title ml-8">不配置认证策略</span>
-                      </div>
-                      <p class="checkbox-desc" style="margin-left: 20px;">使用系统默认认证策略，继承系统级别的安全登录方式。</p>
-                    </div>
-                    <div class="checkbox-card-item" :class="{ checked: createForm.configurePolicy === 'custom' }" @click="createForm.configurePolicy = 'custom'">
-                      <div class="flex-align-center-row">
-                        <span class="custom-radio-circle" :class="{ checked: createForm.configurePolicy === 'custom' }"></span>
-                        <span class="checkbox-title ml-8">配置专属认证策略</span>
-                      </div>
-                      <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主认证方式、默认认证、MFA 与图形验证码规则。</p>
-                    </div>
-                  </div>
-
-                  <div v-if="createForm.configurePolicy === 'custom'" class="policy-details-sub-card">
+                  <div class="policy-details-sub-card">
                     <div class="full-width-field mt-16">
                       <el-form-item label="主登录认证方式">
                         <div class="checkbox-cards-grid-3">
                           <div
-                            v-for="method in availableAuthMethods"
+                            v-for="method in displayAuthMethods"
                             :key="method.code"
                             class="checkbox-card-item"
                             :class="{ checked: createForm.policyMethods.includes(method.code) }"
@@ -838,9 +772,14 @@ onMounted(init)
 
                     <div class="grid-3-col mt-16">
                       <el-form-item label="默认认证方式">
-                        <el-select v-model="createForm.policyDefaultMethod" placeholder="选择默认认证方式">
+                        <el-select v-model="createForm.policyDefaultMethod" placeholder="请选择（需先勾选主登录方式）">
                           <el-option
-                            v-for="method in availableAuthMethods.filter(m => createForm.policyMethods.includes(m.code))"
+                            v-if="!createForm.policyMethods.includes(createForm.policyDefaultMethod) && createForm.policyDefaultMethod"
+                            :label="getMethodLabel(createForm.policyDefaultMethod)"
+                            :value="createForm.policyDefaultMethod"
+                          />
+                          <el-option
+                            v-for="method in displayAuthMethods.filter(m => createForm.policyMethods.includes(m.code))"
                             :key="method.code"
                             :label="method.name"
                             :value="method.code"
@@ -862,14 +801,6 @@ onMounted(init)
                           <el-option label="每次登录都启用" value="always" />
                         </el-select>
                       </el-form-item>
-                    </div>
-                  </div>
-
-                  <!-- Blue Alert -->
-                  <div class="alert-banner-custom mt-16">
-                    <span class="vertical-bar"></span>
-                    <div class="alert-content-text">
-                      优先级：客户端认证策略 > 身份域默认认证策略 > 系统默认认证策略。
                     </div>
                   </div>
                 </div>
@@ -913,16 +844,24 @@ onMounted(init)
                     </div>
                     <div class="grid-4-col mt-12">
                       <el-form-item label="首次登录改密">
-                        <el-select v-model="createForm.passwordForceChangeOnFirstLogin">
-                          <el-option label="是" value="yes" />
-                          <el-option label="否" value="no" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.passwordForceChangeOnFirstLogin"
+                          active-value="yes"
+                          inactive-value="no"
+                          active-text="是"
+                          inactive-text="否"
+                          inline-prompt
+                        />
                       </el-form-item>
                       <el-form-item label="重置后改密">
-                        <el-select v-model="createForm.passwordForceChangeOnReset">
-                          <el-option label="是" value="yes" />
-                          <el-option label="否" value="no" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.passwordForceChangeOnReset"
+                          active-value="yes"
+                          inactive-value="no"
+                          active-text="是"
+                          inactive-text="否"
+                          inline-prompt
+                        />
                       </el-form-item>
                     </div>
                   </div>
@@ -945,16 +884,24 @@ onMounted(init)
                         </el-input>
                       </el-form-item>
                       <el-form-item label="Refresh 轮换">
-                        <el-select v-model="createForm.tokenRotationEnabled">
-                          <el-option label="开启" value="open" />
-                          <el-option label="关闭" value="close" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.tokenRotationEnabled"
+                          active-value="open"
+                          inactive-value="close"
+                          active-text="开启"
+                          inactive-text="关闭"
+                          inline-prompt
+                        />
                       </el-form-item>
                       <el-form-item label="Token 黑名单">
-                        <el-select v-model="createForm.tokenBlacklistEnabled">
-                          <el-option label="开启" value="open" />
-                          <el-option label="关闭" value="close" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.tokenBlacklistEnabled"
+                          active-value="open"
+                          inactive-value="close"
+                          active-text="开启"
+                          inactive-text="关闭"
+                          inline-prompt
+                        />
                       </el-form-item>
                     </div>
                   </div>
@@ -984,10 +931,14 @@ onMounted(init)
                         </el-input>
                       </el-form-item>
                       <el-form-item label="自动解锁">
-                        <el-select v-model="createForm.loginFailAutoUnlock">
-                          <el-option label="开启" value="open" />
-                          <el-option label="关闭" value="close" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.loginFailAutoUnlock"
+                          active-value="open"
+                          inactive-value="close"
+                          active-text="开启"
+                          inactive-text="关闭"
+                          inline-prompt
+                        />
                       </el-form-item>
                     </div>
                   </div>
@@ -1010,10 +961,14 @@ onMounted(init)
                         </el-input>
                       </el-form-item>
                       <el-form-item label="多端登录">
-                        <el-select v-model="createForm.sessionMultiDevice">
-                          <el-option label="允许" value="allow" />
-                          <el-option label="限制" value="limit" />
-                        </el-select>
+                        <el-switch
+                          v-model="createForm.sessionMultiDevice"
+                          active-value="allow"
+                          inactive-value="limit"
+                          active-text="允许"
+                          inactive-text="限制"
+                          inline-prompt
+                        />
                       </el-form-item>
                       <el-form-item label="最大设备数">
                         <el-input v-model="createForm.sessionMaxDevices" placeholder="5 台">
@@ -1025,28 +980,13 @@ onMounted(init)
                 </div>
               </div>
 
-              <!-- Card 5: 保存预览 -->
-              <div class="form-section-card-custom mt-20">
-                <div class="card-title-header-custom">
-                  <h3>保存预览</h3>
-                  <p>保存后生成当前身份域的默认认证、安全和 SSO 规则。</p>
-                </div>
-                <div class="card-body-custom">
-                  <div class="alert-banner-custom">
-                    <span class="vertical-bar"></span>
-                    <div class="alert-content-text">
-                      运行优先级：客户端配置 > 身份域配置 > 系统默认配置。当前页面保存的是身份域默认配置。
-                    </div>
-                  </div>
-                  
-                  <div class="bottom-actions-row mt-20">
-                    <el-button @click="closeFormPage" class="btn-op-outline">取消</el-button>
-                    <el-button class="btn-op-outline ml-12">保存草稿</el-button>
-                    <el-button type="primary" class="btn-new-realm ml-12" :loading="submitLoading" @click="submitRealmForm(false)">保存</el-button>
-                  </div>
-                </div>
               </div>
 
+              <!-- Bottom Actions Bar -->
+              <div class="bottom-actions-row mt-24" style="grid-column: span 2; display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
+                <el-button @click="closeFormPage" class="btn-op-outline">取消</el-button>
+                <el-button class="btn-op-outline">保存草稿</el-button>
+                <el-button type="primary" class="btn-new-realm" :loading="submitLoading" @click="submitRealmForm(false)">保存</el-button>
               </div>
             </el-form>
           </div>
@@ -1067,7 +1007,7 @@ onMounted(init)
                 </div>
                 <div class="summary-section">
                   <span class="summary-label">默认认证策略</span>
-                  <strong>{{ createForm.configurePolicy === 'custom' ? (createForm.policyName || '保存时自动生成') : '系统默认认证策略' }}</strong>
+                  <strong>身份域直存认证规则</strong>
                   <p>主登录：{{ getSummaryMainLoginText() }}；默认：{{ getSummaryDefaultLoginText() }}；MFA：{{ getSummaryMfaText() }}</p>
                 </div>
                 <div class="summary-section">
@@ -1164,7 +1104,7 @@ onMounted(init)
           </el-table-column>
           <el-table-column label="默认认证策略" min-width="160">
             <template #default="{ row }">
-              {{ row.authPolicyName || '系统默认认证策略' }}
+              {{ getDefaultMethodLabel(row) }}
             </template>
           </el-table-column>
           <el-table-column label="SSO 状态" min-width="120" align="center">
@@ -1248,7 +1188,7 @@ onMounted(init)
         <div class="danger-callout-panel">
           <span class="panel-warning-title">关联影响分析：</span>
           <p class="panel-warning-body">
-            当前身份域存在 <strong>{{ getConfirmDetails(activeRealmForConfirm).accounts }}</strong> 个激活账号、<strong>{{ getConfirmDetails(activeRealmForConfirm).subjects }}</strong> 个关联主体、<strong>{{ getConfirmDetails(activeRealmForConfirm).clients }}</strong> 个启用客户端。建议先确认业务影响范围。
+            当前身份域存在 <strong>{{ getConfirmDetails(activeRealmForConfirm).accounts }}</strong> 个激活账号、<strong>{{ getConfirmDetails(activeRealmForConfirm).clients }}</strong> 个启用客户端。建议先确认业务影响范围。
           </p>
         </div>
       </div>
@@ -1598,7 +1538,7 @@ onMounted(init)
   display: flex;
   gap: 24px;
   border-bottom: 1px solid #E2E8F0;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   padding-bottom: 12px;
 }
 .tab-sub-item {
@@ -1631,7 +1571,7 @@ onMounted(init)
 .form-grid-layout {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
-  gap: 24px;
+  gap: 16px;
   align-items: start;
 }
 @media (max-width: 1024px) {
@@ -1717,6 +1657,34 @@ onMounted(init)
   border: 1px solid #E2E8F0;
   border-radius: 6px;
   box-shadow: none !important;
+}
+.form-left-column :deep(.el-input-group) {
+  border: 1px solid #E2E8F0;
+  border-radius: 6px;
+  background-color: #fff;
+  overflow: hidden;
+  display: inline-flex;
+  width: 100%;
+}
+.form-left-column :deep(.el-input-group .el-input__wrapper) {
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  height: 34px;
+}
+.form-left-column :deep(.el-input-group__append) {
+  border: none !important;
+  border-radius: 0 !important;
+  background-color: #F8FAFC !important;
+  color: #64748B !important;
+  padding: 0 12px !important;
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 1px solid #E2E8F0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
 }
 .form-left-column :deep(.el-textarea__inner) {
   border: 1px solid #E2E8F0;
