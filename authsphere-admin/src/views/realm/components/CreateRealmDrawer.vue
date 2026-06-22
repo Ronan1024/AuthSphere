@@ -23,8 +23,7 @@ const formData = reactive({
   uniqueScope: 'realm',
   description: '',
   registerEnabled: false,
-  ssoEnabled: true,
-  passwordPolicy: null as string | number | null
+  ssoEnabled: true
 })
 
 const rules = {
@@ -68,7 +67,6 @@ const open = async () => {
   formData.description = ''
   formData.registerEnabled = false
   formData.ssoEnabled = true
-  formData.passwordPolicy = null
   
   visible.value = true
   await fetchTypeCategories()

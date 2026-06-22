@@ -20,7 +20,4 @@ public interface MfaPolicyService {
 
     Boolean editStatus(Long id);
 
-    MfaPolicyResponse getRealmPolicy(Long realmId);
-
-    Boolean bindRealmPolicy(Long realmId, Long policyId);
 }

@@ -23,13 +23,11 @@ public interface RealmConvert {
 
 
     @Mapping(target = "updateTime", ignore = true)
-    @Mapping(target = "status", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     Realm model(CreateRealmRequest createRealmRequest);
 
     @Mapping(target = "updateTime", ignore = true)
-    @Mapping(target = "status", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     void copyByModel(CreateRealmRequest createRealmRequest, @MappingTarget Realm realm);

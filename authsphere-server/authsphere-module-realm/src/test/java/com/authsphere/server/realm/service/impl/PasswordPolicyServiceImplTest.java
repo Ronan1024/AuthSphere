@@ -8,9 +8,7 @@ import com.authsphere.server.realm.dto.PasswordPolicyRequest;
 import com.authsphere.server.realm.dto.PasswordPolicyResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.PasswordPolicyMapper;
-import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.PasswordPolicy;
-import com.authsphere.server.realm.model.Realm;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,9 +35,6 @@ class PasswordPolicyServiceImplTest {
 
     @Mock
     private PasswordPolicyMapper passwordPolicyMapper;
-
-    @Mock
-    private RealmMapper realmMapper;
 
     @InjectMocks
     private PasswordPolicyServiceImpl passwordPolicyService;
@@ -139,56 +134,6 @@ class PasswordPolicyServiceImplTest {
         ArgumentCaptor<PasswordPolicy> captor = ArgumentCaptor.forClass(PasswordPolicy.class);
         verify(passwordPolicyMapper).updateById(captor.capture());
         assertEquals(StatusEnum.DISABLED.getCode(), captor.getValue().getStatus());
-    }
-
-    @Test
-    void bindRealmPolicyShouldUpdateRealmPasswordPolicy() {
-        Realm realm = new Realm();
-        realm.setId(1L);
-        when(realmMapper.selectById(1L)).thenReturn(realm);
-
-        PasswordPolicy policy = createPolicy();
-        policy.setStatus(StatusEnum.NORMAL.getCode());
-        when(passwordPolicyMapper.selectById(10L)).thenReturn(policy);
-
-        Boolean result = passwordPolicyService.bindRealmPolicy(1L, 10L);
-
-        assertTrue(result);
-        ArgumentCaptor<Realm> captor = ArgumentCaptor.forClass(Realm.class);
-        verify(realmMapper).updateById(captor.capture());
-        assertSame(realm, captor.getValue());
-        assertEquals(10L, captor.getValue().getPasswordPolicy());
-    }
-
-    @Test
-    void bindRealmPolicyShouldRejectDisabledPolicy() {
-        Realm realm = new Realm();
-        realm.setId(1L);
-        when(realmMapper.selectById(1L)).thenReturn(realm);
-
-        PasswordPolicy policy = createPolicy();
-        policy.setStatus(StatusEnum.DISABLED.getCode());
-        when(passwordPolicyMapper.selectById(10L)).thenReturn(policy);
-
-        BizException exception = assertThrows(BizException.class,
-                () -> passwordPolicyService.bindRealmPolicy(1L, 10L));
-
-        assertEquals(RealmErrorCode.PASSWORD_POLICY_DATA_ERROR.getCode(), exception.getCode());
-        verify(realmMapper, never()).updateById(any(Realm.class));
-    }
-
-    @Test
-    void getRealmPolicyShouldReturnBoundPolicyTemplate() {
-        Realm realm = new Realm();
-        realm.setId(1L);
-        realm.setPasswordPolicy(10L);
-        when(realmMapper.selectById(1L)).thenReturn(realm);
-        when(passwordPolicyMapper.selectById(10L)).thenReturn(createPolicy());
-
-        PasswordPolicyResponse response = passwordPolicyService.getRealmPolicy(1L);
-
-        assertEquals(10L, response.getId());
-        assertEquals("default", response.getCode());
     }
 
     private PasswordPolicyRequest createRequest() {

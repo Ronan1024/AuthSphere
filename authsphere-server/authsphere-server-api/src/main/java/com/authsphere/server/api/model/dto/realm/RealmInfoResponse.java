@@ -48,24 +48,6 @@ public class RealmInfoResponse {
     private Boolean ssoEnabled;
 
     /**
-     * 密码策略id。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long passwordPolicy;
-
-    /**
-     * MFA 策略id。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long mfaPolicy;
-
-    /**
-     * 账号唯一性规则id。
-     */
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long uniquePolicy;
-
-    /**
      * 状态
      */
     private Integer status;

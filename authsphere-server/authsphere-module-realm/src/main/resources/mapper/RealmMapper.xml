@@ -9,7 +9,6 @@
         r.code,
         r.name,
         r.realm_type_id as realmTypeId,
-        r.auth_policy_id as authPolicyId,
         r.register_enabled as registerEnabled,
         r.sso_enabled as ssoEnabled,
         r.sso_session_timeout as ssoSessionTimeout,
@@ -17,9 +16,8 @@
         r.sso_single_logout as ssoSingleLogout,
         r.existing_session_handler as existingSessionHandler,
         r.no_client_id_handler as noClientIdHandler,
-        r.password_policy as passwordPolicy,
-        r.mfa_policy as mfaPolicy,
-        r.unique_policy as uniquePolicy,
+        r.default_auth_method_id as defaultAuthMethodId,
+        r.mfa_auth_method_id as mfaAuthMethodId,
         (
             select count(1)
             from app_client ac

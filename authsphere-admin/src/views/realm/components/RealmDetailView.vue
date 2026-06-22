@@ -2,7 +2,7 @@
 import { computed, ref, onMounted } from 'vue'
 import { ArrowLeft, EditPen, Warning, InfoFilled } from '@element-plus/icons-vue'
 import type { RealmRecord } from '@/api/realm'
-import { authMethodApi, type AuthMethodOptionResponse } from '@/api/authMethod'
+import { authMethodApi, type AuthMethodOptionResponse, type AuthMethodRecord } from '@/api/authMethod'
 
 const props = defineProps<{
   realm: RealmRecord
@@ -15,8 +15,23 @@ const availableAuthMethods = ref<AuthMethodOptionResponse[]>([])
 
 const fetchAvailableAuthMethods = async () => {
   try {
-    const res = await authMethodApi.list()
-    availableAuthMethods.value = res || []
+    const res = await authMethodApi.list('主登录')
+    if (res && res.length > 0) {
+      availableAuthMethods.value = res
+      return
+    }
+    const page = await authMethodApi.page({
+      page: 1,
+      size: 100,
+      position: '主登录',
+      status: 1
+    })
+    availableAuthMethods.value = (page.records || []).map((item: AuthMethodRecord) => ({
+      id: item.id,
+      code: item.code,
+      name: item.name,
+      description: item.description
+    }))
   } catch (error) {
     console.error('Failed to load authentication methods', error)
   }
@@ -40,7 +55,8 @@ const displayType = computed(() => {
 // Mapped form structure from props.realm to resemble creation form state
 const detailForm = computed(() => {
   const row = props.realm
-  const isPlatform = row.code === 'platform_realm'
+  const defaultAuthMethodCode = row.authMethodList?.find(m => String(m.id) === String((row as any).defaultAuthMethodId))?.code
+  const mfaAuthMethodCode = row.authMethodList?.find(m => String(m.id) === String((row as any).mfaAuthMethodId))?.code
   
   return {
     name: row.name,
@@ -57,50 +73,43 @@ const detailForm = computed(() => {
     noClientIdHandler: (row as any).noClientIdHandler || 'show_app_list',
     authMethods: row.authMethodList && row.authMethodList.length > 0
       ? row.authMethodList.map(m => m.code)
-      : (isPlatform ? ['password_login', 'totp_login'] : ['password_login', 'totp_login']),
-    authPolicy: 'default',
+      : [],
     sessionTimeout: (row as any).ssoSessionTimeout || 8,
-    tokenTimeout: 120,
-    passwordPolicy: row.passwordPolicy || '',
+    tokenTimeout: (row as any).accessTokenTimeout || 120,
     sslRequired: true,
-    mfaPolicy: row.mfaPolicy || 'default',
     loginFailLock: false,
     remark: row.description || '',
-    configurePolicy: 'custom',
-    policyName: row.name + '默认认证策略',
-    policyCode: row.code + '_default_auth_policy',
-    policyStatus: 1,
     policyMethods: row.authMethodList && row.authMethodList.length > 0
       ? row.authMethodList.map(m => m.code)
-      : (isPlatform ? ['password_login', 'totp_login'] : ['password_login', 'totp_login']),
-    policyDefaultMethod: (row as any).defaultAuthMethod || (row.authMethodList && row.authMethodList.length > 0 ? row.authMethodList[0].code : 'password_login'),
-    policyMfa: 'none',
-    policyCaptcha: 'threshold',
+      : [],
+    policyDefaultMethod: defaultAuthMethodCode || '',
+    policyMfa: mfaAuthMethodCode || 'none',
+    policyCaptcha: (row as any).captchaMode || 'none',
 
     // Password Security
-    passwordMinLength: 8,
-    passwordMaxLength: 32,
-    passwordComplexity: 'letters_digits',
-    passwordExpireDays: 90,
+    passwordMinLength: (row as any).passwordMinLength || 8,
+    passwordMaxLength: (row as any).passwordMaxLength || 32,
+    passwordComplexity: (row as any).passwordComplexity || 'letters_digits',
+    passwordExpireDays: (row as any).passwordExpireDays || 90,
     passwordForceChangeOnFirstLogin: 'yes',
     passwordForceChangeOnReset: 'yes',
     
     // Token Security
-    accessTokenTimeout: 120,
-    refreshTokenTimeout: 7,
-    tokenRotationEnabled: 'open',
-    tokenBlacklistEnabled: 'open',
+    accessTokenTimeout: (row as any).accessTokenTimeout || 120,
+    refreshTokenTimeout: (row as any).refreshTokenTimeout || 7,
+    tokenRotationEnabled: (row as any).tokenRotationEnabled === false ? 'close' : 'open',
+    tokenBlacklistEnabled: (row as any).tokenBlacklistEnabled === false ? 'close' : 'open',
     
     // Account Lock
-    loginFailMaxCount: '5',
-    loginFailWindowMinutes: 10,
-    loginFailLockMinutes: 30,
-    loginFailAutoUnlock: 'open',
+    loginFailMaxCount: String((row as any).loginFailMaxCount || 5),
+    loginFailWindowMinutes: (row as any).loginFailWindowMinutes || 10,
+    loginFailLockMinutes: (row as any).loginFailLockMinutes || 30,
+    loginFailAutoUnlock: (row as any).loginFailAutoUnlock === false ? 'close' : 'open',
     
     // Session Security
-    sessionIdleTimeout: (row as any).ssoIdleTimeout || 30,
-    sessionMultiDevice: 'allow',
-    sessionMaxDevices: 5
+    sessionIdleTimeout: (row as any).sessionIdleTimeout || (row as any).ssoIdleTimeout || 30,
+    sessionMultiDevice: (row as any).sessionMultiDevice || 'allow',
+    sessionMaxDevices: (row as any).sessionMaxDevices || 5
   }
 })
 
@@ -113,6 +122,26 @@ const getMethodLabel = (method: string) => {
   if (method === 'email') return '邮箱'
   return method
 }
+
+const mergeAuthMethodOptions = (options: AuthMethodOptionResponse[], selectedCodes: string[]) => {
+  const optionMap = new Map<string, AuthMethodOptionResponse>()
+  options.forEach(option => {
+    optionMap.set(option.code, option)
+  })
+  selectedCodes.forEach(code => {
+    if (!optionMap.has(code)) {
+      optionMap.set(code, {
+        id: code,
+        code,
+        name: getMethodLabel(code),
+        description: '当前身份域已绑定的认证方式'
+      })
+    }
+  })
+  return Array.from(optionMap.values())
+}
+
+const displayAuthMethods = computed(() => mergeAuthMethodOptions(availableAuthMethods.value, detailForm.value.policyMethods))
 
 const getMfaLabel = (mfa: string) => {
   if (mfa === 'totp') return 'TOTP'
@@ -273,32 +302,15 @@ const mockImpactObjects = computed(() => {
           <div class="form-section-card-custom mt-20">
             <div class="card-title-header-custom">
               <h3>默认认证策略</h3>
-              <p>配置该身份域的默认认证策略。主认证方式、默认认证方式、MFA 和图形验证码规则将在该身份域下生效。</p>
+              <p>当前身份域直接保存主认证方式、默认认证方式、MFA 和图形验证码规则。</p>
             </div>
             <div class="card-body-custom">
-              <div class="checkbox-cards-grid-3" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px; pointer-events: none;">
-                <div class="checkbox-card-item" :class="{ checked: detailForm.configurePolicy === 'none' }">
-                  <div class="flex-align-center-row">
-                    <span class="custom-radio-circle" :class="{ checked: detailForm.configurePolicy === 'none' }"></span>
-                    <span class="checkbox-title ml-8">不配置认证策略</span>
-                  </div>
-                  <p class="checkbox-desc" style="margin-left: 20px;">使用系统默认认证策略，继承系统级别的安全登录方式。</p>
-                </div>
-                <div class="checkbox-card-item" :class="{ checked: detailForm.configurePolicy === 'custom' }">
-                  <div class="flex-align-center-row">
-                    <span class="custom-radio-circle" :class="{ checked: detailForm.configurePolicy === 'custom' }"></span>
-                    <span class="checkbox-title ml-8">配置专属认证策略</span>
-                  </div>
-                  <p class="checkbox-desc" style="margin-left: 20px;">为该身份域自定义主认证方式、默认认证、MFA 与图形验证码规则。</p>
-                </div>
-              </div>
-
-              <div v-if="detailForm.configurePolicy === 'custom'" class="policy-details-sub-card">
+              <div class="policy-details-sub-card">
                 <div class="full-width-field">
                   <el-form-item label="主登录认证方式">
                     <div class="checkbox-cards-grid-3" style="pointer-events: none;">
                       <div
-                        v-for="method in availableAuthMethods"
+                        v-for="method in displayAuthMethods"
                         :key="method.code"
                         class="checkbox-card-item"
                         :class="{ checked: detailForm.policyMethods.includes(method.code) }"
@@ -324,7 +336,7 @@ const mockImpactObjects = computed(() => {
                         :value="detailForm.policyDefaultMethod"
                       />
                       <el-option
-                        v-for="method in availableAuthMethods.filter(m => detailForm.policyMethods.includes(m.code))"
+                        v-for="method in displayAuthMethods.filter(m => detailForm.policyMethods.includes(m.code))"
                         :key="method.code"
                         :label="method.name"
                         :value="method.code"

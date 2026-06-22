@@ -8,9 +8,7 @@ import com.authsphere.server.realm.dto.MfaPolicyRequest;
 import com.authsphere.server.realm.dto.MfaPolicyResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.MfaPolicyMapper;
-import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.MfaPolicy;
-import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.service.MfaPolicyService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -25,7 +23,6 @@ import org.springframework.stereotype.Service;
 public class MfaPolicyServiceImpl implements MfaPolicyService {
 
     private final MfaPolicyMapper mfaPolicyMapper;
-    private final RealmMapper realmMapper;
 
     @Override
     public Page<MfaPolicyResponse> page(MfaPolicyPageRequest request) {
@@ -65,35 +62,6 @@ public class MfaPolicyServiceImpl implements MfaPolicyService {
         policy.setStatus(status);
         mfaPolicyMapper.updateById(policy);
         return Boolean.TRUE;
-    }
-
-    @Override
-    public MfaPolicyResponse getRealmPolicy(Long realmId) {
-        Realm realm = findRealmById(realmId);
-        if (realm.getMfaPolicy() == null) {
-            throw new BizException(RealmErrorCode.MFA_POLICY_DATA_ERROR);
-        }
-        return getById(realm.getMfaPolicy());
-    }
-
-    @Override
-    public Boolean bindRealmPolicy(Long realmId, Long policyId) {
-        Realm realm = findRealmById(realmId);
-        MfaPolicy policy = findPolicyById(policyId);
-        if (!StatusEnum.NORMAL.getCode().equals(policy.getStatus())) {
-            throw new BizException(RealmErrorCode.MFA_POLICY_DATA_ERROR);
-        }
-        realm.setMfaPolicy(policyId);
-        realmMapper.updateById(realm);
-        return Boolean.TRUE;
-    }
-
-    private Realm findRealmById(Long realmId) {
-        Realm realm = realmMapper.selectById(realmId);
-        if (realm == null) {
-            throw new BizException(RealmErrorCode.REALM_DATA_ERROR);
-        }
-        return realm;
     }
 
     private MfaPolicy findPolicyById(Long id) {

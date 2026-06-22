@@ -9,9 +9,7 @@ import com.authsphere.server.realm.dto.PasswordPolicyRequest;
 import com.authsphere.server.realm.dto.PasswordPolicyResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.PasswordPolicyMapper;
-import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.PasswordPolicy;
-import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.service.PasswordPolicyService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -32,7 +30,6 @@ import java.util.List;
 public class PasswordPolicyServiceImpl implements PasswordPolicyService {
 
     private final PasswordPolicyMapper passwordPolicyMapper;
-    private final RealmMapper realmMapper;
 
     @Override
     public Page<PasswordPolicyListResponse> page(PasswordPolicyPageRequest request) {
@@ -86,28 +83,6 @@ public class PasswordPolicyServiceImpl implements PasswordPolicyService {
         return Boolean.TRUE;
     }
 
-    @Override
-    public PasswordPolicyResponse getRealmPolicy(Long realmId) {
-        Realm realm = findRealmById(realmId);
-        if (realm.getPasswordPolicy() == null) {
-            throw new BizException(RealmErrorCode.PASSWORD_POLICY_DATA_ERROR);
-        }
-        return getById(realm.getPasswordPolicy());
-    }
-
-    @Override
-    public Boolean bindRealmPolicy(Long realmId, Long policyId) {
-        Realm realm = findRealmById(realmId);
-        PasswordPolicy passwordPolicy = findPolicyById(policyId);
-        if (!StatusEnum.NORMAL.getCode().equals(passwordPolicy.getStatus())) {
-            throw new BizException(RealmErrorCode.PASSWORD_POLICY_DATA_ERROR);
-        }
-
-        realm.setPasswordPolicy(policyId);
-        realmMapper.updateById(realm);
-        return Boolean.TRUE;
-    }
-
     /**
      * 获取所有的密码策略
      */
@@ -120,14 +95,6 @@ public class PasswordPolicyServiceImpl implements PasswordPolicyService {
             return Collections.emptyList();
         }
         return PasswordPolicyConvert.INSTANCE.toPasswordPolicyListResponse(passwordPolicies);
-    }
-
-    private Realm findRealmById(Long realmId) {
-        Realm realm = realmMapper.selectById(realmId);
-        if (realm == null) {
-            throw new BizException(RealmErrorCode.REALM_DATA_ERROR);
-        }
-        return realm;
     }
 
     private PasswordPolicy findPolicyById(Long id) {

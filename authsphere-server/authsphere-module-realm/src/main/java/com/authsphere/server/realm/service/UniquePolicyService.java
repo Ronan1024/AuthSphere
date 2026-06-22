@@ -20,7 +20,4 @@ public interface UniquePolicyService {
 
     Boolean editStatus(Long id);
 
-    UniquePolicyResponse getRealmPolicy(Long realmId);
-
-    Boolean bindRealmPolicy(Long realmId, Long policyId);
 }
