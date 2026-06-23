@@ -21,9 +21,9 @@ public enum StatusEnum {
      */
     DISABLED(2, "禁用");
 
-    private Integer code;
+    private final Integer code;
 
-    private String desc;
+    private final String desc;
 
     StatusEnum(Integer code, String desc) {
         this.code = code;

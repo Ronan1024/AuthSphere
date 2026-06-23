@@ -970,7 +970,7 @@ const submitForm = async () => {
                         </div>
                         <div class="control-item">
                           <label style="font-size: 11px; color: #64748b;">字段类型</label>
-                          <el-select v-model="field.type" :disabled="isReadOnly" size="small" style="width: 100%" @change="(val) => handleTypeChange(val, index)">
+                          <el-select v-model="field.type" :disabled="isReadOnly" size="small" style="width: 100%" @change="(val: any) => handleTypeChange(val, index)">
                             <el-option label="文本 (text)" value="text" />
                             <el-option label="密文 (secret)" value="secret" />
                             <el-option label="链接 (url)" value="url" />
@@ -983,7 +983,7 @@ const submitForm = async () => {
                           <label style="font-size: 11px; color: #64748b;">校验规则</label>
                           <div style="height: 24px; display: flex; align-items: center; gap: 10px;">
                             <el-checkbox v-model="field.required" :disabled="isReadOnly" size="small">必填</el-checkbox>
-                            <el-checkbox v-model="field.secret" :disabled="isReadOnly" size="small" @change="(val) => handleSecretChange(val, index)">密文</el-checkbox>
+                            <el-checkbox v-model="field.secret" :disabled="isReadOnly" size="small" @change="(val: any) => handleSecretChange(val, index)">密文</el-checkbox>
                           </div>
                         </div>
                         <div class="control-item span-full" style="grid-column: span 2;">

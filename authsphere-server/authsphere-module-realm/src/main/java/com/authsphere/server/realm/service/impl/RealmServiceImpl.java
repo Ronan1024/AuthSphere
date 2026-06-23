@@ -1,27 +1,21 @@
 package com.authsphere.server.realm.service.impl;
 
 import com.authsphere.server.common.exception.BizException;
+import com.authsphere.server.common.utils.Assert;
 import com.authsphere.server.realm.convert.RealmConvert;
+import com.authsphere.server.realm.domain.AuthMethodDomain;
 import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.domain.RealmTypeDomain;
-import com.authsphere.server.realm.dto.AuthMethodInfoResponse;
-import com.authsphere.server.realm.dto.CreateRealmRequest;
-import com.authsphere.server.realm.dto.RealmDetailResponse;
-import com.authsphere.server.realm.dto.RealmPageRequest;
-import com.authsphere.server.realm.dto.RealmPageResponse;
+import com.authsphere.server.realm.dto.*;
+import com.authsphere.server.realm.enums.*;
 import com.authsphere.server.realm.error.RealmErrorCode;
-import com.authsphere.server.realm.mapper.RealmMapper;
-import com.authsphere.server.realm.model.Realm;
-import com.authsphere.server.realm.model.RealmType;
-import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.mapper.RealmAuthMethodRelMapper;
 import com.authsphere.server.realm.model.AuthMethod;
-import com.authsphere.server.realm.service.RealmService;
-import com.authsphere.server.realm.enums.SsoSingleLogoutEnum;
-import com.authsphere.server.realm.enums.ExistingSessionHandlerEnum;
-import com.authsphere.server.realm.enums.NoClientIdHandlerEnum;
+import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.model.RealmAuthMethodRel;
+import com.authsphere.server.realm.model.RealmType;
+import com.authsphere.server.realm.service.RealmService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
@@ -29,14 +23,9 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.authsphere.server.common.enums.StatusEnum.DISABLED;
@@ -51,9 +40,10 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 @Service
 @RequiredArgsConstructor
 public class RealmServiceImpl implements RealmService {
-    private final RealmMapper realmMapper;
     private final RealmDomain realmDomain;
     private final RealmTypeDomain realmTypeDomain;
+
+    private final AuthMethodDomain authMethodDomain;
     private final AuthMethodMapper authMethodMapper;
     private final RealmAuthMethodRelMapper realmAuthMethodRelMapper;
 
@@ -66,22 +56,13 @@ public class RealmServiceImpl implements RealmService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean create(CreateRealmRequest createRealmRequest) {
-        List<Realm> realms = realmMapper.selectList(new LambdaQueryWrapper<Realm>()
-                .eq(Realm::getCode, createRealmRequest.getCode()));
-        if (!CollectionUtils.isEmpty(realms)) {
-            throw new BizException(RealmErrorCode.REALM_CODE_EXISTS);
-        }
+        realmDomain.checkCodeExists(createRealmRequest.getCode());
         validateRealmType(createRealmRequest.getRealmTypeId());
-        fillSsoDefaults(createRealmRequest);
-        fillSecurityDefaults(createRealmRequest);
         validateSsoConfig(createRealmRequest);
-        Map<Long, AuthMethod> authMethodMap = loadAuthMethods(createRealmRequest.getAuthMethodIds());
-        validateAuthConfig(createRealmRequest, authMethodMap);
+        loadAuthMethods(createRealmRequest);
         Realm realm = RealmConvert.INSTANCE.model(createRealmRequest);
         realm.setStatus(createRealmRequest.getStatus() == null ? NORMAL.getCode() : createRealmRequest.getStatus());
-        boolean saved = realmMapper.insert(realm) > 0;
-        saveAuthMethodRelations(realm.getId(), createRealmRequest.getAuthMethodIds());
-        return saved;
+        return realmDomain.createOrUpdateRealm(realm, createRealmRequest.getAuthMethodIds());
     }
 
     /**
@@ -95,17 +76,14 @@ public class RealmServiceImpl implements RealmService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean update(Long id, CreateRealmRequest createRealmRequest) {
-        Realm realm = findById(id);
+        Realm realm = realmDomain.findById(id);
+        Assert.isEmpty(realm, BizException.supplier(REALM_DATA_ERROR));
         validateRealmType(createRealmRequest.getRealmTypeId());
-        fillSsoDefaults(createRealmRequest);
-        fillSecurityDefaults(createRealmRequest);
         validateSsoConfig(createRealmRequest);
-        Map<Long, AuthMethod> authMethodMap = loadAuthMethods(createRealmRequest.getAuthMethodIds());
-        validateAuthConfig(createRealmRequest, authMethodMap);
+        loadAuthMethods(createRealmRequest);
         RealmConvert.INSTANCE.copyByModel(createRealmRequest, realm);
         realm.setStatus(createRealmRequest.getStatus() == null ? realm.getStatus() : createRealmRequest.getStatus());
-        realmMapper.updateById(realm);
-        replaceAuthMethodRelations(id, createRealmRequest.getAuthMethodIds());
+        realmDomain.createOrUpdateRealm(realm, createRealmRequest.getAuthMethodIds());
         return Boolean.TRUE;
     }
 
@@ -118,10 +96,10 @@ public class RealmServiceImpl implements RealmService {
      */
     @Override
     public Boolean editStatus(Long id) {
-        Realm realm = findById(id);
+        Realm realm = realmDomain.findById(id);
         Integer status = realm.getStatus().equals(NORMAL.getCode()) ? DISABLED.getCode() : NORMAL.getCode();
         realm.setStatus(status);
-        realmMapper.updateById(realm);
+        realmDomain.updateRealm(realm);
         return Boolean.TRUE;
     }
 
@@ -133,8 +111,7 @@ public class RealmServiceImpl implements RealmService {
      */
     @Override
     public Page<RealmPageResponse> page(RealmPageRequest realmPageRequest) {
-        Page<RealmPageResponse> page = new Page<>(realmPageRequest.getPage(), realmPageRequest.getSize());
-        Page<RealmPageResponse> result = realmMapper.page(page, realmPageRequest);
+        Page<RealmPageResponse> result = realmDomain.page(realmPageRequest);
         List<RealmPageResponse> records = result.getRecords();
         if (CollectionUtils.isEmpty(records)) {
             return result;
@@ -164,13 +141,13 @@ public class RealmServiceImpl implements RealmService {
      */
     @Override
     public RealmDetailResponse detail(Long id) {
-        Realm realm = findById(id);
-        RealmDetailResponse response = new RealmDetailResponse();
-        BeanUtils.copyProperties(realm, response);
+        Realm realm = realmDomain.findById(id);
+        RealmDetailResponse response  = RealmConvert.INSTANCE.toRealmDetailResponse(realm);
         response.setAuthMethodIds(listAuthMethodIds(id));
-
         List<RealmPageResponse> records = new ArrayList<>();
         RealmPageResponse pageResponse = new RealmPageResponse();
+
+        //TODO ON-1
         BeanUtils.copyProperties(realm, pageResponse);
         pageResponse.setId(realm.getId());
         records.add(pageResponse);
@@ -184,8 +161,8 @@ public class RealmServiceImpl implements RealmService {
         if (!CollectionUtils.isEmpty(realmTypes)) {
             response.setRealmTypeName(realmTypes.getFirst().getName());
         }
-        response.setSsoClientCount((long) realmMapper.countClientReferences(id));
-        response.setAccountCount((long) realmMapper.countAccountReferences(id));
+//        response.setSsoClientCount((long) realmMapper.countClientReferences(id));
+//        response.setAccountCount((long) realmMapper.countAccountReferences(id));
         return response;
     }
 
@@ -208,170 +185,44 @@ public class RealmServiceImpl implements RealmService {
     }
 
     /**
-     * 填充 SSO 默认值。
-     *
-     * <p>即使前端未传完整字段，后端也保证落库值稳定，避免出现 null 语义漂移。</p>
-     */
-    private void fillSsoDefaults(CreateRealmRequest request) {
-        if (request.getSsoEnabled() == null) {
-            request.setSsoEnabled(Boolean.TRUE);
-        }
-        if (request.getSsoSessionTimeout() == null) {
-            request.setSsoSessionTimeout(8);
-        }
-        if (request.getSsoIdleTimeout() == null) {
-            request.setSsoIdleTimeout(30);
-        }
-        if (!StringUtils.hasText(request.getSsoSingleLogout())) {
-            request.setSsoSingleLogout(SsoSingleLogoutEnum.ENABLED.getCode());
-        }
-        if (!StringUtils.hasText(request.getExistingSessionHandler())) {
-            request.setExistingSessionHandler(ExistingSessionHandlerEnum.AUTO_REDIRECT.getCode());
-        }
-        if (!StringUtils.hasText(request.getNoClientIdHandler())) {
-            request.setNoClientIdHandler(NoClientIdHandlerEnum.SHOW_APP_LIST.getCode());
-        }
-    }
-
-    /**
-     * 填充认证与安全配置默认值。
-     *
-     * <p>这批字段改为身份域直接保存后，默认值必须由后端兜住，
-     * 否则不同页面、不同版本前端可能写出不一致数据。</p>
-     */
-    private void fillSecurityDefaults(CreateRealmRequest request) {
-        //填充图形验证码默认值
-        if (ObjectUtils.isEmpty(request.getCaptchaMode())) {
-            request.setCaptchaMode("none");
-
-        }
-        fillPasswordDefaults(request);
-        fillTokenDefaults(request);
-        fillSessionDefaults(request);
-        fillAccountSecurityDefaults(request);
-    }
-
-
-    /**
-     * 填充密码安全默认值。
-     */
-    private void fillPasswordDefaults(CreateRealmRequest request) {
-        if (ObjectUtils.isEmpty(request.getPasswordMinLength())) {
-            request.setPasswordMinLength(8);
-        }
-        if (ObjectUtils.isEmpty(request.getPasswordMaxLength())) {
-            request.setPasswordMaxLength(32);
-        }
-        if (!StringUtils.hasText(request.getPasswordComplexity())) {
-            request.setPasswordComplexity("letters_digits");
-        }
-        if (ObjectUtils.isEmpty(request.getPasswordExpireDays())) {
-            request.setPasswordExpireDays(90);
-        }
-    }
-
-    /**
-     * 填充 Token 安全默认值。
-     */
-    private void fillTokenDefaults(CreateRealmRequest request) {
-        if (request.getAccessTokenTimeout() == null) {
-            request.setAccessTokenTimeout(120);
-        }
-        if (request.getRefreshTokenTimeout() == null) {
-            request.setRefreshTokenTimeout(7);
-        }
-        if (request.getTokenRotationEnabled() == null) {
-            request.setTokenRotationEnabled(Boolean.TRUE);
-        }
-        if (request.getTokenBlacklistEnabled() == null) {
-            request.setTokenBlacklistEnabled(Boolean.TRUE);
-        }
-    }
-
-    /**
-     * 填充会话安全默认值。
-     */
-    private void fillSessionDefaults(CreateRealmRequest request) {
-        if (request.getSessionIdleTimeout() == null) {
-            request.setSessionIdleTimeout(30);
-        }
-        if (!StringUtils.hasText(request.getSessionMultiDevice())) {
-            request.setSessionMultiDevice("allow");
-        }
-        if (request.getSessionMaxDevices() == null) {
-            request.setSessionMaxDevices(5);
-        }
-    }
-
-    /**
-     * 填充账号安全默认值。
-     */
-    private void fillAccountSecurityDefaults(CreateRealmRequest request) {
-        if (ObjectUtils.isEmpty(request.getLoginFailMaxCount())) {
-            request.setLoginFailMaxCount(5);
-        }
-        if (ObjectUtils.isEmpty(request.getLoginFailWindowMinutes())) {
-            request.setLoginFailWindowMinutes(10);
-        }
-        if (ObjectUtils.isEmpty(request.getLoginFailLockMinutes())) {
-            request.setLoginFailLockMinutes(30);
-        }
-        if (ObjectUtils.isEmpty(request.getLoginFailAutoUnlock())) {
-            request.setLoginFailAutoUnlock(Boolean.TRUE);
-        }
-    }
-
-    /**
-     * 校验身份域类型是否存在。
+     * 校验身份域类型存在。
      */
     private void validateRealmType(Long realmTypeId) {
-        if (realmTypeId == null || CollectionUtils.isEmpty(realmTypeDomain.findByIdList(List.of(realmTypeId)))) {
-            throw new BizException(REALM_DATA_ERROR.getCode(), "身份域类型不存在");
-        }
+        RealmType realmType = realmTypeDomain.findById(realmTypeId);
+        Assert.isEmpty(realmType, BizException.supplier(REALM_DATA_ERROR));
     }
+
 
     /**
      * 按认证方式 ID 批量加载认证方式。
      *
-     * <p>这里顺便完成“至少选择一个认证方式”和“认证方式必须真实存在”的校验。</p>
      */
-    private Map<Long, AuthMethod> loadAuthMethods(List<Long> authMethodIds) {
-        if (CollectionUtils.isEmpty(authMethodIds)) {
-            throw new BizException("至少选择一个认证方式");
-        }
-        List<Long> distinctIds = authMethodIds.stream().filter(Objects::nonNull).distinct().toList();
-        List<AuthMethod> methods = authMethodMapper.selectBatchIds(distinctIds);
-        if (methods.size() != distinctIds.size()) {
-            throw new BizException("存在无效的认证方式");
-        }
-        return methods.stream().collect(Collectors.toMap(AuthMethod::getId, method -> method));
-    }
+    private void loadAuthMethods(CreateRealmRequest request) {
+        List<Long> authMethodIds = request.getAuthMethodIds();
 
-    /**
-     * 校验认证配置。
-     *
-     * <p>核心约束：
-     * 默认认证方式不能为空，且必须属于已选认证方式；
-     * MFA 认证方式若存在，也必须属于已选认证方式；
-     * threshold 验证码模式必须配置有效阈值。</p>
-     */
-    private void validateAuthConfig(CreateRealmRequest request, Map<Long, AuthMethod> authMethodMap) {
-        if (request.getDefaultAuthMethodId() == null) {
-            throw new BizException("默认认证方式不能为空");
-        }
-        if (!request.getAuthMethodIds().contains(request.getDefaultAuthMethodId())) {
-            throw new BizException("默认认证方式必须属于已选认证方式");
-        }
-        if (!authMethodMap.containsKey(request.getDefaultAuthMethodId())) {
-            throw new BizException("默认认证方式不存在");
-        }
-        if (request.getMfaAuthMethodId() != null && !authMethodMap.containsKey(request.getMfaAuthMethodId())) {
-            throw new BizException("MFA认证方式必须属于已选认证方式");
-        }
-        if ("threshold".equals(request.getCaptchaMode())
-                && (request.getCaptchaThreshold() == null || request.getCaptchaThreshold() <= 0)) {
+        Assert.isFalse(request.getAuthMethodIds().contains(request.getDefaultAuthMethodId()), BizException.supplier("默认认证方式必须属于已选认证方式"));
+
+        Assert.isFalse(PasswordComplexityEnum.isValid(request.getPasswordComplexity()), BizException.supplier("密码复杂度值无效"));
+
+        Assert.isFalse(SessionMultiDeviceEnum.isValid(request.getSessionMultiDevice()), BizException.supplier("多端会话策略值无效"));
+
+        Assert.isFalse(CaptchaModeEnum.isValid(request.getCaptchaMode()), BizException.supplier("图形验证码模式值无效"));
+
+        if (!CaptchaModeEnum.THRESHOLD.getCode().equalsIgnoreCase(request.getCaptchaMode())
+                && request.getCaptchaThreshold() != null && request.getCaptchaThreshold() > 0) {
             throw new BizException("图形验证码阈值必须大于0");
         }
+        Assert.isEmpty(authMethodIds, BizException.supplier("至少选择一个认证方式"));
+        List<Long> distinctIds = authMethodIds.stream().filter(Objects::nonNull).distinct().toList();
+        List<AuthMethod> authMethods = authMethodDomain.findAuthMethods(distinctIds);
+
+        Assert.isEmpty(authMethods, BizException.supplier("存在无效的认证方式"));
+
+        Map<Long, AuthMethod> authMethodMap = authMethods.stream().collect(Collectors.toMap(AuthMethod::getId, method -> method));
+
+        Assert.isFalse(authMethodMap.containsKey(request.getDefaultAuthMethodId()), BizException.supplier("默认认证方式不存在"));
+        Assert.isTrue(request.getMfaAuthMethodId() != null && !authMethodMap.containsKey(request.getMfaAuthMethodId()), BizException.supplier("MFA认证方式必须属于已选认证方式"));
+
     }
 
     /**
@@ -461,32 +312,27 @@ public class RealmServiceImpl implements RealmService {
     }
 
 
-    public Realm findById(Long id) {
-        Realm realm = realmMapper.selectById(id);
-
-        if (realm == null) {
-            throw new BizException(REALM_DATA_ERROR);
-        }
-
-        return realm;
-    }
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean delete(Long id) {
-        Realm realm = findById(id);
-        if (realmMapper.countAccountReferences(id) > 0) {
-            throw new BizException("该身份域下存在关联的账号，无法删除");
-        }
-        if (realmMapper.countClientReferences(id) > 0) {
-            throw new BizException("该身份域下存在关联的客户端，无法删除");
-        }
-        realmMapper.deleteById(id);
+
+
+        Realm realm   = realmDomain.findById(id);
+
+//        if (realmMapper.countAccountReferences(id) > 0) {
+//            throw new BizException("该身份域下存在关联的账号，无法删除");
+//        }
+//        if (realmMapper.countClientReferences(id) > 0) {
+//            throw new BizException("该身份域下存在关联的客户端，无法删除");
+//        }
+//        realmMapper.deleteById(id);
         return Boolean.TRUE;
     }
 
     @Override
     public List<RealmListResponse> list() {
-        return realmMapper.listAll();
+//        return realmMapper.listAll();
+
+        return null;
     }
 }

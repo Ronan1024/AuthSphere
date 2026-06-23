@@ -29,7 +29,16 @@ export interface TypeCategoryRecord extends TypeCategoryPayload {
   status: number
   createTime?: string
   updateTime?: string
+  realmCount?: number
   referenceCount?: number
+  enabledCount?: number
+  disabledCount?: number
+  realmList?: Array<{
+    id: string
+    code: string
+    name: string
+    status: number
+  }>
 }
 
 
@@ -39,6 +48,9 @@ export const typeCategoryApi = {
   },
   list() {
     return http.get<unknown, TypeCategoryRecord[]>('/admin/category/list')
+  },
+  detail(id: string) {
+    return http.get<unknown, TypeCategoryRecord>(`/admin/category/${id}`)
   },
   create(payload: TypeCategoryPayload) {
     return http.post<unknown, boolean>('/admin/category', payload)
@@ -53,4 +65,3 @@ export const typeCategoryApi = {
     return http.delete<unknown, boolean>(`/admin/category/${id}`)
   },
 }
-

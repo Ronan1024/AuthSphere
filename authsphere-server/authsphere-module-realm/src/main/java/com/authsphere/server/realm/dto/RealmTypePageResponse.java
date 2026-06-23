@@ -45,4 +45,9 @@ public class RealmTypePageResponse extends BaseDataBaseModel {
      * 分类状态
      */
     private Integer status;
+
+    /**
+     * 身份域数量
+     */
+    private Integer realmCount;
 }

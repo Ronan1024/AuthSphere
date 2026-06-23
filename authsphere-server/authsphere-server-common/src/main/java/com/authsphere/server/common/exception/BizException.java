@@ -3,6 +3,8 @@ package com.authsphere.server.common.exception;
 import com.authsphere.server.common.enums.ResponseCode;
 import lombok.Getter;
 
+import java.util.function.Supplier;
+
 /**
  * @program: AuthSphere
  * @description:
@@ -33,5 +35,19 @@ public class BizException extends RuntimeException {
         super(message);
         this.code = code;
     }
+
+
+    public static Supplier<RuntimeException> supplier(BaseError error){
+        return () -> new BizException(error);
+    }
+
+    public static Supplier<RuntimeException> supplier(String code, String message){
+        return () -> new BizException(code, message);
+    }
+
+    public static Supplier<RuntimeException> supplier(String message){
+        return () -> new BizException(message);
+    }
+
 
 }

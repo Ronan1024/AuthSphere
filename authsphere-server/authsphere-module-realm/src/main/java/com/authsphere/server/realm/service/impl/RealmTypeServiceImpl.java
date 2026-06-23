@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -42,8 +44,15 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
 
     @Override
     public Page<RealmTypePageResponse> page(RealmTypePageRequest request) {
-        Page<RealmTypePageResponse> page = new Page<>(request.getPage(), request.getSize());
-        return realmTypeMapper.page(page, request);
+        Page<RealmTypePageResponse> result = realmTypeDomain.page(request);
+        List<RealmTypePageResponse> records = result.getRecords();
+        if (!CollectionUtils.isEmpty(records)) {
+            List<Long> realmTypeIdList = records.stream().map(RealmTypePageResponse::getId).distinct().toList();
+            List<Realm> realmList = realmDomain.findListByType(realmTypeIdList);
+            Map<Long, List<Realm>> realmGroupMap = realmList.stream().collect(Collectors.groupingBy(Realm::getRealmTypeId));
+            records.forEach(e -> e.setRealmCount(realmGroupMap.getOrDefault(e.getId(), Collections.emptyList()).size()));
+        }
+        return result;
     }
 
     @Override
@@ -60,10 +69,25 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
     public RealmTypeInfoResponse detail(Long id) {
         RealmType realmType = findById(id);
         RealmTypeInfoResponse response = RealmTypeConvert.INSTANCE.infoResponse(realmType);
-        List<Realm> refs = realmDomain.findListByType(id);
-        int disabledCount = CollectionUtils.isEmpty(refs) ? 0 : Math.toIntExact(refs.stream().filter(realm -> DISABLED.getCode().equals(realm.getStatus())).count());
-        response.setDisabledCount(disabledCount);
-        response.setRealmList(RealmConvert.INSTANCE.toRealmListResponse(refs));
+        List<Realm> referencedRealmList = realmDomain.findListByType(Collections.singletonList(id));
+        if (CollectionUtils.isEmpty(referencedRealmList)) {
+            response.setRealmCount(0);
+            response.setEnabledCount(0);
+            response.setDisabledCount(0);
+            response.setRealmList(Collections.emptyList());
+        } else {
+            long disabledCount = referencedRealmList.stream().filter(realm -> DISABLED.getCode().equals(realm.getStatus())).count();
+            int totalCount = referencedRealmList.size();
+            response.setRealmCount(totalCount);
+            response.setEnabledCount(Math.toIntExact(totalCount - disabledCount));
+            response.setDisabledCount(Math.toIntExact(disabledCount));
+            List<Realm> realms = referencedRealmList.stream().sorted(Comparator.comparing((Realm realm) -> DISABLED.getCode().equals(realm.getStatus()))
+                    .thenComparing(Realm::getName, Comparator.nullsLast(String::compareToIgnoreCase))
+                    .thenComparing(Realm::getCode, Comparator.nullsLast(String::compareToIgnoreCase))).toList();
+            response.setRealmList(RealmConvert.INSTANCE.toRealmListResponse(realms));
+        }
+
+
         return response;
     }
 
@@ -117,7 +141,7 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
             throw new BizException(RealmTypeErrorCode.TYPE_CATEGORY_SYSTEM_BUILTIN);
         }
 
-        List<Realm> list = realmDomain.findListByType(typeCategory.getId());
+        List<Realm> list = realmDomain.findListByType(Collections.singletonList(typeCategory.getId()));
         if (!CollectionUtils.isEmpty(list)) {
             throw new BizException(TYPE_CATEGORY_BIND_REALM);
         }
@@ -132,7 +156,4 @@ public class RealmTypeServiceImpl extends ServiceImpl<RealmTypeMapper, RealmType
         }
         return typeCategory;
     }
-
-
 }
-

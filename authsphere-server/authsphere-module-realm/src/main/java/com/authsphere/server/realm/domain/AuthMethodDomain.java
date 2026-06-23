@@ -337,4 +337,12 @@ public class AuthMethodDomain {
     private int value(Integer count) {
         return count == null ? 0 : count;
     }
+
+
+    /**
+     * 获取认证方式列表
+     */
+    public List<AuthMethod> findAuthMethods(List<Long> authMethodIds) {
+        return authMethodMapper.selectByIds(authMethodIds);
+    }
 }

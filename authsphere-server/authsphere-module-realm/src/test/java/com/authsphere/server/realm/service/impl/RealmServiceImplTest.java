@@ -10,6 +10,7 @@ import com.authsphere.server.realm.dto.RealmDetailResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
+import com.authsphere.server.realm.domain.AuthMethodDomain;
 import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.domain.RealmTypeDomain;
 import com.authsphere.server.realm.mapper.RealmAuthMethodRelMapper;
@@ -32,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -53,6 +55,9 @@ class RealmServiceImplTest {
 
     @Mock
     private com.authsphere.server.realm.mapper.AuthMethodMapper authMethodMapper;
+
+    @Mock
+    private AuthMethodDomain authMethodDomain;
 
     @Mock
     private RealmAuthMethodRelMapper realmAuthMethodRelMapper;
@@ -104,6 +109,63 @@ class RealmServiceImplTest {
         assertEquals("threshold", savedRealm.getCaptchaMode());
         assertEquals(3, savedRealm.getCaptchaThreshold());
         assertEquals("测试身份域", savedRealm.getDescription());
+    }
+
+    @Test
+    void createShouldDefaultCaptchaModeToNoneWhenMissing() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setCaptchaMode(null);
+        request.setCaptchaThreshold(null);
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        when(realmMapper.insert(any(Realm.class))).thenReturn(1);
+        mockRealmType();
+        mockAuthMethods();
+
+        Boolean result = realmService.create(request);
+
+        assertTrue(result);
+        ArgumentCaptor<Realm> captor = ArgumentCaptor.forClass(Realm.class);
+        verify(realmMapper).insert(captor.capture());
+        assertEquals("none", captor.getValue().getCaptchaMode());
+    }
+
+    @Test
+    void createShouldRejectInvalidCaptchaMode() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setCaptchaMode("invalid");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
+        mockAuthMethods();
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+
+        assertTrue(exception.getMessage().contains("图形验证码模式值无效"));
+    }
+
+    @Test
+    void createShouldRejectInvalidPasswordComplexity() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setPasswordComplexity("invalid");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
+        mockAuthMethods();
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+
+        assertTrue(exception.getMessage().contains("密码复杂度值无效"));
+    }
+
+    @Test
+    void createShouldRejectInvalidSessionMultiDevice() {
+        CreateRealmRequest request = createRequest("main", "主身份域");
+        request.setSessionMultiDevice("invalid");
+        when(realmMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
+        mockRealmType();
+        mockAuthMethods();
+
+        BizException exception = assertThrows(BizException.class, () -> realmService.create(request));
+
+        assertTrue(exception.getMessage().contains("多端会话策略值无效"));
     }
 
     @Test
@@ -371,7 +433,8 @@ class RealmServiceImplTest {
         com.authsphere.server.realm.model.RealmType realmType = new com.authsphere.server.realm.model.RealmType();
         realmType.setId(10L);
         realmType.setName("测试类型");
-        when(realmTypeDomain.findByIdList(any(List.class))).thenReturn(List.of(realmType));
+        lenient().when(realmTypeDomain.findById(10L)).thenReturn(realmType);
+        lenient().when(realmTypeDomain.findByIdList(any(List.class))).thenReturn(List.of(realmType));
     }
 
     private void mockAuthMethods() {
@@ -384,7 +447,11 @@ class RealmServiceImplTest {
         authMethod2.setCode("totp_login");
         authMethod2.setName("TOTP");
         List<AuthMethod> methods = List.of(authMethod1, authMethod2);
-        when(authMethodMapper.selectBatchIds(any())).thenAnswer(invocation -> {
+        lenient().when(authMethodDomain.findAuthMethods(any(List.class))).thenAnswer(invocation -> {
+            List<Long> ids = invocation.getArgument(0);
+            return methods.stream().filter(method -> ids.contains(method.getId())).collect(Collectors.toList());
+        });
+        lenient().when(authMethodMapper.selectBatchIds(any())).thenAnswer(invocation -> {
             List<Long> ids = invocation.getArgument(0);
             return methods.stream().filter(method -> ids.contains(method.getId())).collect(Collectors.toList());
         });
@@ -403,6 +470,8 @@ class RealmServiceImplTest {
         request.setMfaAuthMethodId(2L);
         request.setCaptchaMode("threshold");
         request.setCaptchaThreshold(3);
+        request.setPasswordComplexity("letters_digits");
+        request.setSessionMultiDevice("allow");
         request.setDescription("测试身份域");
         return request;
     }
