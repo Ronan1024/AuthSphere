@@ -27,6 +27,7 @@ export interface SubjectTypePayload {
   canBeRoot: boolean
   builtIn: boolean
   description?: string
+  status?: number
 }
 
 export interface SubjectTypeRecord extends SubjectTypePayload {
@@ -57,5 +58,8 @@ export const subjectTypeApi = {
   },
   remove(id: string) {
     return http.delete<unknown, boolean>(`/admin/subject/type/${id}`)
+  },
+  categoryList() {
+    return http.get<unknown, string[]>('/admin/subject/type/category/list')
   },
 }

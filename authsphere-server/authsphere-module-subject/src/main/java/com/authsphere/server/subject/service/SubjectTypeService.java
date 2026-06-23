@@ -55,4 +55,8 @@ public interface SubjectTypeService extends IService<SubjectType> {
      */
     Boolean delete(Long id);
 
+    /**
+     * 获取主体类型分类列表
+     */
+    List<String> categoryList();
 }

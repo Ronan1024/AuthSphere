@@ -52,10 +52,9 @@ public class SubjectTypeRequest {
     private Boolean canBeRoot;
 
     /**
-     * 是否系统内置。
+     * 状态。
      */
-    @NotNull(message = "是否系统内置不能为空")
-    private Boolean builtIn;
+    private Integer status;
 
     /**
      * 描述。

@@ -49,7 +49,7 @@ public class AuthMethodController {
      * @param position 可用位置；为空表示全部
      * @return 启用认证方式选择项
      */
-    @GetMapping({"", "/list"})
+    @GetMapping("/list")
     public List<AuthMethodOptionResponse> listEnabled(@RequestParam(required = false) String position) {
         return authMethodService.listEnabled(position);
     }
@@ -89,7 +89,7 @@ public class AuthMethodController {
     /**
      * 编辑认证方式。
      *
-     * @param id 认证方式主键
+     * @param id      认证方式主键
      * @param request 保存请求
      * @return 是否编辑成功
      */
