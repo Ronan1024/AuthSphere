@@ -560,23 +560,7 @@ const submitRealmForm = async (continueCreating: boolean) => {
 
 const fetchAvailableAuthMethods = async () => {
   try {
-    const res = await authMethodApi.list('主登录')
-    if (res && res.length > 0) {
-      availableAuthMethods.value = res
-      return
-    }
-    const page = await authMethodApi.page({
-      page: 1,
-      size: 100,
-      position: '主登录',
-      status: 1
-    })
-    availableAuthMethods.value = (page.records || []).map((item: AuthMethodRecord) => ({
-      id: item.id,
-      code: item.code,
-      name: item.name,
-      description: item.description
-    }))
+    availableAuthMethods.value = await authMethodApi.list()
   } catch (error) {
     console.error('Failed to load authentication methods', error)
   }
@@ -657,8 +641,6 @@ onMounted(init)
           <!-- Left Form Column -->
           <div class="form-left-column" style="width: 100%;">
             <el-form ref="createFormRef" :model="createForm" :rules="createFormRules" label-position="top" class="create-form form-grid-layout">
-              <div class="form-grid-left">
-              
               <!-- Card 1: 基础信息 -->
               <div class="form-section-card-custom">
                 <div class="card-title-header-custom">
@@ -747,7 +729,6 @@ onMounted(init)
                   <p>配置该身份域的主认证方式、默认认证方式、MFA 和图形验证码规则。</p>
                 </div>
                 <div class="card-body-custom">
-                  <div class="policy-details-sub-card">
                     <div class="full-width-field mt-16">
                       <el-form-item label="主登录认证方式">
                         <div class="checkbox-cards-grid-3">
@@ -804,12 +785,8 @@ onMounted(init)
                     </div>
                   </div>
                 </div>
-              </div>
-
-              </div>
-              <div class="form-grid-right">
-                <!-- Card 4: 安全配置 -->
-                <div class="form-section-card-custom">
+              <!-- Card 4: 安全配置 -->
+              <div class="form-section-card-custom mt-20">
                 <div class="card-title-header-custom">
                   <h3>安全配置</h3>
                   <p>默认预填系统推荐值；管理员不修改即按这些值保存。</p>
@@ -980,8 +957,6 @@ onMounted(init)
                 </div>
               </div>
 
-              </div>
-
               <!-- Bottom Actions Bar -->
               <div class="bottom-actions-row mt-24" style="grid-column: span 2; display: flex; justify-content: flex-end; gap: 12px; padding: 16px 24px; background: #fff; border: 1px solid #E2E8F0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);">
                 <el-button @click="closeFormPage" class="btn-op-outline">取消</el-button>
@@ -990,154 +965,125 @@ onMounted(init)
               </div>
             </el-form>
           </div>
-
-          <!-- Right Summary Column -->
-          <div class="preview-right-column">
-            <div class="sticky-preview-wrapper">
-              <div class="preview-title-bar">
-                <h3>身份域规则摘要</h3>
-                <p class="subtitle">身份域只维护规则；具体登录入口由客户端配置。</p>
-              </div>
-              
-              <div class="realm-rule-summary">
-                <div class="summary-section">
-                  <span class="summary-label">身份空间</span>
-                  <strong>{{ createForm.name || '未命名身份域' }}</strong>
-                  <p>{{ createForm.code || 'realm_code' }} / {{ createForm.typeCategoryCode || '未选择类型' }}</p>
-                </div>
-                <div class="summary-section">
-                  <span class="summary-label">默认认证策略</span>
-                  <strong>身份域直存认证规则</strong>
-                  <p>主登录：{{ getSummaryMainLoginText() }}；默认：{{ getSummaryDefaultLoginText() }}；MFA：{{ getSummaryMfaText() }}</p>
-                </div>
-                <div class="summary-section">
-                  <span class="summary-label">SSO 会话</span>
-                  <strong>{{ createForm.ssoEnabled ? '启用 SSO' : '停用 SSO' }}</strong>
-                  <p>{{ getSsoSessionText() }}</p>
-                </div>
-                <div class="summary-section">
-                  <span class="summary-label">SSO 行为</span>
-                  <strong>{{ getSsoLogoutText() }}</strong>
-                  <p>已有会话：{{ getExistingSessionHandlerText() }}；无 client_id：{{ getNoClientHandlerText() }}</p>
-                </div>
-                <div class="summary-section">
-                  <span class="summary-label">安全配置</span>
-                  <strong>密码 / Token / 账号锁定 / 会话安全</strong>
-                  <p>密码 {{ createForm.passwordMinLength }}-{{ createForm.passwordMaxLength }} 位；Access Token {{ createForm.accessTokenTimeout }} 分钟。</p>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </template>
 
     <template v-else>
       <!-- Page Heading -->
-      <div class="page-heading-premium">
-        <div class="heading-left-wrapper">
+      <div class="page-heading">
+        <div class="heading-text">
           <h1>身份域管理</h1>
           <p>维护账号归属的身份空间、默认认证规则、安全策略和 SSO 会话范围。</p>
         </div>
-        <div class="heading-right-actions">
-          <el-button :icon="Refresh" class="btn-refresh" @click="fetchData">刷新</el-button>
-          <el-button type="primary" :icon="Plus" class="btn-create" @click="openCreateDialog">新增身份域</el-button>
+        <div class="heading-actions">
+          <el-button type="primary" :icon="Plus" class="primary-action" @click="openCreateDialog">新增身份域</el-button>
+          <el-button :icon="Refresh" class="refresh-action" @click="fetchData">刷新</el-button>
         </div>
       </div>
 
       <!-- Filters Card -->
-      <el-card shadow="never" class="premium-filter-card">
-        <div class="filter-flex-row">
-          <div class="filter-item">
-            <label>身份域名称</label>
-            <el-input v-model="query.name" placeholder="请输入名称" clearable @keyup.enter="handleSearch" />
-          </div>
-          <div class="filter-item">
-            <label>身份域编码</label>
-            <el-input v-model="query.code" placeholder="请输入编码" clearable @keyup.enter="handleSearch" />
-          </div>
-          <div class="filter-item">
-            <label>身份域类型</label>
-            <el-select v-model="query.typeCategoryId" placeholder="全部类型" clearable>
-              <el-option v-for="item in typeCategoryOptions" :key="item.id" :label="item.name" :value="item.id" />
-            </el-select>
-          </div>
-          <div class="filter-item">
-            <label>状态</label>
-            <el-select v-model="query.status" placeholder="全部状态" clearable>
-              <el-option label="启用" :value="1" />
-              <el-option label="禁用" :value="2" />
-            </el-select>
-          </div>
-          <div class="filter-buttons">
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-            <el-button @click="handleReset">重置</el-button>
+      <el-card shadow="never" class="filter-card">
+        <div class="filter-grid">
+          <div class="filter-row" style="grid-template-columns: repeat(4, 1fr) auto;">
+            <div class="filter-col">
+              <span class="filter-label">身份域名称</span>
+              <el-input v-model="query.name" placeholder="请输入名称" clearable class="input-styled" @keyup.enter="handleSearch" />
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">身份域编码</span>
+              <el-input v-model="query.code" placeholder="请输入编码" clearable class="input-styled" @keyup.enter="handleSearch" />
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">身份域类型</span>
+              <el-select v-model="query.typeCategoryId" placeholder="全部类型" clearable class="select-styled">
+                <el-option v-for="item in typeCategoryOptions" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">状态</span>
+              <el-select v-model="query.status" placeholder="全部状态" clearable class="select-styled">
+                <el-option label="启用" :value="1" />
+                <el-option label="禁用" :value="2" />
+              </el-select>
+            </div>
+            <div class="filter-actions">
+              <el-button type="primary" :icon="Search" @click="handleSearch">查询</el-button>
+              <el-button @click="handleReset">重置</el-button>
+            </div>
           </div>
         </div>
       </el-card>
 
       <!-- Table Card -->
-      <el-card shadow="never" class="premium-table-card">
-        <div class="card-title-header">
-          <h3>身份域列表</h3>
-          <p>列表只展示识别字段、归属字段、状态字段和常用操作。</p>
+      <el-card shadow="never" class="table-card">
+        <div class="table-header-row">
+          <div>
+            <span class="table-title">身份域列表</span>
+            <span class="table-desc">列表只展示识别字段、归属字段、状态字段和常用操作。</span>
+          </div>
         </div>
 
-        <el-table v-loading="loading" :data="tableData" row-key="id" class="premium-table">
-          <el-table-column prop="name" label="身份域名称" min-width="160">
+        <el-table v-loading="loading" :data="tableData" row-key="id" class="custom-table" border>
+          <el-table-column label="身份域名称" min-width="160">
             <template #default="{ row }">
-              <span class="realm-name-cell" @click="openDetail(row)">{{ row.name }}</span>
+              <span class="strong-text realm-name-clickable" @click="openDetail(row)">{{ row.name }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="code" label="身份域编码" min-width="160" />
-          <el-table-column label="类型" min-width="110">
+          <el-table-column label="身份域编码" min-width="160">
+            <template #default="{ row }">
+              <code class="code-text">{{ row.code }}</code>
+            </template>
+          </el-table-column>
+          <el-table-column label="类型" min-width="130">
             <template #default="{ row }">
               <span class="badge" :class="getCategoryTypeClass(row.typeCategoryId)">
                 {{ typeCategoryText(row.typeCategoryId) }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column label="认证方式" min-width="150">
+          <el-table-column label="认证方式" min-width="155">
             <template #default="{ row }">
-              {{ getAuthMethodsText(row) }}
+              <span class="normal-cell-text">{{ getAuthMethodsText(row) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="默认认证策略" min-width="160">
+          <el-table-column label="默认认证策略" min-width="155">
             <template #default="{ row }">
-              {{ getDefaultMethodLabel(row) }}
+              <span class="normal-cell-text">{{ getDefaultMethodLabel(row) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="SSO 状态" min-width="120" align="center">
+          <el-table-column label="SSO 状态" min-width="100" align="center">
             <template #default="{ row }">
-              <el-tag :type="row.ssoEnabled !== false ? 'success' : 'info'" size="small">
+              <span class="status-badge" :class="row.ssoEnabled !== false ? 'enabled' : 'disabled'">
+                <span class="dot"></span>
                 {{ row.ssoEnabled !== false ? '已启用' : '已停用' }}
-              </el-tag>
+              </span>
             </template>
           </el-table-column>
-          <el-table-column label="SSO 客户端" min-width="110" align="center">
+          <el-table-column label="SSO 客户端" min-width="105" align="center">
             <template #default="{ row }">
-              {{ getSsoClientCount(row) }}
+              <span class="count-value">{{ getSsoClientCount(row) }} 个</span>
             </template>
           </el-table-column>
-          <el-table-column label="账号数" min-width="100" align="center">
+          <el-table-column label="账号数" min-width="95" align="center">
             <template #default="{ row }">
-              {{ getAccountCount(row) }}
+              <span class="count-value">{{ getAccountCount(row) }} 个</span>
             </template>
           </el-table-column>
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <span class="badge" :class="row.status === 1 ? 'green' : 'red'">
+              <span class="status-badge" :class="row.status === 1 ? 'enabled' : 'disabled'">
+                <span class="dot"></span>
                 {{ row.status === 1 ? '启用' : '禁用' }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" min-width="140" />
-          <th width="120">操作</th>
+          <el-table-column prop="createTime" label="创建时间" min-width="160" />
           <el-table-column label="操作" width="180" fixed="right">
             <template #default="{ row }">
-              <div class="op-button-group">
-                <span class="op-link" @click="openDetail(row)">详情</span>
-                <span class="op-link" @click="openEditPage(row)">编辑</span>
+              <div class="action-buttons">
+                <el-button link type="primary" @click="openDetail(row)">详情</el-button>
+                <el-button link type="primary" @click="openEditPage(row)">编辑</el-button>
                 <el-dropdown trigger="click">
                   <span class="op-link-more">更多 <el-icon><ArrowDown /></el-icon></span>
                   <template #dropdown>
@@ -1152,17 +1098,15 @@ onMounted(init)
           </el-table-column>
         </el-table>
 
-        <div class="premium-pager">
-          <span class="pager-total">共 {{ total }} 条记录</span>
-          <div class="pager-buttons">
-            <el-pagination
-              v-model:current-page="query.page"
-              v-model:page-size="query.size"
-              layout="prev, pager, next"
-              :total="total"
-              @current-change="fetchData"
-            />
-          </div>
+        <div class="table-pagination-footer">
+          <span class="total-text">共 {{ total }} 条</span>
+          <el-pagination
+            v-model:current-page="query.page"
+            v-model:page-size="query.size"
+            layout="prev, pager, next"
+            :total="total"
+            @current-change="fetchData"
+          />
         </div>
       </el-card>
     </template>
@@ -1210,183 +1154,284 @@ onMounted(init)
 </template>
 
 <style scoped>
-/* Page Layout */
-.realm-page {
-  font-family: "Inter", "Segoe UI", Arial, sans-serif;
-  color: #334155;
-  background-color: #F6F8FB;
-  min-height: 100%;
-}
-
-/* Premium Heading */
-.page-heading-premium {
+/* Page Header and Layout */
+.page-heading {
   display: flex;
-  justify-content: space-between;
   align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
   margin-bottom: 24px;
 }
-.page-heading-premium h1 {
-  margin: 0 0 6px 0;
-  font-size: 24px;
+
+.heading-text h1 {
+  margin: 0 0 8px;
+  color: #101828;
+  font-size: 26px;
   font-weight: 700;
-  color: #0F172A;
-}
-.page-heading-premium p {
-  margin: 0;
-  font-size: 14px;
-  color: #64748B;
-}
-.heading-right-actions {
+  line-height: 36px;
   display: flex;
+  align-items: center;
   gap: 12px;
 }
-.btn-refresh {
-  border: 1px solid #E2E8F0;
-  color: #334155;
-  font-weight: 600;
-}
-.btn-create {
-  background-color: #2563EB;
-  border-color: #2563EB;
-  color: #fff;
-  font-weight: 600;
-}
-.btn-create:hover {
-  background-color: #1D4ED8;
-  border-color: #1D4ED8;
+
+.heading-text p {
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
 }
 
-/* Unified Tabs Navigation */
-.premium-tabs-bar {
+.heading-actions {
   display: flex;
-  background-color: #fff;
-  border: 1px solid #E5E7EB;
-  border-radius: 8px;
-  padding: 8px 16px;
-  margin-bottom: 16px;
-  gap: 8px;
+  gap: 12px;
+  padding-top: 6px;
 }
-.tab-item {
-  height: 34px;
-  padding: 0 16px;
-  display: inline-flex;
-  align-items: center;
+
+.heading-actions :deep(.el-button) {
+  height: 38px;
   border-radius: 6px;
-  color: #64748B;
-  font-size: 14px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
 }
-.tab-item.active {
-  background-color: #EFF6FF;
-  color: #2563EB;
+
+.heading-actions .primary-action {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+  padding: 0 20px;
 }
-.tab-item:hover:not(.active) {
-  color: #2563EB;
-  background-color: #F8FAFC;
+
+.heading-actions .primary-action:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 /* Filter Card */
-.premium-filter-card {
-  border: 1px solid #E5E7EB;
+.filter-card {
+  margin-bottom: 24px;
+  border: 1px solid #eaecf0;
   border-radius: 8px;
-  margin-bottom: 16px;
-  background-color: #fff;
+  background: #ffffff;
 }
-.premium-filter-card :deep(.el-card__body) {
-  padding: 20px 24px;
+
+.filter-card :deep(.el-card__body) {
+  padding: 24px;
 }
-.filter-flex-row {
+
+.filter-grid {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 18px;
+  flex-direction: column;
 }
-.filter-item {
+
+.filter-row {
+  display: grid;
+  gap: 24px;
+  align-items: flex-end;
+}
+
+.filter-col {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  width: 220px;
 }
-.filter-item label {
+
+.filter-label {
+  color: #344054;
   font-size: 13px;
   font-weight: 600;
-  color: #334155;
 }
-.filter-item :deep(.el-input__wrapper),
-.filter-item :deep(.el-select__wrapper) {
-  height: 36px;
-  border: 1px solid #E5E7EB;
-  border-radius: 6px;
-  box-shadow: none !important;
-}
-.filter-buttons {
+
+.filter-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
-.filter-buttons :deep(.el-button) {
+
+.filter-actions :deep(.el-button) {
   height: 36px;
-  font-weight: 600;
   border-radius: 6px;
+  padding: 0 18px;
+  font-weight: 600;
 }
-.filter-buttons :deep(.el-button--primary) {
-  background-color: #2563EB;
-  border-color: #2563EB;
+
+.filter-actions :deep(.el-button--primary) {
+  background: #2563eb;
+  border-color: #2563eb;
 }
-.filter-buttons :deep(.el-button--primary:hover) {
-  background-color: #1D4ED8;
+
+.filter-actions :deep(.el-button--primary:hover) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
 /* Table Card */
-.premium-table-card {
-  border: 1px solid #E5E7EB;
+.table-card {
+  border: 1px solid #eaecf0;
   border-radius: 8px;
-  background-color: #fff;
-}
-.premium-table-card :deep(.el-card__body) {
-  padding: 0;
-}
-.card-title-header {
-  padding: 18px 24px;
-  border-bottom: 1px solid #E5E7EB;
-}
-.card-title-header h3 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
-  color: #0F172A;
-  font-weight: 700;
-}
-.card-title-header p {
-  margin: 0;
-  font-size: 13px;
-  color: #64748B;
+  background: #ffffff;
 }
 
-/* Table styles */
-.premium-table {
-  width: 100%;
+.table-card :deep(.el-card__body) {
+  padding: 24px;
 }
-.premium-table :deep(th.el-table__cell) {
-  background-color: #F8FAFC;
-  color: #64748B;
+
+.table-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.table-title {
+  display: block;
+  font-size: 16px;
+  color: #0f172a;
   font-weight: 700;
-  height: 44px;
-  border-bottom: 1px solid #E5E7EB;
 }
-.premium-table :deep(td.el-table__cell) {
-  height: 56px;
-  border-bottom: 1px solid #E5E7EB;
+
+.table-desc {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.custom-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.custom-table :deep(th.el-table__cell) {
+  background-color: #f8fafc !important;
+  color: #475569;
+}
+
+.strong-text {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.realm-name-clickable {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.realm-name-clickable:hover {
+  color: #2563eb;
+}
+
+.code-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.normal-cell-text {
+  font-size: 13px;
+  color: #475569;
+}
+
+.count-value {
+  font-size: 13px;
+  font-weight: 600;
   color: #334155;
 }
-.realm-name-cell {
-  color: #0F172A;
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
   font-weight: 700;
-  cursor: pointer;
-  transition: color 0.15s ease;
 }
-.realm-name-cell:hover {
-  color: #2563EB;
+
+.status-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-badge.enabled {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.enabled .dot {
+  background: #16a34a;
+}
+
+.status-badge.disabled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.disabled .dot {
+  background: #dc2626;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.action-buttons :deep(.el-button) {
+  padding: 0;
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.op-link-more {
+  color: #64748b;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dropdown-item-danger {
+  color: #dc2626 !important;
+}
+
+.table-pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* Badges for custom type categories */
+.tag-platform {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.tag-tenant {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.tag-merchant {
+  background-color: #ffedd5;
+  color: #ea580c;
+}
+
+.tag-consumer {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.tag-default {
+  background-color: #f1f5f9;
+  color: #64748b;
 }
 
 /* Badges */
@@ -1401,49 +1446,6 @@ onMounted(init)
   font-weight: 700;
   white-space: nowrap;
 }
-.badge.blue {
-  background-color: #EFF6FF;
-  color: #2563EB;
-}
-.badge.green {
-  background-color: #DCFCE7;
-  color: #16A34A;
-}
-.badge.orange {
-  background-color: #FFEDD5;
-  color: #EA580C;
-}
-.badge.red {
-  background-color: #FEE2E2;
-  color: #DC2626;
-}
-.badge.gray {
-  background-color: #F1F5F9;
-  color: #64748B;
-}
-
-/* Badges for custom type categories */
-.tag-platform {
-  background-color: #F1F5F9;
-  color: #64748B;
-}
-.tag-tenant {
-  background-color: #EFF6FF;
-  color: #2563EB;
-}
-.tag-merchant {
-  background-color: #FFEDD5;
-  color: #EA580C;
-}
-.tag-consumer {
-  background-color: #F1F5F9;
-  color: #64748B;
-}
-.tag-default {
-  background-color: #F1F5F9;
-  color: #64748B;
-}
-
 /* Op Buttons */
 .op-button-group {
   display: flex;
@@ -1459,15 +1461,6 @@ onMounted(init)
 }
 .op-link:hover {
   color: #1D4ED8;
-}
-.op-link-more {
-  color: #64748B;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 .dropdown-item-danger {
   color: #DC2626 !important;

@@ -12,6 +12,7 @@ import com.authsphere.server.subject.error.SubjectErrorCode;
 import com.authsphere.server.subject.mapper.SubjectTypeMapper;
 import com.authsphere.server.subject.model.SubjectType;
 import com.authsphere.server.subject.service.SubjectTypeService;
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
@@ -70,7 +71,11 @@ public class SubjectTypeServiceImpl extends ServiceImpl<SubjectTypeMapper, Subje
     public Boolean create(SubjectTypeRequest request) {
         subjectTypeDomain.checkCodeExists(null, request.getCode());
         SubjectType subjectType = SubjectTypeConvert.INSTANCE.model(request);
-        subjectType.setStatus(StatusEnum.NORMAL.getCode());
+        if (request.getStatus() != null) {
+            subjectType.setStatus(request.getStatus());
+        } else {
+            subjectType.setStatus(StatusEnum.NORMAL.getCode());
+        }
         return subjectTypeMapper.insert(subjectType) > 0;
     }
 
@@ -79,6 +84,9 @@ public class SubjectTypeServiceImpl extends ServiceImpl<SubjectTypeMapper, Subje
         SubjectType subjectType = subjectTypeDomain.findById(id);
         subjectTypeDomain.checkCodeExists(id, request.getCode());
         SubjectTypeConvert.INSTANCE.copyToModel(request, subjectType);
+        if (request.getStatus() != null) {
+            subjectType.setStatus(request.getStatus());
+        }
         subjectTypeMapper.updateById(subjectType);
         return Boolean.TRUE;
     }
@@ -99,6 +107,19 @@ public class SubjectTypeServiceImpl extends ServiceImpl<SubjectTypeMapper, Subje
         }
         subjectTypeMapper.deleteById(id);
         return Boolean.TRUE;
+    }
+
+    /**
+     * 获取主体类型分类列表
+     */
+    @Override
+    public List<String> categoryList() {
+        List<SubjectType> list = this.lambdaQuery().select(SubjectType::getCategory).list();
+        return list.stream()
+                .map(SubjectType::getCategory)
+                .filter(c -> c != null && !c.trim().isEmpty())
+                .distinct()
+                .toList();
     }
 
 

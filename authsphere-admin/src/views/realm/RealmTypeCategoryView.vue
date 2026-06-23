@@ -10,7 +10,7 @@ import {
   type TypeCategoryRecord,
   typeCategoryApi,
 } from '@/api/typeCategory'
-import { realmApi, type RealmRecord } from '@/api/realm'
+import type { RealmRecord } from '@/api/realm'
 import { showErrorMessage, showSuccessMessage } from '@/utils/feedback'
 
 const STATUS_NORMAL = 1
@@ -29,10 +29,6 @@ const formRef = ref<FormInstance>()
 // View state: 'list' or 'detail'
 const currentView = ref<'list' | 'detail'>('list')
 const selectedCategory = ref<TypeCategoryRecord | null>(null)
-
-// References mapping: Key is typeCategoryId, value is array of RealmRecords
-const realmRefsMap = ref<Record<string, RealmRecord[]>>({})
-const realmsLoading = ref(false)
 
 const query = reactive({
   page: 1,
@@ -80,22 +76,24 @@ const activeRefsCount = ref(0)
 const disabledRefsCount = ref(0)
 const refRealmsList = ref<RealmRecord[]>([])
 
-const fetchReferencedRealms = async (categoryId: string) => {
-  realmsLoading.value = true
+const applyDetailState = (detail: TypeCategoryRecord) => {
+  selectedCategory.value = detail
+  refRealmsList.value = (detail.realmList ?? []) as RealmRecord[]
+  activeRefsCount.value = Number(detail.enabledCount ?? 0)
+  disabledRefsCount.value = Number(detail.disabledCount ?? 0)
+}
+
+const loadDetail = async (categoryId: string) => {
   try {
-    const result = await realmApi.page({ page: 1, size: 500, typeCategoryId: categoryId })
-    refRealmsList.value = result.records || []
-    activeRefsCount.value = refRealmsList.value.filter(r => r.status === STATUS_NORMAL).length
-    disabledRefsCount.value = refRealmsList.value.filter(r => r.status === STATUS_DISABLED).length
+    const detail = await typeCategoryApi.detail(categoryId)
+    applyDetailState(detail)
   } catch (error) {
-    console.error('获取关联身份域失败', error)
-  } finally {
-    realmsLoading.value = false
+    showErrorMessage(getErrorMessage(error, '获取身份域类型详情失败'))
   }
 }
 
 const getRefsCount = (row: TypeCategoryRecord) => {
-  return row.referenceCount ?? 0
+  return row.realmCount ?? row.referenceCount ?? 0
 }
 
 const normalizePage = (result: PageResult<TypeCategoryRecord>) => {
@@ -179,10 +177,8 @@ const submitForm = async () => {
     drawerVisible.value = false
     fetchData()
     // If we're editing details view category, update the detail state
-    if (currentView.value === 'detail' && selectedCategory.value?.id === editingId.value) {
-      const updatedList = await typeCategoryApi.list()
-      const updated = updatedList.find(c => c.id === editingId.value)
-      if (updated) selectedCategory.value = updated
+    if (editingId.value && currentView.value === 'detail' && selectedCategory.value?.id === editingId.value) {
+      await loadDetail(editingId.value)
     }
   } catch (error) {
     showErrorMessage(getErrorMessage(error, '保存身份域类型失败'))
@@ -207,7 +203,7 @@ const toggleStatus = async (row: TypeCategoryRecord) => {
     showSuccessMessage(`身份域类型已${action}`)
     fetchData()
     if (currentView.value === 'detail' && selectedCategory.value?.id === row.id) {
-      selectedCategory.value.status = row.status === STATUS_NORMAL ? STATUS_DISABLED : STATUS_NORMAL
+      await loadDetail(row.id)
     }
   } catch (error) {
     if (error === 'cancel' || error === 'close') return
@@ -241,10 +237,10 @@ const confirmDelete = async () => {
   }
 }
 
-const showDetail = (row: TypeCategoryRecord) => {
+const showDetail = async (row: TypeCategoryRecord) => {
   selectedCategory.value = row
   currentView.value = 'detail'
-  fetchReferencedRealms(row.id)
+  await loadDetail(row.id)
 }
 
 const closeDetail = () => {
@@ -356,7 +352,6 @@ onMounted(() => {
                 <code class="code-text">{{ row.code }}</code>
               </template>
             </el-table-column>
-            <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip />
             <el-table-column label="排序" width="90">
               <template #default="{ $index }">
                 <span>{{ $index + 1 }}</span>
@@ -365,7 +360,7 @@ onMounted(() => {
             <el-table-column label="引用身份域" width="130">
               <template #default="{ row }">
                 <span class="ref-count-pill" @click="showDetail(row)">
-                  {{ getRefsCount(row.id) }} 个
+                  {{ getRefsCount(row) }} 个
                 </span>
               </template>
             </el-table-column>
@@ -377,6 +372,7 @@ onMounted(() => {
                 </span>
               </template>
             </el-table-column>
+            <el-table-column prop="description" label="描述" min-width="260" show-overflow-tooltip />
             <el-table-column label="操作" width="200" fixed="right">
               <template #default="{ row }">
                 <div class="action-buttons">
@@ -434,41 +430,48 @@ onMounted(() => {
               </div>
             </template>
 
-            <div class="property-list">
-              <div class="property-row">
-                <span class="property-label">类型名称</span>
-                <span class="property-value strong-text">{{ selectedCategory.name }}</span>
+            <el-form label-position="top" class="create-form read-only-form" style="padding: 4px 0 0 0;">
+              <div class="grid-2-col">
+                <el-form-item label="类型名称">
+                  <el-input :model-value="selectedCategory.name" disabled />
+                </el-form-item>
+                <el-form-item label="类型编码">
+                  <el-input :model-value="selectedCategory.code" disabled />
+                </el-form-item>
               </div>
-              <div class="property-row">
-                <span class="property-label">类型编码</span>
-                <span class="property-value"><code class="code-text">{{ selectedCategory.code }}</code></span>
+              <div class="grid-2-col mt-16">
+                <el-form-item label="状态">
+                  <el-select :model-value="selectedCategory.status" disabled>
+                    <el-option label="启用" :value="STATUS_NORMAL" />
+                    <el-option label="禁用" :value="STATUS_DISABLED" />
+                  </el-select>
+                </el-form-item>
+                <el-form-item label="是否系统内置">
+                  <el-switch
+                    :model-value="selectedCategory.systemBuiltin"
+                    active-text="是"
+                    inactive-text="否"
+                    inline-prompt
+                    disabled
+                  />
+                </el-form-item>
               </div>
-              <div class="property-row">
-                <span class="property-label">排序值</span>
-                <span class="property-value">2</span>
+              <div class="grid-2-col mt-16">
+                <el-form-item label="关联身份域数">
+                  <el-input :model-value="String(getRefsCount(selectedCategory))" disabled>
+                    <template #append>个</template>
+                  </el-input>
+                </el-form-item>
+                <el-form-item label="创建时间">
+                  <el-input :model-value="selectedCategory.createTime || '-'" disabled />
+                </el-form-item>
               </div>
-              <div class="property-row">
-                <span class="property-label">状态</span>
-                <span class="property-value">
-                  <span class="status-badge" :class="selectedCategory.status === STATUS_NORMAL ? 'enabled' : 'disabled'">
-                    <span class="dot"></span>
-                    {{ selectedCategory.status === STATUS_NORMAL ? '启用' : '禁用' }}
-                  </span>
-                </span>
+              <div class="full-width-field mt-16">
+                <el-form-item label="说明">
+                  <el-input :model-value="selectedCategory.description || '暂无说明'" type="textarea" :rows="3" disabled />
+                </el-form-item>
               </div>
-              <div class="property-row">
-                <span class="property-label">是否系统内置</span>
-                <span class="property-value">{{ selectedCategory.systemBuiltin ? '是' : '否' }}</span>
-              </div>
-              <div class="property-row">
-                <span class="property-label">创建时间</span>
-                <span class="property-value">{{ selectedCategory.createTime || '-' }}</span>
-              </div>
-              <div class="property-row full-width">
-                <span class="property-label">描述</span>
-                <span class="property-value desc-box">{{ selectedCategory.description || '暂无描述信息。' }}</span>
-              </div>
-            </div>
+            </el-form>
 
             <!-- Operations Muted Tip -->
             <div class="warning-tip-box">
@@ -816,10 +819,14 @@ onMounted(() => {
   font-weight: 500;
 }
 
-/* Table Styles */
 .custom-table {
   border-radius: 8px;
   overflow: hidden;
+}
+
+.custom-table :deep(th.el-table__cell) {
+  background-color: #f8fafc !important;
+  color: #475569;
 }
 
 .strong-text {
@@ -1209,5 +1216,43 @@ onMounted(() => {
   color: #94a3b8;
   margin-top: 4px;
   line-height: 16px;
+}
+
+.grid-2-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px 20px;
+}
+.full-width-field {
+  width: 100%;
+}
+.mt-16 {
+  margin-top: 16px;
+}
+
+/* Custom disabled overrides for premium read-only form elements */
+.read-only-form :deep(.el-input.is-disabled .el-input__wrapper),
+.read-only-form :deep(.el-select.is-disabled .el-select__wrapper),
+.read-only-form :deep(.el-textarea.is-disabled .el-textarea__inner),
+.read-only-form :deep(.el-input-number.is-disabled .el-input__wrapper) {
+  background-color: #F8FAFC !important;
+  border-color: #E2E8F0 !important;
+  box-shadow: none !important;
+  color: #0F172A !important;
+  cursor: default !important;
+}
+
+.read-only-form :deep(.el-input.is-disabled .el-input__inner),
+.read-only-form :deep(.el-select.is-disabled .el-select__placeholder),
+.read-only-form :deep(.el-textarea.is-disabled .el-textarea__inner) {
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+  cursor: default !important;
+  font-weight: 500;
+}
+
+.read-only-form :deep(.el-input-number.is-disabled .el-input-number__decrease),
+.read-only-form :deep(.el-input-number.is-disabled .el-input-number__increase) {
+  display: none !important;
 }
 </style>

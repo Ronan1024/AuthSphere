@@ -14,6 +14,8 @@ import {
 } from 'element-plus'
 import { reactive, ref } from 'vue'
 
+const categoryOptions = ref<string[]>([])
+
 import {
   type PageResult,
   type SubjectTypePayload,
@@ -53,6 +55,7 @@ const defaultForm = (): SubjectTypePayload => ({
   canAssignRole: true,
   canBeRoot: false,
   builtIn: false,
+  status: STATUS_NORMAL,
   description: '',
 })
 
@@ -132,6 +135,33 @@ const openCreate = () => {
   dialogVisible.value = true
 }
 
+const handleCategoryBlur = (e: FocusEvent) => {
+  const target = e.target as HTMLInputElement
+  if (target && target.value) {
+    const val = target.value.trim()
+    if (val) {
+      form.category = val
+      if (!categoryOptions.value.includes(val)) {
+        categoryOptions.value.push(val)
+      }
+    }
+  }
+}
+
+const getCategoryClass = (category?: string) => {
+  if (!category) return 'tag-default'
+  if (category.includes('组织') || category.includes('tenant') || category.includes('organization')) {
+    return 'tag-tenant'
+  }
+  if (category.includes('个人') || category.includes('employee') || category.includes('account') || category.includes('user')) {
+    return 'tag-personal'
+  }
+  if (category.includes('服务') || category.includes('service')) {
+    return 'tag-service'
+  }
+  return 'tag-default'
+}
+
 const openEdit = async (row: SubjectTypeRecord) => {
   dialogMode.value = 'edit'
   editingId.value = row.id
@@ -147,8 +177,14 @@ const openEdit = async (row: SubjectTypeRecord) => {
       canAssignRole: detail.canAssignRole,
       canBeRoot: detail.canBeRoot,
       builtIn: detail.builtIn,
+      status: detail.status,
       description: detail.description || '',
     })
+
+    if (detail.category && !categoryOptions.value.includes(detail.category)) {
+      categoryOptions.value.push(detail.category)
+    }
+
     dialogVisible.value = true
   } catch (error) {
     showErrorMessage(getErrorMessage(error, '获取主体类型详情失败'))
@@ -239,103 +275,157 @@ const removeSubjectType = async (row: SubjectTypeRecord) => {
   }
 }
 
+const fetchCategories = async () => {
+  try {
+    const res = await subjectTypeApi.categoryList() as any
+    const rawList = Array.isArray(res) ? res : (res?.data && Array.isArray(res.data) ? res.data : [])
+    const cleanList = rawList.filter(
+      (item: any): item is string => typeof item === 'string' && item.trim() !== ''
+    )
+    categoryOptions.value = Array.from(new Set(cleanList))
+  } catch (error) {
+    console.error('获取分类列表失败', error)
+    categoryOptions.value = []
+  }
+}
+
 fetchData()
+fetchCategories()
 </script>
 
 <template>
   <section class="subject-type-page">
     <div class="page-heading">
-      <div>
+      <div class="heading-text">
         <h1>主体类型</h1>
         <p>维护员工、客户、伙伴、服务账号等主体类型，定义主体是否能拥有成员、开通应用、分配角色和作为数据隔离根。</p>
       </div>
-      <el-button type="primary" :icon="Plus" @click="openCreate">新增主体类型</el-button>
+      <div class="heading-actions">
+        <el-button type="primary" :icon="Plus" class="primary-action" @click="openCreate">新增主体类型</el-button>
+        <el-button :icon="Refresh" class="refresh-action" @click="fetchData">刷新</el-button>
+      </div>
     </div>
 
-    <el-card shadow="never" class="section-card">
-      <div class="section-intro">
+    <!-- Filters Card -->
+    <el-card shadow="never" class="filter-card">
+      <div class="filter-grid">
+        <div class="filter-row" style="grid-template-columns: repeat(4, 1fr) auto;">
+          <div class="filter-col">
+            <span class="filter-label">类型名称</span>
+            <el-input
+              v-model="query.name"
+              placeholder="请输入名称"
+              clearable
+              class="input-styled"
+              @keyup.enter="fetchData"
+            />
+          </div>
+          <div class="filter-col">
+            <span class="filter-label">类型编码</span>
+            <el-input
+              v-model="query.code"
+              placeholder="请输入编码"
+              clearable
+              class="input-styled"
+              @keyup.enter="fetchData"
+            />
+          </div>
+          <div class="filter-col">
+            <span class="filter-label">主体分类</span>
+            <el-input
+              v-model="query.category"
+              placeholder="请输入分类"
+              clearable
+              class="input-styled"
+              @keyup.enter="fetchData"
+            />
+          </div>
+          <div class="filter-col">
+            <span class="filter-label">状态</span>
+            <el-select v-model="query.status" placeholder="全部状态" clearable class="select-styled">
+              <el-option label="启用" :value="STATUS_NORMAL" />
+              <el-option label="禁用" :value="STATUS_DISABLED" />
+            </el-select>
+          </div>
+          <div class="filter-actions">
+            <el-button type="primary" :icon="Search" @click="fetchData">查询</el-button>
+            <el-button @click="resetQuery">重置</el-button>
+          </div>
+        </div>
+      </div>
+    </el-card>
+
+    <!-- Table Card -->
+    <el-card shadow="never" class="table-card">
+      <div class="table-header-row">
         <div>
-          <strong>主体类型列表</strong>
-          <span>主体类型用于约束主体能力边界，不直接保存账号登录凭证。</span>
+          <span class="table-title">主体类型列表</span>
+          <span class="table-desc">主体类型用于约束主体能力边界，不直接保存账号登录凭证。</span>
         </div>
       </div>
 
-      <div class="table-toolbar">
-        <div class="filter-row">
-          <el-input
-            v-model="query.name"
-            class="filter-input"
-            clearable
-            placeholder="类型名称"
-            :prefix-icon="Search"
-            @keyup.enter="fetchData"
-          />
-          <el-input
-            v-model="query.code"
-            class="filter-input"
-            clearable
-            placeholder="类型编码"
-            @keyup.enter="fetchData"
-          />
-          <el-input
-            v-model="query.category"
-            class="filter-input"
-            clearable
-            placeholder="主体分类"
-            @keyup.enter="fetchData"
-          />
-          <el-select v-model="query.status" clearable placeholder="全部状态" class="status-filter">
-            <el-option label="启用" :value="STATUS_NORMAL" />
-            <el-option label="禁用" :value="STATUS_DISABLED" />
-          </el-select>
-        </div>
-        <div class="toolbar-actions">
-          <el-button @click="resetQuery">重置</el-button>
-          <el-button :icon="Refresh" @click="fetchData">查询</el-button>
-        </div>
-      </div>
-
-      <el-table v-loading="loading" :data="tableData" row-key="id" empty-text="暂无主体类型">
-        <el-table-column prop="name" label="类型名称" min-width="150" />
-        <el-table-column prop="code" label="类型编码" min-width="140" />
-        <el-table-column prop="category" label="主体分类" min-width="130" show-overflow-tooltip />
-        <el-table-column label="能力" min-width="280">
+      <el-table v-loading="loading" :data="tableData" row-key="id" class="custom-table" border empty-text="暂无主体类型">
+        <el-table-column prop="name" label="类型名称" min-width="120" />
+        <el-table-column prop="code" label="编码" min-width="120">
           <template #default="{ row }">
-            <div class="capability-tags">
-              <el-tag v-if="row.canHaveMembers" type="success">成员</el-tag>
-              <el-tag v-if="row.canOpenApp" type="success">应用</el-tag>
-              <el-tag v-if="row.canAssignRole" type="success">角色</el-tag>
-              <el-tag v-if="row.canBeRoot" type="warning">隔离根</el-tag>
-              <el-tag
-                v-if="!row.canHaveMembers && !row.canOpenApp && !row.canAssignRole && !row.canBeRoot"
-                type="info"
-              >
-                未配置
-              </el-tag>
-            </div>
+            <code class="code-text">{{ row.code }}</code>
           </template>
         </el-table-column>
-        <el-table-column label="系统内置" width="110">
+        <el-table-column prop="category" label="分类" min-width="110">
           <template #default="{ row }">
-            <el-tag :type="row.builtIn ? 'warning' : 'info'">
-              {{ row.builtIn ? '内置' : '自定义' }}
+            <span v-if="row.category" class="badge" :class="getCategoryClass(row.category)">
+              {{ row.category }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="成员" width="90" align="center">
+          <template #default="{ row }">
+            <span :class="row.canHaveMembers ? 'text-success' : 'text-danger'">
+              {{ row.canHaveMembers ? '允许' : '禁止' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="下级主体" width="100" align="center">
+          <template #default="{ row }">
+            <span :class="row.canAssignRole ? 'text-success' : 'text-danger'">
+              {{ row.canAssignRole ? '允许' : '禁止' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="签约应用" width="100" align="center">
+          <template #default="{ row }">
+            <span :class="row.canOpenApp ? 'text-success' : 'text-danger'">
+              {{ row.canOpenApp ? '允许' : '禁止' }}
+            </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="数据边界" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.canBeRoot ? 'success' : 'info'" size="default">
+              {{ row.canBeRoot ? '是' : '否' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100">
+        <el-table-column label="系统内置" width="90" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.status === STATUS_NORMAL ? 'success' : 'info'">
-              {{ row.status === STATUS_NORMAL ? '启用' : '禁用' }}
-            </el-tag>
+            <el-switch
+              :model-value="row.builtIn"
+              disabled
+            />
           </template>
         </el-table-column>
-        <el-table-column prop="updateTime" label="更新时间" min-width="170" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="状态" width="90" align="center">
+          <template #default="{ row }">
+            <el-switch
+              :model-value="row.status === STATUS_NORMAL"
+              @change="toggleStatus(row)"
+            />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" :icon="Edit" @click="openEdit(row)">编辑</el-button>
-            <el-button link type="danger" :icon="SwitchButton" @click="toggleStatus(row)">
-              {{ row.status === STATUS_NORMAL ? '禁用' : '启用' }}
-            </el-button>
             <el-button
               link
               type="danger"
@@ -349,13 +439,13 @@ fetchData()
         </el-table-column>
       </el-table>
 
-      <div class="pagination-bar">
+      <div class="table-pagination-footer">
+        <span class="total-text">共 {{ total }} 条</span>
         <el-pagination
           v-model:current-page="query.page"
           v-model:page-size="query.size"
+          layout="prev, pager, next"
           :total="total"
-          :page-sizes="[10, 20, 50]"
-          layout="total, sizes, prev, pager, next, jumper"
           @change="fetchData"
         />
       </div>
@@ -391,8 +481,44 @@ fetchData()
 
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="主体分类" prop="category">
-              <el-input v-model="form.category" placeholder="account / organization / service" />
+            <el-form-item label="主体分类" prop="category" class="category-form-item">
+              <el-select
+                v-model="form.category"
+                class="category-select"
+                filterable
+                allow-create
+                default-first-option
+                popper-class="subject-type-select-popper"
+                placeholder="请选择或输入主体分类"
+                style="width: 100%;"
+                @blur="handleCategoryBlur"
+              >
+                <el-option
+                  v-for="item in categoryOptions"
+                  :key="item"
+                  :label="item"
+                  :value="item"
+                >
+                  <div class="category-option">
+                    <span class="badge" :class="getCategoryClass(item)">{{ item }}</span>
+                    <span class="category-option-hint">主体分类</span>
+                  </div>
+                </el-option>
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col v-if="dialogMode === 'edit'" :span="6">
+            <el-form-item label="系统内置" prop="builtIn">
+              <el-switch v-model="form.builtIn" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="dialogMode === 'edit' ? 6 : 12">
+            <el-form-item label="启用状态" prop="status">
+              <el-switch
+                v-model="form.status"
+                :active-value="STATUS_NORMAL"
+                :inactive-value="STATUS_DISABLED"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -430,13 +556,6 @@ fetchData()
             </span>
             <el-switch v-model="form.canBeRoot" />
           </label>
-          <label>
-            <span>
-              <strong>系统内置</strong>
-              <small>系统预置类型建议开启，内置类型不允许删除。</small>
-            </span>
-            <el-switch v-model="form.builtIn" />
-          </label>
         </div>
       </el-form>
 
@@ -459,20 +578,17 @@ fetchData()
 @import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
 
 .subject-type-page {
-  --primary-color: #0369A1;      /* Security Blue */
-  --primary-hover: #0284c7;
-  --secondary-color: #0EA5E9;    /* Sky Blue */
-  --success-color: #16A34A;      /* Protected Green */
-  --bg-color: #F0F9FF;           /* Theme Background */
-  --text-main: #0C4A6E;          /* Deep Navy Text */
-  --text-muted: #475569;
-  --border-light: rgba(226, 232, 240, 0.8);
+  --primary-color: #2563eb;      /* Primary Blue */
+  --primary-hover: #1d4ed8;
+  --secondary-color: #3b82f6;    /* Sky/Accent Blue */
+  --success-color: #16a34a;      /* Success Green */
+  --bg-color: #f8fafc;           /* Light slate bg */
+  --text-main: #0f172a;          /* Charcoal Slate Text */
+  --text-muted: #64748b;
+  --border-light: #eaecf0;
   --font-family-display: 'Lexend', system-ui, -apple-system, sans-serif;
   --font-family-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
 
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   font-family: var(--font-family-body);
 }
 
@@ -485,11 +601,11 @@ fetchData()
 }
 
 .page-heading {
-  padding: 24px;
-  border: 1px solid var(--border-light);
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 4px 30px rgba(3, 105, 161, 0.03);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
 }
 
 .page-heading h1 {
@@ -612,4 +728,234 @@ fetchData()
   font-size: 12px;
   line-height: 1.5;
 }
+
+/* Align styles with RealmListView */
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.heading-text h1 {
+  margin: 0 0 8px;
+  color: #101828;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 36px;
+}
+
+.heading-text p {
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.heading-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.heading-actions :deep(.el-button) {
+  height: 38px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.heading-actions .primary-action {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+  padding: 0 20px;
+}
+
+.heading-actions .primary-action:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.filter-card :deep(.el-card__body) {
+  padding: 24px;
+}
+
+.filter-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-row {
+  display: grid;
+  gap: 24px;
+  align-items: flex-end;
+}
+
+.filter-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-label {
+  color: #344054;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.filter-actions :deep(.el-button) {
+  height: 36px;
+  border-radius: 6px;
+  padding: 0 18px;
+  font-weight: 600;
+}
+
+.filter-actions :deep(.el-button--primary) {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.filter-actions :deep(.el-button--primary:hover) {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.table-card {
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.table-card :deep(.el-card__body) {
+  padding: 24px;
+}
+
+.table-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.table-title {
+  display: block;
+  font-size: 16px;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.table-desc {
+  display: block;
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+.custom-table {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.custom-table :deep(th.el-table__cell) {
+  background-color: #f8fafc !important;
+  color: #475569;
+}
+
+.code-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.table-pagination-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* Badges for custom type categories matching Realm style */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tag-tenant {
+  background-color: #eff6ff;
+  color: #2563eb;
+}
+
+.tag-personal {
+  background-color: #f3e8ff;
+  color: #a855f7;
+}
+
+.tag-service {
+  background-color: #ffedd5;
+  color: #ea580c;
+}
+
+.tag-default {
+  background-color: #f1f5f9;
+  color: #64748b;
+}
+
+.category-form-item :deep(.el-form-item__content) {
+  display: block;
+}
+
+.category-select :deep(.el-select__selected-item),
+.category-select :deep(.el-select__placeholder) {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.category-select :deep(.el-select__selected-item) {
+  color: #0f172a;
+}
+
+.category-select :deep(.el-select__placeholder) {
+  color: #94a3b8;
+}
+
+.category-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+
+.category-option-hint {
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 </style>

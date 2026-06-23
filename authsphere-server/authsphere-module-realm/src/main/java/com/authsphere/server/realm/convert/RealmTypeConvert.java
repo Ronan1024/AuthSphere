@@ -31,8 +31,11 @@ public interface RealmTypeConvert {
     @Mapping(target = "updateTime", ignore = true)
     void copyToModel(CreateRealmTypeRequest request, @MappingTarget RealmType realmType);
 
+    @Mapping(target = "realmCount", ignore = true)
     RealmTypePageResponse response(RealmType typeCategory);
 
+    @Mapping(target = "realmCount", ignore = true)
+    @Mapping(target = "enabledCount", ignore = true)
     @Mapping(target = "disabledCount", ignore = true)
     @Mapping(target = "realmList", ignore = true)
     RealmTypeInfoResponse infoResponse(RealmType realmType);

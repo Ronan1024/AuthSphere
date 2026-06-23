@@ -1,10 +1,13 @@
 package com.authsphere.server.realm.domain;
 
 import com.authsphere.server.common.exception.BizException;
+import com.authsphere.server.realm.dto.RealmTypePageRequest;
+import com.authsphere.server.realm.dto.RealmTypePageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.RealmTypeMapper;
 import com.authsphere.server.realm.model.RealmType;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +29,16 @@ public class RealmTypeDomain {
     public List<RealmType> findByIdList(List<Long> id) {
         return realmTypeMapper.selectByIds(id);
     }
+
+
+    /**
+     * 获取身份域类型
+     * @param id 需要查询的身份域ID
+     */
+    public RealmType findById(Long id) {
+        return realmTypeMapper.selectById(id);
+    }
+
 
 
     /**
@@ -54,4 +67,8 @@ public class RealmTypeDomain {
 
     }
 
+    public Page<RealmTypePageResponse> page(RealmTypePageRequest request) {
+        Page<RealmTypePageResponse> page = new Page<>(request.getPage(), request.getSize());
+        return realmTypeMapper.page(page, request);
+    }
 }

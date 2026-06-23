@@ -2,6 +2,7 @@ package com.authsphere.server.realm.convert;
 
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
+import com.authsphere.server.realm.dto.RealmDetailResponse;
 import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.model.Realm;
 import org.mapstruct.Mapper;
@@ -39,4 +40,12 @@ public interface RealmConvert {
     List<RealmInfoResponse> toRealmInfoResponse(List<Realm> realms);
 
     List<RealmListResponse> toRealmListResponse(List<Realm> realms);
+
+    @Mapping(target = "ssoClientCount", ignore = true)
+    @Mapping(target = "realmTypeName", ignore = true)
+    @Mapping(target = "defaultAuthMethodName", ignore = true)
+    @Mapping(target = "authMethodList", ignore = true)
+    @Mapping(target = "authMethodIds", ignore = true)
+    @Mapping(target = "accountCount", ignore = true)
+    RealmDetailResponse toRealmDetailResponse(Realm realm);
 }

@@ -84,4 +84,12 @@ public class SubjectTypeController {
     public Boolean delete(@PathVariable Long id) {
         return subjectTypeService.delete(id);
     }
+
+    /**
+     * 主体类型分类列表。
+     */
+    @GetMapping("/category/list")
+    public List<String> categoryList() {
+        return subjectTypeService.categoryList();
+    }
 }

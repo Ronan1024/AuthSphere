@@ -15,23 +15,7 @@ const availableAuthMethods = ref<AuthMethodOptionResponse[]>([])
 
 const fetchAvailableAuthMethods = async () => {
   try {
-    const res = await authMethodApi.list('主登录')
-    if (res && res.length > 0) {
-      availableAuthMethods.value = res
-      return
-    }
-    const page = await authMethodApi.page({
-      page: 1,
-      size: 100,
-      position: '主登录',
-      status: 1
-    })
-    availableAuthMethods.value = (page.records || []).map((item: AuthMethodRecord) => ({
-      id: item.id,
-      code: item.code,
-      name: item.name,
-      description: item.description
-    }))
+    availableAuthMethods.value = await authMethodApi.list()
   } catch (error) {
     console.error('Failed to load authentication methods', error)
   }

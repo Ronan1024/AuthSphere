@@ -3,12 +3,14 @@ package com.authsphere.server.realm.service.impl;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.dto.CreateRealmTypeRequest;
+import com.authsphere.server.realm.dto.RealmTypeInfoResponse;
 import com.authsphere.server.realm.dto.RealmTypePageRequest;
 import com.authsphere.server.realm.dto.RealmTypePageResponse;
 import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.domain.RealmTypeDomain;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.error.RealmTypeErrorCode;
+import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.mapper.RealmTypeMapper;
 import com.authsphere.server.realm.model.RealmType;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -55,7 +57,7 @@ class RealmTypeServiceImplTest {
         request.setPage(1);
         request.setSize(10);
         Page<RealmTypePageResponse> mapperResult = new Page<>(1, 10);
-        when(realmTypeMapper.page(any(Page.class), any(RealmTypePageRequest.class))).thenReturn(mapperResult);
+        when(realmTypeDomain.page(request)).thenReturn(mapperResult);
 
         Page<RealmTypePageResponse> result = realmTypeService.page(request);
 
@@ -125,6 +127,27 @@ class RealmTypeServiceImplTest {
         assertEquals(RealmErrorCode.TYPE_CATEGORY_DATA_ERROR.getCode(), exception.getCode());
     }
 
+    @Test
+    void detailShouldAssembleReferenceAnalysis() {
+        RealmType realmType = createRealmType();
+        when(realmTypeMapper.selectById(1L)).thenReturn(realmType);
+        when(realmDomain.findListByType(List.of(1L))).thenReturn(List.of(
+                createRealm(11L, "realm-a", "身份域A", StatusEnum.NORMAL.getCode()),
+                createRealm(12L, "realm-c", "身份域C", StatusEnum.DISABLED.getCode()),
+                createRealm(13L, "realm-b", "身份域B", StatusEnum.NORMAL.getCode())
+        ));
+
+        RealmTypeInfoResponse result = realmTypeService.detail(1L);
+
+        assertEquals(3, result.getRealmCount());
+        assertEquals(2, result.getEnabledCount());
+        assertEquals(1, result.getDisabledCount());
+        assertEquals(3, result.getRealmList().size());
+        assertEquals("身份域A", result.getRealmList().get(0).getName());
+        assertEquals("身份域B", result.getRealmList().get(1).getName());
+        assertEquals("身份域C", result.getRealmList().get(2).getName());
+    }
+
     private CreateRealmTypeRequest createRequest() {
         CreateRealmTypeRequest request = new CreateRealmTypeRequest();
         request.setCode("realm-type");
@@ -144,5 +167,15 @@ class RealmTypeServiceImplTest {
         realmType.setEditable(Boolean.TRUE);
         realmType.setStatus(StatusEnum.NORMAL.getCode());
         return realmType;
+    }
+
+    private Realm createRealm(Long id, String code, String name, Integer status) {
+        Realm realm = new Realm();
+        realm.setId(id);
+        realm.setCode(code);
+        realm.setName(name);
+        realm.setStatus(status);
+        realm.setRealmTypeId(1L);
+        return realm;
     }
 }
