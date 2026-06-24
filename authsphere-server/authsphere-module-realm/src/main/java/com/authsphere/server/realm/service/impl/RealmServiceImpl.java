@@ -11,6 +11,7 @@ import com.authsphere.server.realm.enums.*;
 import com.authsphere.server.realm.error.RealmErrorCode;
 import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.mapper.RealmAuthMethodRelMapper;
+import com.authsphere.server.realm.mapper.RealmMapper;
 import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.model.RealmAuthMethodRel;
@@ -42,6 +43,7 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
 public class RealmServiceImpl implements RealmService {
     private final RealmDomain realmDomain;
     private final RealmTypeDomain realmTypeDomain;
+    private final RealmMapper realmMapper;
 
     private final AuthMethodDomain authMethodDomain;
     private final AuthMethodMapper authMethodMapper;
@@ -331,8 +333,6 @@ public class RealmServiceImpl implements RealmService {
 
     @Override
     public List<RealmListResponse> list() {
-//        return realmMapper.listAll();
-
-        return null;
+        return realmMapper.listAll();
     }
 }

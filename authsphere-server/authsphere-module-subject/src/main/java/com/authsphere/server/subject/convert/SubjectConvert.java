@@ -18,12 +18,14 @@ public interface SubjectConvert {
 
     SubjectConvert INSTANCE = Mappers.getMapper(SubjectConvert.class);
 
+    @Mapping(target = "builtIn", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createTime", ignore = true)
     @Mapping(target = "updateTime", ignore = true)
     Subject model(SubjectRequest request);
 
+    @Mapping(target = "builtIn", ignore = true)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)
     @Mapping(target = "createTime", ignore = true)

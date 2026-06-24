@@ -1,6 +1,7 @@
 package com.authsphere.server.subject.service;
 
 import com.authsphere.server.subject.dto.SubjectPageRequest;
+import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
 import com.authsphere.server.subject.dto.SubjectResponse;
 import com.authsphere.server.subject.model.Subject;
@@ -19,7 +20,7 @@ public interface SubjectService extends IService<Subject> {
     /**
      * 主体分页查询。
      */
-    Page<SubjectResponse> page(SubjectPageRequest request);
+    Page<SubjectPageResponse> page(SubjectPageRequest request);
 
     /**
      * 启用主体列表。

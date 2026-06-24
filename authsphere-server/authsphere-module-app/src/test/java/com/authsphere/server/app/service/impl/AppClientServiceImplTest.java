@@ -5,7 +5,7 @@ import com.authsphere.server.app.mapper.AppClientMapper;
 import com.authsphere.server.app.mapper.AppMapper;
 import com.authsphere.server.app.model.App;
 import com.authsphere.server.app.model.AppClient;
-import com.authsphere.server.api.RealmApi;
+import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.realm.domain.RealmDomain;
 import com.authsphere.server.realm.service.AuthPolicyService;

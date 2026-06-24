@@ -12,7 +12,6 @@ import com.authsphere.server.subject.error.SubjectErrorCode;
 import com.authsphere.server.subject.mapper.SubjectTypeMapper;
 import com.authsphere.server.subject.model.SubjectType;
 import com.authsphere.server.subject.service.SubjectTypeService;
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;

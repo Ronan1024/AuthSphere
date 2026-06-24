@@ -53,12 +53,12 @@ public class SubjectResponse extends BaseDataBaseModel {
     /**
      * 是否数据隔离根主体：0 否，1 是。
      */
-    private Integer isRoot;
+    private Boolean isRoot;
 
     /**
      * 是否系统内置主体：0 否，1 是。
      */
-    private Integer builtIn;
+    private Boolean builtIn;
 
     private String description;
 }

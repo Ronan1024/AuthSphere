@@ -1,4 +1,4 @@
-package com.authsphere.server.api;
+package com.authsphere.server.api.realm;
 
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 

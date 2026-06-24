@@ -183,7 +183,6 @@ class SubjectTypeServiceImplTest {
         request.setCanOpenApp(Boolean.TRUE);
         request.setCanAssignRole(Boolean.TRUE);
         request.setCanBeRoot(Boolean.FALSE);
-        request.setBuiltIn(Boolean.FALSE);
         request.setDescription("测试主体类型");
         return request;
     }

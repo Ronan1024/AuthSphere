@@ -1,6 +1,7 @@
 package com.authsphere.server.subject.api;
 
 import com.authsphere.server.subject.dto.SubjectPageRequest;
+import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
 import com.authsphere.server.subject.dto.SubjectResponse;
 import com.authsphere.server.subject.service.SubjectService;
@@ -32,7 +33,7 @@ public class SubjectController {
      * 主体分页查询。
      */
     @PostMapping("/page")
-    public Page<SubjectResponse> page(@Validated @RequestBody SubjectPageRequest request) {
+    public Page<SubjectPageResponse> page(@Validated @RequestBody SubjectPageRequest request) {
         return subjectService.page(request);
     }
 

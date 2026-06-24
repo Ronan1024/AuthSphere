@@ -28,29 +28,6 @@
         update_time
     </sql>
 
-    <sql id="Response_Column_List">
-        s.id,
-        s.subject_type_id as subjectTypeId,
-        st.code as subjectTypeCode,
-        st.name as subjectTypeName,
-        s.realm_id as realmId,
-        r.code as realmCode,
-        r.name as realmName,
-        s.code,
-        s.name,
-        s.status,
-        s.root_subject_id as rootSubjectId,
-        root_subject.code as rootSubjectCode,
-        root_subject.name as rootSubjectName,
-        s.parent_subject_id as parentSubjectId,
-        parent_subject.code as parentSubjectCode,
-        parent_subject.name as parentSubjectName,
-        s.is_root as isRoot,
-        s.built_in as builtIn,
-        s.description,
-        s.create_time,
-        s.update_time
-    </sql>
 
     <sql id="Response_From">
         from subject s
@@ -60,52 +37,61 @@
         left join subject parent_subject on parent_subject.id = s.parent_subject_id
     </sql>
 
-    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+
+    <!-- 主体列表分页：只返回列表页实际需要的字段。 -->
+    <select id="page" resultType="com.authsphere.server.subject.dto.SubjectPageResponse">
         select
-        <include refid="Response_Column_List"/>
-        <include refid="Response_From"/>
+        id,
+        code,
+        name,
+        status,
+        built_in as builtIn,
+        subject_type_id as subjectTypeCode,
+        realm_id as realmId,
+        parent_id as parentId,
+        create_time as createTime
+        from subject
         <where>
             <if test="request.subjectTypeId != null">
-                and s.subject_type_id = #{request.subjectTypeId}
+                and subject_type_id = #{request.subjectTypeId}
             </if>
             <if test="request.realmId != null">
-                and s.realm_id = #{request.realmId}
+                and realm_id = #{request.realmId}
             </if>
             <if test="request.code != null and request.code != ''">
-                and s.code = #{request.code}
+                and `code` = #{request.code}
             </if>
             <if test="request.name != null and request.name != ''">
-                and s.name like concat('%', #{request.name}, '%')
+                and `name` like concat('%', #{request.name}, '%')
             </if>
             <if test="request.rootSubjectId != null">
-                and s.root_subject_id = #{request.rootSubjectId}
+                and root_subject_id = #{request.rootSubjectId}
             </if>
             <if test="request.parentSubjectId != null">
-                and s.parent_subject_id = #{request.parentSubjectId}
+                and parent_id = #{request.parentSubjectId}
             </if>
             <if test="request.isRoot != null">
-                and s.is_root = #{request.isRoot}
+                and is_root = #{request.isRoot}
             </if>
             <if test="request.status != null">
-                and s.status = #{request.status}
+                and `status` = #{request.status}
             </if>
         </where>
-        order by s.create_time desc
+        order by create_time desc
     </select>
 
     <select id="listAll" resultType="com.authsphere.server.subject.dto.SubjectResponse">
-        select
-        <include refid="Response_Column_List"/>
-        <include refid="Response_From"/>
-        where s.status = 1
-        order by s.create_time desc
+        select *
+        from subject
+        where status = 1
+        order by create_time desc
     </select>
 
     <select id="detail" resultType="com.authsphere.server.subject.dto.SubjectResponse">
         select
-        <include refid="Response_Column_List"/>
-        <include refid="Response_From"/>
-        where s.id = #{id}
+            *
+        from subject
+        where id = #{id}
     </select>
 
     <select id="countRealmById" resultType="java.lang.Long">
@@ -114,12 +100,24 @@
         where id = #{realmId}
     </select>
 
+    <select id="listRealmsByIds" resultType="com.authsphere.server.subject.dto.SubjectRealmOption">
+        select
+        id,
+        code,
+        name
+        from realm
+        where id in
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </select>
+
     <select id="listChildren" resultType="com.authsphere.server.subject.dto.SubjectResponse">
         select
-        <include refid="Response_Column_List"/>
-        <include refid="Response_From"/>
-        where s.parent_subject_id = #{parentId}
-        order by s.create_time asc
+            *
+        from  subject
+        where parent_id = #{parentId}
+        order by create_time asc
     </select>
 
 </mapper>

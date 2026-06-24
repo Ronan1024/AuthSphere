@@ -59,17 +59,17 @@ public class Subject extends BaseDataBaseModel {
     /**
      * 快捷上级主体ID
      */
-    private Long parentSubjectId;
+    private Long parentId;
 
     /**
      * 是否数据隔离根主体
      */
-    private Integer isRoot;
+    private Boolean isRoot;
 
     /**
      * 是否系统内置主体
      */
-    private Integer builtIn;
+    private Boolean builtIn;
 
     /**
      * 描述
