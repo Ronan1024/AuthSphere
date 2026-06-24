@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.ObjectUtils;
 
+import java.util.List;
+
 /**
  * 主体领域服务。
  */
@@ -40,5 +42,12 @@ public class SubjectDomain {
         if (count > 0) {
             throw new BizException(SubjectErrorCode.SUBJECT_CODE_EXISTS);
         }
+    }
+
+    /**
+     * 根据 id 列表获取主体。
+     */
+    public List<Subject> findByIds(List<Long> ids) {
+        return subjectMapper.selectBatchIds(ids);
     }
 }

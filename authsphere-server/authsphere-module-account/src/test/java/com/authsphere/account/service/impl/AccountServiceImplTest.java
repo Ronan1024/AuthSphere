@@ -8,7 +8,7 @@ import com.authsphere.server.account.error.AccountErrorCode;
 import com.authsphere.server.account.mapper.AccountMapper;
 import com.authsphere.server.account.model.Account;
 import com.authsphere.server.account.service.impl.AccountServiceImpl;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.authsphere.server.api.realm.RealmApi;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
@@ -21,8 +21,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -53,7 +51,7 @@ class AccountServiceImplTest {
     private com.authsphere.server.account.domain.AccountCredentialDomain accountCredentialDomain;
 
     @Mock
-    private com.authsphere.server.api.RealmApi realmApi;
+    private RealmApi realmApi;
 
     @Mock
     private com.authsphere.server.api.subject.SubjectMemberApi subjectMemberApi;

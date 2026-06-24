@@ -1,6 +1,6 @@
 package com.authsphere.server.realm.domain;
 
-import com.authsphere.server.api.RealmApi;
+import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.common.utils.Assert;
@@ -16,7 +16,6 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
 import java.util.List;
@@ -80,7 +79,7 @@ public class RealmDomain implements RealmApi {
      */
     @Override
     public List<RealmInfoResponse> list(List<Long> realmIdList) {
-        List<Realm> realms = realmMapper.selectBatchIds(realmIdList);
+        List<Realm> realms = realmMapper.selectByIds(realmIdList);
         return RealmConvert.INSTANCE.toRealmInfoResponse(realms);
     }
 

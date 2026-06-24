@@ -45,16 +45,11 @@ public class SubjectRequest {
     private Long parentSubjectId;
 
     /**
-     * 是否数据隔离根主体：0 否，1 是。
+     * 是否数据隔离根主体
      */
     @NotNull(message = "是否数据隔离根主体不能为空")
-    private Integer isRoot;
+    private Boolean isRoot;
 
-    /**
-     * 是否系统内置主体：0 否，1 是。
-     */
-    @NotNull(message = "是否系统内置主体不能为空")
-    private Integer builtIn;
 
     /**
      * 描述。

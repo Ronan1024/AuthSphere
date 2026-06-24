@@ -23,6 +23,10 @@ http.interceptors.response.use(
       }
       return body.data
     }
+    const rawBody = response.data as { data?: unknown } | undefined
+    if (rawBody && typeof rawBody === 'object' && 'data' in rawBody) {
+      return rawBody.data
+    }
     return response.data
   },
   (error: AxiosError<ApiResult<unknown>>) => {

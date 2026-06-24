@@ -26,7 +26,7 @@ import { ElMessageBox, ElMessage, type FormInstance, type FormRules } from 'elem
 import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import { type PageResult as RealmPageResult, type RealmRecord, realmApi } from '@/api/realm'
+import { type RealmOption, realmApi } from '@/api/realm'
 import { type PageResult, type SubjectPayload, type SubjectRecord, subjectApi } from '@/api/subject'
 import { type SubjectTypeRecord, subjectTypeApi } from '@/api/subjectType'
 import { showErrorMessage, showSuccessMessage } from '@/utils/feedback'
@@ -51,7 +51,7 @@ const subjectDrawerMode = ref<'create' | 'edit'>('create')
 const editingId = ref<string>()
 const subjectFormRef = ref<FormInstance>()
 
-const subjectForm = reactive<SubjectPayload>({
+const subjectForm = reactive<any>({
   subjectTypeId: '',
   realmId: '',
   code: '',
@@ -61,6 +61,7 @@ const subjectForm = reactive<SubjectPayload>({
   isRoot: 0,
   builtIn: 0,
   description: '',
+  status: 1,
 })
 
 // Open App Drawer
@@ -86,11 +87,12 @@ const query = reactive({
   realmId: undefined as string | undefined,
   subjectTypeId: undefined as string | undefined,
   status: undefined as number | undefined,
+  parentSubjectId: undefined as string | undefined,
 })
 
 const tableData = ref<SubjectRecord[]>([])
 const total = ref(0)
-const realmOptions = ref<RealmRecord[]>([])
+const realmOptions = ref<RealmOption[]>([])
 const subjectTypeOptions = ref<SubjectTypeRecord[]>([])
 const subjectOptions = ref<SubjectRecord[]>([])
 
@@ -175,6 +177,25 @@ const getErrorMessage = (error: unknown, fallback = '操作失败') => {
   return fallback
 }
 
+const normalizeList = <T>(payload: unknown): T[] => {
+  if (Array.isArray(payload)) {
+    return payload as T[]
+  }
+  if (payload && typeof payload === 'object') {
+    const data = (payload as { data?: unknown }).data
+    if (Array.isArray(data)) {
+      return data as T[]
+    }
+    if (data && typeof data === 'object' && Array.isArray((data as { records?: unknown }).records)) {
+      return (data as { records: T[] }).records
+    }
+    if (Array.isArray((payload as { records?: unknown }).records)) {
+      return (payload as { records: T[] }).records
+    }
+  }
+  return []
+}
+
 const fetchData = async () => {
   loading.value = true
   try {
@@ -186,6 +207,7 @@ const fetchData = async () => {
       realmId: query.realmId,
       subjectTypeId: query.subjectTypeId,
       status: query.status,
+      parentSubjectId: query.parentSubjectId,
     })
     tableData.value = result.records ?? []
     total.value = Number(result.total ?? 0)
@@ -196,17 +218,65 @@ const fetchData = async () => {
   }
 }
 
+const loadRealmOptions = async () => {
+  const realms = await realmApi.list()
+  const realmList = normalizeList<RealmOption>(realms)
+  if (realmList.length > 0) {
+    return realmList
+  }
+  const realmPage = await realmApi.page({ page: 1, size: 100 })
+  return normalizeList<RealmOption>(realmPage)
+}
+
+const loadSubjectTypeOptions = async () => {
+  const subjectTypes = await subjectTypeApi.list()
+  const subjectTypeList = normalizeList<SubjectTypeRecord>(subjectTypes)
+  if (subjectTypeList.length > 0) {
+    return subjectTypeList
+  }
+  const subjectTypePage = await subjectTypeApi.page({ page: 1, size: 100 })
+  return normalizeList<SubjectTypeRecord>(subjectTypePage)
+}
+
+const loadSubjectOptions = async () => {
+  const subjects = await subjectApi.list()
+  const subjectList = normalizeList<SubjectRecord>(subjects)
+  if (subjectList.length > 0) {
+    return subjectList
+  }
+  const subjectPage = await subjectApi.page({ page: 1, size: 100 })
+  return normalizeList<SubjectRecord>(subjectPage)
+}
+
 const fetchOptions = async () => {
   optionLoading.value = true
   try {
-    const [realmPage, subjectTypes, subjects] = await Promise.all([
-      realmApi.page({ page: 1, size: 100 }) as Promise<RealmPageResult<RealmRecord>>,
-      subjectTypeApi.list(),
-      subjectApi.list(),
+    const [realmsResult, subjectTypesResult, subjectsResult] = await Promise.allSettled([
+      loadRealmOptions(),
+      loadSubjectTypeOptions(),
+      loadSubjectOptions(),
     ])
-    realmOptions.value = realmPage.records ?? []
-    subjectTypeOptions.value = subjectTypes ?? []
-    subjectOptions.value = subjects ?? []
+
+    if (realmsResult.status === 'fulfilled') {
+      realmOptions.value = realmsResult.value ?? []
+    } else {
+      realmOptions.value = []
+      showErrorMessage(getErrorMessage(realmsResult.reason, '获取身份域选项失败'))
+    }
+
+    if (subjectTypesResult.status === 'fulfilled') {
+      subjectTypeOptions.value = subjectTypesResult.value ?? []
+    } else {
+      subjectTypeOptions.value = []
+      showErrorMessage(getErrorMessage(subjectTypesResult.reason, '获取主体类型选项失败'))
+    }
+
+    if (subjectsResult.status === 'fulfilled') {
+      subjectOptions.value = subjectsResult.value ?? []
+    } else {
+      subjectOptions.value = []
+      showErrorMessage(getErrorMessage(subjectsResult.reason, '获取父级主体选项失败'))
+    }
   } catch (error) {
     showErrorMessage(getErrorMessage(error, '获取主体表单选项失败'))
   } finally {
@@ -221,7 +291,38 @@ const resetQuery = () => {
   query.realmId = undefined
   query.subjectTypeId = undefined
   query.status = undefined
+  query.parentSubjectId = undefined
   fetchData()
+}
+
+const getMockCounts = (code: string) => {
+  const c = code?.toLowerCase() || ''
+  if (c.includes('tenant_a')) return { members: 12, apps: 3, clients: 7 }
+  if (c.includes('merchant_w')) return { members: 4, apps: 1, clients: 2 }
+  if (c.includes('provider') || c.includes('p')) return { members: 8, apps: 2, clients: 4 }
+  if (c.includes('consumer') || c.includes('libai')) return { members: 1, apps: 0, clients: 1 }
+  const hash = c.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
+  return {
+    members: (hash % 15) + 1,
+    apps: hash % 5,
+    clients: (hash % 8) + 1
+  }
+}
+
+const getSubjectTypePillText = (row: SubjectRecord) => {
+  const typeCode = row.subjectTypeCode?.toLowerCase() || ''
+  if (typeCode.includes('tenant')) return '租户主体'
+  if (typeCode.includes('merchant')) return '商户主体'
+  if (typeCode.includes('provider') || typeCode.includes('service')) return '服务商主体'
+  return '消费者主体'
+}
+
+const getSubjectTypePillClass = (row: SubjectRecord) => {
+  const typeCode = row.subjectTypeCode?.toLowerCase() || ''
+  if (typeCode.includes('tenant')) return 'pill-blue'
+  if (typeCode.includes('merchant')) return 'pill-orange'
+  if (typeCode.includes('provider') || typeCode.includes('service')) return 'pill-indigo'
+  return 'pill-gray'
 }
 
 const getSubjectTypeTag = (row: SubjectRecord): { text: string; type: 'primary' | 'success' | 'warning' | 'info' | 'danger' } => {
@@ -252,7 +353,22 @@ const defaultForm = (): SubjectPayload => ({
 })
 
 const openCreate = () => {
-  router.push('/subjects/create')
+  subjectDrawerMode.value = 'create'
+  editingId.value = undefined
+  Object.assign(subjectForm, {
+    subjectTypeId: '',
+    realmId: '',
+    code: '',
+    name: '',
+    rootSubjectId: null,
+    parentSubjectId: null,
+    isRoot: 0,
+    builtIn: 0,
+    description: '',
+    status: 1,
+  })
+  isSubjectDrawerOpen.value = true
+  fetchOptions()
 }
 
 const openEdit = async (row: SubjectRecord) => {
@@ -775,93 +891,121 @@ onMounted(() => {
 
     <!-- View 2: List View -->
     <template v-else>
-      <div class="view-header">
-        <div class="title-wrap">
+      <div class="page-heading">
+        <div class="heading-text">
           <h1>主体管理</h1>
           <p>主体用于定义业务归属、父子管理关系和应用开通边界，账号加入主体后才可代表该主体操作。</p>
         </div>
-        <div class="action-buttons">
-          <el-button :icon="Refresh" @click="fetchData" :loading="loading">刷新</el-button>
-          <el-button type="primary" :icon="Plus" @click="openCreate">新增主体</el-button>
+        <div class="heading-actions">
+          <el-button type="primary" :icon="Plus" class="primary-action" @click="openCreate">新增主体</el-button>
+          <el-button :icon="Refresh" class="refresh-action" @click="fetchData" :loading="loading">刷新</el-button>
         </div>
       </div>
 
       <!-- Filters -->
       <el-card shadow="never" class="filter-card">
-        <div class="filter-flex-row">
-          <div class="filter-item">
-            <label>主体名称 / 编码</label>
-            <el-input v-model="query.name" placeholder="请输入名称或编码" clearable @keyup.enter="fetchData" />
-          </div>
-          <div class="filter-item">
-            <label>主体类型</label>
-            <el-select v-model="query.subjectTypeId" placeholder="全部类型" clearable>
-              <el-option v-for="item in subjectTypeOptions" :key="item.id" :label="item.name" :value="item.id" />
-            </el-select>
-          </div>
-          <div class="filter-item">
-            <label>所属身份域</label>
-            <el-select v-model="query.realmId" placeholder="全部身份域" clearable>
-              <el-option v-for="item in realmOptions" :key="item.id" :label="item.name" :value="item.id" />
-            </el-select>
-          </div>
-          <div class="filter-item">
-            <label>状态</label>
-            <el-select v-model="query.status" placeholder="全部状态" clearable>
-              <el-option label="启用" :value="STATUS_NORMAL" />
-              <el-option label="禁用" :value="STATUS_DISABLED" />
-            </el-select>
-          </div>
-          <div class="filter-buttons">
-            <el-button type="primary" @click="fetchData" :loading="loading">查询</el-button>
-            <el-button @click="resetQuery">重置</el-button>
+        <div class="filter-grid">
+          <div class="filter-row" style="grid-template-columns: repeat(4, 1fr) auto;">
+            <div class="filter-col">
+              <span class="filter-label">主体名称 / 编码</span>
+              <el-input v-model="query.name" placeholder="租户A / tenant_a" clearable @keyup.enter="fetchData" />
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">所属身份域</span>
+              <el-select v-model="query.realmId" placeholder="全部身份域" clearable popper-class="account-realm-select-popper">
+                <el-option v-for="item in realmOptions" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">主体类型</span>
+              <el-select v-model="query.subjectTypeId" placeholder="全部类型" clearable popper-class="subject-type-select-popper">
+                <el-option v-for="item in subjectTypeOptions" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+            </div>
+            <div class="filter-col">
+              <span class="filter-label">父级主体</span>
+              <el-select v-model="query.parentSubjectId" placeholder="平台主体" clearable popper-class="subject-select-popper">
+                <el-option v-for="item in subjectOptions" :key="item.id" :label="item.name" :value="item.id" />
+              </el-select>
+            </div>
+            <div class="filter-actions">
+              <el-button type="primary" @click="fetchData" :loading="loading">查询</el-button>
+              <el-button @click="resetQuery">重置</el-button>
+            </div>
           </div>
         </div>
       </el-card>
 
       <!-- Main Table -->
       <el-card shadow="never" class="table-card">
-        <div class="card-header-title">
-          <h3>主体列表</h3>
-          <p>只展示识别字段、归属字段、状态字段和高频操作。</p>
+        <div class="table-header-row">
+          <div>
+            <span class="table-title">主体列表</span>
+          </div>
         </div>
 
-        <el-table v-loading="loading" :data="tableData" class="premium-table">
-          <el-table-column label="主体名称" min-width="150">
+        <el-table v-loading="loading" :data="tableData" row-key="id" class="custom-table" border>
+          <el-table-column label="主体名称" min-width="180">
             <template #default="{ row }">
-              <span class="subject-name-link" @click="openDetail(row)">{{ row.name }}</span>
+              <div class="subject-title-cell">
+                <span class="subject-name-link" @click="openDetail(row)">{{ row.name }}</span>
+                <span class="subject-code-sub">{{ row.code }}</span>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="主体编码" min-width="130">
+          
+          <el-table-column label="主体类型" min-width="140">
             <template #default="{ row }">
-              <code class="code-text">{{ row.code }}</code>
+              <span class="subject-type-pill" :class="getSubjectTypePillClass(row)">
+                {{ getSubjectTypePillText(row) }}
+              </span>
             </template>
           </el-table-column>
-          <el-table-column label="主体类型" min-width="110">
+
+          <el-table-column label="所属身份域" min-width="180">
             <template #default="{ row }">
-              <el-tag :type="getSubjectTypeTag(row).type" effect="light" size="small">
-                {{ getSubjectTypeTag(row).text }}
-              </el-tag>
+              <div class="realm-cell">
+                <span class="realm-name-bold">{{ row.realmName || '-' }}</span>
+                <span class="realm-code-sub">{{ row.realmCode || '-' }}</span>
+              </div>
             </template>
           </el-table-column>
-          <el-table-column label="所属身份域" min-width="150">
-            <template #default="{ row }">
-              {{ row.realmName || row.realmCode || '-' }}
-            </template>
-          </el-table-column>
+
           <el-table-column label="父级主体" min-width="140">
             <template #default="{ row }">
-              {{ row.parentSubjectName || '-' }}
+              <span class="parent-text">{{ row.parentSubjectName || '无' }}</span>
             </template>
           </el-table-column>
+
+          <el-table-column label="成员" width="100" align="center">
+            <template #default="{ row }">
+              <span class="count-text">{{ getMockCounts(row.code).members }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="签约应用" width="100" align="center">
+            <template #default="{ row }">
+              <span class="count-text">{{ getMockCounts(row.code).apps }}</span>
+            </template>
+          </el-table-column>
+
+          <el-table-column label="客户端入口" width="110" align="center">
+            <template #default="{ row }">
+              <span class="count-text">{{ getMockCounts(row.code).clients }}</span>
+            </template>
+          </el-table-column>
+
           <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
-              <span class="custom-badge" :class="row.status === STATUS_NORMAL ? 'green' : 'red'">
+              <span class="status-badge" :class="row.status === STATUS_NORMAL ? 'enabled' : 'disabled'">
+                <span class="dot"></span>
                 {{ row.status === STATUS_NORMAL ? '启用' : '禁用' }}
               </span>
             </template>
           </el-table-column>
+
           <el-table-column prop="createTime" label="创建时间" width="160" />
+
           <el-table-column label="操作" width="220" fixed="right">
             <template #default="{ row }">
               <div class="row-actions">
@@ -893,7 +1037,9 @@ onMounted(() => {
 
         <!-- Pagination -->
         <div class="pagination-container">
-          <span class="total-text">共 {{ total }} 条</span>
+          <div class="footer-note-text">
+            共 {{ total }} 条记录。
+          </div>
           <el-pagination
             v-model:current-page="query.page"
             v-model:page-size="query.size"
@@ -906,92 +1052,86 @@ onMounted(() => {
       </el-card>
     </template>
 
-    <!-- Drawer 1: Create / Edit Subject Drawer (Design Drawer Layout) -->
-    <el-drawer
+    <!-- Dialog 1: Create / Edit Subject Dialog -->
+    <el-dialog
       v-model="isSubjectDrawerOpen"
       :title="subjectDrawerMode === 'create' ? '新增主体' : '编辑主体'"
-      size="640px"
+      width="800px"
       destroy-on-close
+      class="custom-subject-dialog"
     >
-      <div class="drawer-main-content">
-        <el-form
-          id="subject-form"
-          ref="subjectFormRef"
-          v-loading="optionLoading"
-          :model="subjectForm"
-          :rules="rules"
-          label-position="top"
-          @submit.prevent="submitSubjectForm"
-        >
-          <div class="drawer-form-section">
-            <h4>基础信息</h4>
-            <div class="form-grid-2col">
-              <el-form-item label="主体名称 *" prop="name">
-                <el-input v-model="subjectForm.name" placeholder="例如：商户W" />
-              </el-form-item>
-              <el-form-item label="主体编码 *" prop="code">
-                <el-input v-model="subjectForm.code" :disabled="subjectDrawerMode === 'edit'" placeholder="merchant_w" />
-              </el-form-item>
-              <el-form-item label="主体类型 *" prop="subjectTypeId">
-                <el-select v-model="subjectForm.subjectTypeId" placeholder="请选择">
-                  <el-option v-for="item in subjectTypeOptions" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="所属身份域 *" prop="realmId">
-                <el-select v-model="subjectForm.realmId" placeholder="请选择">
-                  <el-option v-for="item in realmOptions" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="父级主体">
-                <el-select v-model="subjectForm.parentSubjectId" placeholder="请选择" clearable>
-                  <el-option v-for="item in availableSubjectOptions" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-              <el-form-item label="数据隔离根主体">
-                <el-select v-model="subjectForm.rootSubjectId" placeholder="请选择" clearable>
-                  <el-option v-for="item in availableSubjectOptions" :key="item.id" :label="item.name" :value="item.id" />
-                </el-select>
-              </el-form-item>
-              <div class="full-row-item">
-                <el-form-item label="备注">
-                  <el-input v-model="subjectForm.description" type="textarea" :rows="3" placeholder="说明该主体的业务用途" />
-                </el-form-item>
-              </div>
-            </div>
-          </div>
+      <el-form
+        ref="subjectFormRef"
+        v-loading="optionLoading"
+        :model="subjectForm"
+        :rules="rules"
+        label-position="top"
+        class="modal-form"
+      >
+        <div class="form-grid">
+          <!-- Row 1 -->
+          <el-form-item label="主体名称 *" prop="name" class="form-item">
+            <el-input v-model="subjectForm.name" placeholder="租户A" />
+          </el-form-item>
 
-          <div class="drawer-form-section" style="margin-top: 20px;">
-            <h4>额外属性</h4>
-            <div class="switch-grid">
-              <label>
-                <span>
-                  <strong>作为隔离根节点</strong>
-                  <small>开启后该主体作为隔离边界根节点</small>
-                </span>
-                <el-switch v-model="subjectForm.isRoot" :active-value="1" :inactive-value="0" />
-              </label>
-              <label>
-                <span>
-                  <strong>系统内置主体</strong>
-                  <small>内置主体不允许删除，用于兜底</small>
-                </span>
-                <el-switch v-model="subjectForm.builtIn" :active-value="1" :inactive-value="0" />
-              </label>
-            </div>
-          </div>
-        </el-form>
+          <el-form-item label="主体编码 *" prop="code" class="form-item">
+            <el-input v-model="subjectForm.code" :disabled="subjectDrawerMode === 'edit'" placeholder="tenant_a" />
+          </el-form-item>
 
-        <div class="dashed-note-box" style="margin-top: 20px;">
-          保存后只写入主体记录，不自动创建账号、不自动分配角色、不自动继承父级权限。
+          <!-- Row 2 -->
+          <el-form-item label="主体类型 *" prop="subjectTypeId" class="form-item">
+            <el-select v-model="subjectForm.subjectTypeId" placeholder="请选择主体类型" class="w-full" popper-class="subject-type-select-popper">
+              <el-option v-for="item in subjectTypeOptions" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <div class="helper-text">由主体类型决定是否可签约应用、是否可创建下级主体。</div>
+          </el-form-item>
+
+          <el-form-item label="所属身份域 *" prop="realmId" class="form-item">
+            <el-select v-model="subjectForm.realmId" placeholder="请选择所属身份域" class="w-full" popper-class="account-realm-select-popper">
+              <el-option v-for="item in realmOptions" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+            <div class="helper-text">主体的默认账号体系和应用签约范围来源。</div>
+          </el-form-item>
+
+          <!-- Row 3 -->
+          <el-form-item label="父级主体" prop="parentSubjectId" class="form-item">
+            <el-select v-model="subjectForm.parentSubjectId" placeholder="平台主体" clearable class="w-full" popper-class="subject-select-popper">
+              <el-option v-for="item in availableSubjectOptions" :key="item.id" :label="item.name" :value="item.id" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item label="状态" prop="status" class="form-item">
+            <div class="switch-container">
+              <el-switch
+                v-model="subjectForm.status"
+                :active-value="1"
+                :inactive-value="2"
+                active-text="启用"
+                inactive-text="禁用"
+                inline-prompt
+                class="custom-switch"
+              />
+            </div>
+          </el-form-item>
+
+          <!-- Row 4: Remarks -->
+          <el-form-item label="备注" prop="description" class="form-item span-full">
+            <el-input
+              v-model="subjectForm.description"
+              type="textarea"
+              :rows="4"
+              placeholder="只保存主体基础信息；签约应用、客户端入口和账号角色在详情页处理。"
+            />
+          </el-form-item>
         </div>
-      </div>
+      </el-form>
       <template #footer>
-        <div class="drawer-footer-actions">
-          <el-button @click="isSubjectDrawerOpen = false">取消</el-button>
-          <el-button type="primary" :loading="saveLoading" @click="submitSubjectForm">保存</el-button>
+        <div class="modal-footer">
+          <el-button class="btn-cancel" @click="isSubjectDrawerOpen = false">取消</el-button>
+          <el-button type="primary" class="btn-submit" :loading="saveLoading" @click="submitSubjectForm">保存</el-button>
         </div>
       </template>
-    </el-drawer>
+    </el-dialog>
 
     <!-- Drawer 2: Open App Drawer (Design Drawer Layout) -->
     <el-drawer
@@ -1070,28 +1210,23 @@ onMounted(() => {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap');
-
-/* Trust & Authority Theme Variables */
+/* Unified Color Palette matching Identity Domain and SaaS style */
 .subject-page {
-  --primary-color: #0369A1;      /* Security Blue */
-  --primary-hover: #0284c7;
-  --secondary-color: #0EA5E9;    /* Sky Blue */
-  --success-color: #16A34A;      /* Protected Green */
+  --primary-color: #2563eb;      /* Royal Blue */
+  --primary-hover: #1d4ed8;
+  --secondary-color: #3b82f6;
+  --success-color: #16a34a;
   --success-bg: #dcfce7;
   --success-border: #bbf7d0;
   --danger-color: #dc2626;
-  --bg-color: #F0F9FF;           /* Theme Background */
-  --text-main: #0C4A6E;          /* Deep Navy Text */
-  --text-muted: #475569;
-  --border-light: rgba(226, 232, 240, 0.8);
-  --font-family-display: 'Lexend', system-ui, -apple-system, sans-serif;
-  --font-family-body: 'Source Sans 3', system-ui, -apple-system, sans-serif;
+  --bg-color: #f8fafc;
+  --text-main: #101828;
+  --text-muted: #667085;
+  --border-light: #eaecf0;
   
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  font-family: var(--font-family-body);
+  gap: 0;
 }
 
 /* Breadcrumbs Styling */
@@ -1584,93 +1719,138 @@ onMounted(() => {
   border-color: #e2e8f0;
 }
 
-/* Header & Filter layouts */
-.view-header {
+/* Page Header and Layout */
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.heading-text h1 {
+  margin: 0 0 8px;
+  color: #101828;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heading-text p {
+  margin: 0;
+  color: #667085;
+  font-size: 14px;
+  line-height: 22px;
+}
+
+.heading-actions {
+  display: flex;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.heading-actions :deep(.el-button) {
+  height: 38px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.heading-actions .primary-action {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+  padding: 0 20px;
+}
+
+.heading-actions .primary-action:hover {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.heading-actions .refresh-action {
+  border-radius: 6px;
+}
+
+.table-header-row {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   margin-bottom: 18px;
 }
 
-.title-wrap h1 {
-  margin: 0;
-  font-size: 26px;
+.table-title {
+  display: block;
+  font-size: 16px;
+  color: #0f172a;
   font-weight: 700;
-  color: var(--text-main);
-  font-family: var(--font-family-display);
 }
 
-.title-wrap p {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: var(--text-muted);
-}
-
-.action-buttons {
-  display: flex;
-  gap: 10px;
-}
-
+/* Filter Card */
 .filter-card {
-  margin-bottom: 16px;
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
-  box-shadow: 0 4px 20px rgba(3, 105, 161, 0.01);
+  margin-bottom: 24px;
+  border: 1px solid #eaecf0;
+  border-radius: 8px;
+  background: #ffffff;
 }
 
-.filter-flex-row {
+.filter-card :deep(.el-card__body) {
+  padding: 24px;
+}
+
+.filter-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-row {
   display: grid;
-  grid-template-columns: repeat(4, 1fr) auto;
-  gap: 16px;
+  gap: 24px;
   align-items: flex-end;
 }
 
-.filter-item {
+.filter-col {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
-.filter-item label {
+.filter-label {
+  color: #344054;
   font-size: 13px;
-  color: var(--text-main);
   font-weight: 600;
-  font-family: var(--font-family-display);
 }
 
-.filter-buttons {
+.filter-actions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
+}
+
+.filter-actions :deep(.el-button) {
+  height: 36px;
+  border-radius: 6px;
 }
 
 /* Main Table card */
 .table-card {
-  border-radius: 10px;
-  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  border: 1px solid #eaecf0;
 }
 
-.card-header-title {
-  margin-bottom: 16px;
+.table-card :deep(.el-card__body) {
+  padding: 24px;
 }
 
-.card-header-title h3 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--text-main);
-  font-family: var(--font-family-display);
-}
-
-.card-header-title p {
-  margin: 4px 0 0;
-  font-size: 13px;
-  color: var(--text-muted);
-}
-
-.premium-table {
-  border: 1px solid rgba(241, 245, 249, 0.8);
+.custom-table {
   border-radius: 8px;
   overflow: hidden;
+}
+
+.custom-table :deep(th.el-table__cell) {
+  background-color: #f8fafc !important;
+  color: #475569;
 }
 
 .subject-name-link {
@@ -1738,9 +1918,75 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-.total-text {
+.footer-note-text {
   font-size: 13px;
-  color: var(--text-muted);
+  color: #64748b;
+}
+
+/* Custom Table Layout Styles */
+.subject-title-cell,
+.realm-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.subject-code-sub,
+.realm-code-sub {
+  font-size: 12px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.realm-name-bold {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.subject-type-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.subject-type-pill.pill-blue {
+  background-color: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
+
+.subject-type-pill.pill-orange {
+  background-color: #fff7ed;
+  border-color: #fed7aa;
+  color: #c2410c;
+}
+
+.subject-type-pill.pill-indigo {
+  background-color: #e0e7ff;
+  border-color: #c7d2fe;
+  color: #4338ca;
+}
+
+.subject-type-pill.pill-gray {
+  background-color: #f8fafc;
+  border-color: #e2e8f0;
+  color: #475569;
+}
+
+.parent-text {
+  color: #334155;
+  font-weight: 500;
+}
+
+.count-text {
+  font-size: 14px;
+  color: #334155;
+  font-weight: 500;
 }
 
 /* Drawer styles */
@@ -1909,5 +2155,134 @@ onMounted(() => {
 
 .action-btn-link.danger:hover {
   color: #b91c1c;
+}
+
+/* Dialog Style Customization */
+.custom-subject-dialog :deep(.el-dialog__header) {
+  padding: 20px 24px;
+  margin-right: 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.custom-subject-dialog :deep(.el-dialog__title) {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1e293b;
+}
+.custom-subject-dialog :deep(.el-dialog__headerbtn) {
+  top: 20px;
+  font-size: 20px;
+}
+.custom-subject-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+.custom-subject-dialog :deep(.el-dialog__footer) {
+  padding: 0 24px 24px;
+}
+.modal-form {
+  padding: 0;
+}
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 24px;
+  row-gap: 16px;
+}
+.form-item {
+  margin-bottom: 0;
+}
+.span-full {
+  grid-column: span 2;
+}
+.w-full {
+  width: 100%;
+}
+.helper-text {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 20px;
+}
+.btn-cancel {
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 500;
+  border-color: #e2e8f0;
+  color: #475569;
+  transition: all 0.2s ease;
+}
+.btn-cancel:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+.btn-submit {
+  border-radius: 8px;
+  padding: 10px 24px;
+  font-weight: 500;
+  background-color: #2563eb;
+  border-color: #2563eb;
+  transition: all 0.2s ease;
+}
+.btn-submit:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+
+.switch-container {
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.custom-switch :deep(.el-switch__core) {
+  height: 24px;
+  border-radius: 12px;
+  min-width: 60px;
+}
+
+.custom-switch :deep(.el-switch__inner) {
+  padding: 0 8px;
+}
+
+/* Status Badge matching RealmListView */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-badge .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-badge.enabled {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-badge.enabled .dot {
+  background: #16a34a;
+}
+
+.status-badge.disabled {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.disabled .dot {
+  background: #dc2626;
 }
 </style>

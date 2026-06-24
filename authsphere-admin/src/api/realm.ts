@@ -72,6 +72,13 @@ export interface RealmDetailRecord extends RealmRecord {
   authMethodIds?: Array<string | number>
 }
 
+export interface RealmOption {
+  id: string
+  code: string
+  name: string
+  status?: number
+}
+
 export const realmApi = {
   page(params: RealmQuery) {
     return http.post<unknown, PageResult<RealmRecord>>('/admin/realm/page', params)
@@ -89,7 +96,7 @@ export const realmApi = {
     return http.put<unknown, boolean>(`/admin/realm/status/${id}`)
   },
   list() {
-    return http.get<unknown, RealmRecord[]>('/admin/realm/list')
+    return http.get<unknown, RealmOption[]>('/admin/realm/list')
   },
   delete(id: string) {
     return http.delete<unknown, boolean>(`/admin/realm/${id}`)

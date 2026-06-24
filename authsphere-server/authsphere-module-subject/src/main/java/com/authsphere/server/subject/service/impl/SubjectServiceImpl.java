@@ -1,24 +1,32 @@
 package com.authsphere.server.subject.service.impl;
 
+import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
+import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.subject.convert.SubjectConvert;
 import com.authsphere.server.subject.domain.SubjectDomain;
 import com.authsphere.server.subject.domain.SubjectTypeDomain;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
+import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
 import com.authsphere.server.subject.dto.SubjectResponse;
 import com.authsphere.server.subject.error.SubjectErrorCode;
 import com.authsphere.server.subject.mapper.SubjectMapper;
 import com.authsphere.server.subject.model.Subject;
 import com.authsphere.server.subject.service.SubjectService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * @author longjiangran
@@ -30,13 +38,44 @@ import java.util.Objects;
 public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> implements SubjectService {
 
     private final SubjectMapper subjectMapper;
+    private final RealmApi realmApi;
     private final SubjectDomain subjectDomain;
     private final SubjectTypeDomain subjectTypeDomain;
 
     @Override
-    public Page<SubjectResponse> page(SubjectPageRequest request) {
-        Page<SubjectResponse> page = new Page<>(request.getPage(), request.getSize());
-        return subjectMapper.page(page, request);
+    public Page<SubjectPageResponse> page(SubjectPageRequest request) {
+        IPage<SubjectPageResponse> page = new Page<>(request.getPage(), request.getSize());
+        Page<SubjectPageResponse> result = subjectMapper.page(page, request);
+        List<SubjectPageResponse> records = result.getRecords();
+        if (!CollectionUtils.isEmpty(records)) {
+            List<Long> realmIdList = records.stream().map(SubjectPageResponse::getRealmId).toList();
+            List<RealmInfoResponse> realmInfoList = realmApi.list(realmIdList);
+            Map<Long, RealmInfoResponse> realmInfoMap = realmInfoList.stream().collect(Collectors.toMap(RealmInfoResponse::getId, e -> e));
+
+            List<Long> parentIdList = records.stream().map(SubjectPageResponse::getParentId).distinct().toList();
+            Map<Long, Subject> parentSubjectMap = new HashMap<>();
+            if (CollectionUtils.isEmpty(parentIdList)) {
+                List<Subject> parentSubjects = subjectDomain.findByIds(parentIdList);
+                parentSubjectMap.putAll(parentSubjects.stream().collect(Collectors.toMap(Subject::getId, e -> e)));
+
+            }
+            records.forEach(record -> {
+                RealmInfoResponse realmInfo = realmInfoMap.get(record.getRealmId());
+                record.setRealmName(realmInfo.getName());
+                record.setRealmCode(realmInfo.getCode());
+                Subject subject = parentSubjectMap.getOrDefault(record.getParentId(), new Subject());
+                record.setParentName(subject.getName());
+                // TODO 主体关联数据
+                record.setMemberCount(0);
+                record.setClientCount(0);
+                record.setClientCount(0);
+            });
+
+
+        }
+
+
+        return result;
     }
 
     @Override
@@ -81,7 +120,8 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
     @Override
     public Boolean delete(Long id) {
         Subject subject = subjectDomain.findById(id);
-        if (Objects.equals(subject.getBuiltIn(), 1)) {
+        // 内置主体不允许删除，避免误删平台基础数据。
+        if (Boolean.TRUE.equals(subject.getBuiltIn())) {
             throw new BizException(SubjectErrorCode.SUBJECT_BUILT_IN_DELETE_DENIED);
         }
         subjectMapper.deleteById(id);
@@ -95,6 +135,7 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
     }
 
     private void validateSubject(Long currentId, SubjectRequest request) {
+        // 创建和编辑共用同一套引用校验，避免两处规则漂移。
         subjectTypeDomain.findById(request.getSubjectTypeId());
         checkRealmExists(request.getRealmId());
         if (request.getParentSubjectId() != null) {
@@ -118,7 +159,3 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
         }
     }
 }
-
-
-
-

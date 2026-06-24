@@ -5,12 +5,14 @@ import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.subject.domain.SubjectDomain;
 import com.authsphere.server.subject.domain.SubjectTypeDomain;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
+import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
 import com.authsphere.server.subject.dto.SubjectResponse;
 import com.authsphere.server.subject.error.SubjectErrorCode;
 import com.authsphere.server.subject.mapper.SubjectMapper;
 import com.authsphere.server.subject.model.Subject;
 import com.authsphere.server.subject.model.SubjectType;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -55,12 +57,19 @@ class SubjectServiceImplTest {
         SubjectPageRequest request = new SubjectPageRequest();
         request.setPage(1);
         request.setSize(10);
-        Page<SubjectResponse> mapperResult = new Page<>(1, 10);
-        when(subjectMapper.page(any(Page.class), any(SubjectPageRequest.class))).thenReturn(mapperResult);
+        Page<SubjectPageResponse> mapperResult = new Page<>(1, 10, 1);
+        mapperResult.setPages(1);
+        SubjectPageResponse response = new SubjectPageResponse();
+        response.setCode("saas");
+        mapperResult.setRecords(List.of(response));
+        when(subjectMapper.page(any(IPage.class), any(SubjectPageRequest.class))).thenReturn(mapperResult);
 
-        Page<SubjectResponse> result = subjectService.page(request);
+        Page<SubjectPageResponse> result = subjectService.page(request);
 
-        assertSame(mapperResult, result);
+        assertEquals(1, result.getTotal());
+        assertEquals(1, result.getRecords().size());
+        assertEquals("saas", result.getRecords().getFirst().getCode());
+        verify(subjectMapper).page(any(IPage.class), any(SubjectPageRequest.class));
     }
 
     @Test
@@ -174,7 +183,7 @@ class SubjectServiceImplTest {
     @Test
     void deleteShouldRejectBuiltInSubject() {
         Subject subject = createSubject();
-        subject.setBuiltIn(1);
+        subject.setBuiltIn(Boolean.TRUE);
         when(subjectDomain.findById(1L)).thenReturn(subject);
 
         BizException exception = assertThrows(BizException.class,
@@ -187,7 +196,7 @@ class SubjectServiceImplTest {
     @Test
     void deleteShouldRemoveCustomSubject() {
         Subject subject = createSubject();
-        subject.setBuiltIn(0);
+        subject.setBuiltIn(Boolean.FALSE);
         when(subjectDomain.findById(1L)).thenReturn(subject);
 
         Boolean result = subjectService.delete(1L);
@@ -207,8 +216,7 @@ class SubjectServiceImplTest {
         request.setRealmId(1L);
         request.setCode("saas");
         request.setName("SaaS运营方");
-        request.setIsRoot(1);
-        request.setBuiltIn(0);
+        request.setIsRoot(Boolean.TRUE);
         request.setDescription("测试主体");
         return request;
     }
@@ -220,8 +228,8 @@ class SubjectServiceImplTest {
         subject.setRealmId(1L);
         subject.setCode("saas");
         subject.setName("SaaS运营方");
-        subject.setIsRoot(1);
-        subject.setBuiltIn(0);
+        subject.setIsRoot(Boolean.TRUE);
+        subject.setBuiltIn(Boolean.FALSE);
         subject.setStatus(StatusEnum.NORMAL.getCode());
         return subject;
     }
