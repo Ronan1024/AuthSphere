@@ -1,7 +1,6 @@
 package com.authsphere.server.account.service.impl;
 
 import com.authsphere.server.account.convert.AccountConvert;
-import com.authsphere.server.account.domain.AccountCredentialDomain;
 import com.authsphere.server.account.domain.AccountDomain;
 import com.authsphere.server.account.dto.AccountCreateRequest;
 import com.authsphere.server.account.dto.AccountExternalIdentityResponse;
@@ -13,16 +12,19 @@ import com.authsphere.server.account.dto.AccountPageResponse;
 import com.authsphere.server.account.dto.AccountPasswordResetRequest;
 import com.authsphere.server.account.dto.AccountSubjectResponse;
 import com.authsphere.server.account.enums.AccountStatus;
-import com.authsphere.server.account.enums.CredentialType;
 import com.authsphere.server.account.error.AccountErrorCode;
 import com.authsphere.server.account.mapper.AccountMapper;
 import com.authsphere.server.account.model.Account;
 import com.authsphere.server.account.model.AccountCredential;
+import com.authsphere.server.account.security.PasswordHash;
+import com.authsphere.server.account.security.PasswordHashService;
 import com.authsphere.server.account.service.AccountService;
-import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
+import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.api.model.dto.subject.AccountSubjectCountResponse;
 import com.authsphere.server.api.subject.SubjectMemberApi;
+import com.authsphere.server.common.enums.AuthMethodEnum;
+import com.authsphere.server.common.enums.CredentialType;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -31,6 +33,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 import java.util.List;
@@ -50,11 +53,11 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
 
     private final AccountDomain accountDomain;
 
-    private final AccountCredentialDomain accountCredentialDomain;
-
     private final RealmApi realmApi;
 
     private final SubjectMemberApi subjectMemberApi;
+
+    private final PasswordHashService passwordHashService;
 
 
     /**
@@ -111,29 +114,30 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
      */
     @Override
     public Boolean create(AccountCreateRequest request) {
-        realmApi.info(request.getRealmId());
+        RealmInfoResponse info = realmApi.info(request.getRealmId());
         accountDomain.checkUsernameExists(null, request);
 
         Account account = AccountConvert.INSTANCE.toAccount(request);
+
+
         if (account.getStatus() == null) {
             account.setStatus(AccountStatus.ENABLED.getCode());
         }
-        accountMapper.insert(account);
-        if (request.getPassword() != null && !request.getPassword().isBlank()) {
-            // TODO 密码算法未处理
-            AccountCredential accountCredential = AccountCredential.builder()
-                    .accountId(account.getId())
-                    .realmId(request.getRealmId())
-                    .credentialType(CredentialType.PASSWORD.getCode())
-                    .credentialValue(request.getPassword())
-                    .passwordAlgo("xxx")
-                    .forceChange(Boolean.FALSE)
-                    .status(StatusEnum.NORMAL.getCode())
-                    .build();
-            accountCredentialDomain.insert(accountCredential);
-
+        AccountCredential accountCredential = null;
+        if (info.getAuthMethod().contains(AuthMethodEnum.PASSWORD_LOGIN.getCode()) && StringUtils.hasText(request.getPassword())) {
+            PasswordHash hash = passwordHashService.hash(request.getPassword());
+            account.setPassword(hash.hash());
+            accountCredential = new AccountCredential();
+            accountCredential.setRealmId(info.getId());
+            accountCredential.setCredentialType(CredentialType.PASSWORD.getCode());
+            accountCredential.setCredentialValue(hash.hash());
+            accountCredential.setCredentialSecret(hash.salt());
+            accountCredential.setPasswordSalt(hash.salt());
+            accountCredential.setPasswordAlgo(hash.algorithm());
+            accountCredential.setStatus(StatusEnum.NORMAL.getCode());
         }
-        return Boolean.TRUE;
+
+        return accountDomain.saveAccount(account, accountCredential);
     }
 
     /**
@@ -195,9 +199,10 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
     @Transactional(rollbackFor = Exception.class)
     public Boolean resetPassword(Long id, AccountPasswordResetRequest request) {
         Account account = accountDomain.findById(id);
-        account.setPassword(request.getNewPassword());
+        PasswordHash passwordHash = passwordHashService.hash(request.getNewPassword());
+        account.setPassword(passwordHash.hash());
         accountMapper.updateById(account);
-        accountMapper.upsertPasswordCredential(account, request.getNewPassword(), request.getForceReset());
+        accountMapper.upsertPasswordCredential(account, passwordHash.hash(), passwordHash.salt(), passwordHash.algorithm(), request.getForceReset());
         return Boolean.TRUE;
     }
 
@@ -220,5 +225,3 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
         return accountMapper.pageLoginLogs(page, id, request);
     }
 }
-
-

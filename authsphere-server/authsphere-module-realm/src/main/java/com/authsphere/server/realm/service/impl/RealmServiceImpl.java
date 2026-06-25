@@ -2,6 +2,7 @@ package com.authsphere.server.realm.service.impl;
 
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.common.utils.Assert;
+import com.authsphere.server.realm.convert.AuthMethodConvert;
 import com.authsphere.server.realm.convert.RealmConvert;
 import com.authsphere.server.realm.domain.AuthMethodDomain;
 import com.authsphere.server.realm.domain.RealmDomain;
@@ -19,6 +20,7 @@ import com.authsphere.server.realm.model.RealmType;
 import com.authsphere.server.realm.service.RealmService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
@@ -40,14 +42,15 @@ import static com.authsphere.server.realm.error.RealmErrorCode.REALM_DATA_ERROR;
  */
 @Service
 @RequiredArgsConstructor
-public class RealmServiceImpl implements RealmService {
+public class RealmServiceImpl extends ServiceImpl<RealmMapper, Realm> implements RealmService {
     private final RealmDomain realmDomain;
     private final RealmTypeDomain realmTypeDomain;
     private final RealmMapper realmMapper;
 
     private final AuthMethodDomain authMethodDomain;
-    private final AuthMethodMapper authMethodMapper;
     private final RealmAuthMethodRelMapper realmAuthMethodRelMapper;
+    private final AuthMethodMapper authMethodMapper;
+
 
     /**
      * 创建身份域。
@@ -332,7 +335,38 @@ public class RealmServiceImpl implements RealmService {
     }
 
     @Override
-    public List<RealmListResponse> list() {
-        return realmMapper.listAll();
+    public List<RealmListResponse> realmList() {
+
+        List<Realm> list = this.lambdaQuery().eq(Realm::getStatus, NORMAL.getCode()).list();
+
+        if (CollectionUtils.isEmpty(list)) {
+            return Collections.emptyList();
+        }
+
+        List<RealmListResponse> result = RealmConvert.INSTANCE.toRealmListResponse(list);
+        List<Long> realmIds = result.stream().map(RealmListResponse::getId).toList();
+
+        List<RealmAuthMethodRel> realmAuthMethodRelList = realmAuthMethodRelMapper.selectList(new LambdaQueryWrapper<RealmAuthMethodRel>()
+                .in(RealmAuthMethodRel::getRealmId, realmIds));
+
+        if (CollectionUtils.isEmpty(realmAuthMethodRelList)) {
+            return result;
+        }
+
+        Map<Long, List<RealmAuthMethodRel>> authMethodsByRealm = realmAuthMethodRelList.stream().collect(Collectors.groupingBy(RealmAuthMethodRel::getRealmId));
+        List<Long> authMethodIdList = authMethodsByRealm.values().stream().flatMap(Collection::stream).map(RealmAuthMethodRel::getAuthMethodId).distinct().toList();
+
+        List<AuthMethod> authMethods = authMethodDomain.findAuthMethods(authMethodIdList);
+        Map<Long, AuthMethod> authMethodMap = authMethods.stream().collect(Collectors.toMap(AuthMethod::getId, method -> method));
+
+        result.forEach(e->{
+            List<Long> authMethodIds = authMethodsByRealm.getOrDefault(e.getId(), Collections.emptyList()).stream().map(RealmAuthMethodRel::getAuthMethodId).toList();
+            List<AuthMethodInfoResponse> methodInfoResponses = authMethodIds.stream().map(authMethodId -> {
+                AuthMethod aDefault = authMethodMap.getOrDefault(authMethodId, new AuthMethod());
+                return AuthMethodConvert.INSTANCE.toAuthMethodInfoResponse(aDefault);
+            }).toList();
+            e.setAuthMethodList(methodInfoResponses);
+        });
+        return result;
     }
 }

@@ -71,6 +71,7 @@ public class RealmDomain implements RealmApi {
         if (ObjectUtils.isEmpty(byId)) {
             throw new BizException(RealmErrorCode.REALM_DATA_ERROR);
         }
+        // TODO 处理身份域认证方式编号列表
         return RealmConvert.INSTANCE.toRealmInfoResponse(byId);
     }
 

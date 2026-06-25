@@ -1,5 +1,6 @@
 package com.authsphere.server.subject.mapper;
 
+import com.authsphere.server.subject.dto.SubjectDetailResponse;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
 import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRealmOption;
@@ -31,9 +32,11 @@ public interface SubjectMapper extends BaseMapper<Subject> {
 
     List<SubjectResponse> listAll();
 
-    SubjectResponse detail(@Param("id") Long id);
+    /**
+     * 主体详情。
+     */
+    SubjectDetailResponse detail(@Param("id") Long id);
 
-    Long countRealmById(@Param("realmId") Long realmId);
 
     /**
      * 批量查询身份域基础信息。
@@ -45,7 +48,6 @@ public interface SubjectMapper extends BaseMapper<Subject> {
      */
     List<SubjectResponse> listChildren(@Param("parentId") Long parentId);
 }
-
 
 
 

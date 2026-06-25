@@ -1,33 +1,16 @@
 <script setup lang="ts">
 import {
   ArrowDown,
-  ArrowLeft,
-  Calendar,
-  CircleCheck,
-  Connection,
-  DocumentCopy,
-  Download,
-  Key,
-  Link,
-  Lock,
-  Monitor,
-  MoreFilled,
-  OfficeBuilding,
   Plus,
   Refresh,
-  Search,
-  Setting,
-  User,
-  UserFilled,
   View,
-  Warning,
 } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage, type FormInstance, type FormRules } from 'element-plus'
 import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { type RealmOption, realmApi } from '@/api/realm'
-import { type PageResult, type SubjectPayload, type SubjectRecord, subjectApi } from '@/api/subject'
+import { type SubjectPayload, type SubjectRecord, subjectApi } from '@/api/subject'
 import { type SubjectTypeRecord, subjectTypeApi } from '@/api/subjectType'
 import { showErrorMessage, showSuccessMessage } from '@/utils/feedback'
 
@@ -295,20 +278,6 @@ const resetQuery = () => {
   fetchData()
 }
 
-const getMockCounts = (code: string) => {
-  const c = code?.toLowerCase() || ''
-  if (c.includes('tenant_a')) return { members: 12, apps: 3, clients: 7 }
-  if (c.includes('merchant_w')) return { members: 4, apps: 1, clients: 2 }
-  if (c.includes('provider') || c.includes('p')) return { members: 8, apps: 2, clients: 4 }
-  if (c.includes('consumer') || c.includes('libai')) return { members: 1, apps: 0, clients: 1 }
-  const hash = c.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
-  return {
-    members: (hash % 15) + 1,
-    apps: hash % 5,
-    clients: (hash % 8) + 1
-  }
-}
-
 const getSubjectTypePillText = (row: SubjectRecord) => {
   const typeCode = row.subjectTypeCode?.toLowerCase() || ''
   if (typeCode.includes('tenant')) return '租户主体'
@@ -324,33 +293,6 @@ const getSubjectTypePillClass = (row: SubjectRecord) => {
   if (typeCode.includes('provider') || typeCode.includes('service')) return 'pill-indigo'
   return 'pill-gray'
 }
-
-const getSubjectTypeTag = (row: SubjectRecord): { text: string; type: 'primary' | 'success' | 'warning' | 'info' | 'danger' } => {
-  const typeCode = row.subjectTypeCode?.toLowerCase() || ''
-  if (typeCode.includes('platform') || typeCode.includes('admin')) {
-    return { text: '平台', type: 'info' }
-  } else if (typeCode.includes('tenant')) {
-    return { text: '租户', type: 'primary' }
-  } else if (typeCode.includes('merchant')) {
-    return { text: '商户', type: 'warning' }
-  } else if (typeCode.includes('provider') || typeCode.includes('service')) {
-    return { text: '服务商', type: 'info' }
-  } else {
-    return { text: '消费者', type: 'info' }
-  }
-}
-
-const defaultForm = (): SubjectPayload => ({
-  subjectTypeId: '',
-  realmId: '',
-  code: '',
-  name: '',
-  rootSubjectId: null,
-  parentSubjectId: null,
-  isRoot: 0,
-  builtIn: 0,
-  description: '',
-})
 
 const openCreate = () => {
   subjectDrawerMode.value = 'create'
@@ -973,25 +915,25 @@ onMounted(() => {
 
           <el-table-column label="父级主体" min-width="140">
             <template #default="{ row }">
-              <span class="parent-text">{{ row.parentSubjectName || '无' }}</span>
+              <span class="parent-text">{{ row.parentName || row.parentSubjectName || '无' }}</span>
             </template>
           </el-table-column>
 
           <el-table-column label="成员" width="100" align="center">
             <template #default="{ row }">
-              <span class="count-text">{{ getMockCounts(row.code).members }}</span>
+              <span class="count-text">{{ row.memberCount ?? 0 }}</span>
             </template>
           </el-table-column>
 
           <el-table-column label="签约应用" width="100" align="center">
             <template #default="{ row }">
-              <span class="count-text">{{ getMockCounts(row.code).apps }}</span>
+              <span class="count-text">{{ row.contractCount ?? 0 }}</span>
             </template>
           </el-table-column>
 
           <el-table-column label="客户端入口" width="110" align="center">
             <template #default="{ row }">
-              <span class="count-text">{{ getMockCounts(row.code).clients }}</span>
+              <span class="count-text">{{ row.clientCount ?? 0 }}</span>
             </template>
           </el-table-column>
 

@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+import javax.swing.text.Style;
+
 /**
  * 创建用户账号
  *
@@ -37,12 +39,6 @@ public class AccountCreateRequest {
     private String nickname;
 
     /**
-     * 头像。
-     */
-    @Size(max = 512, message = "头像不能超过512个字符")
-    private String avatar;
-
-    /**
      * 邮箱
      */
     @Email(message = "邮箱格式不正确")
@@ -63,4 +59,9 @@ public class AccountCreateRequest {
      * 账号状态：1.启用 2.锁定 3.禁用
      */
     private Integer status;
+
+    /**
+     * 备注
+     */
+    private String remark;
 }

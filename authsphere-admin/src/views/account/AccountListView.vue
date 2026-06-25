@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { Search, ArrowDown, Download } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
-const router = useRouter()
-
 import { accountApi, type AccountRecord } from '@/api/account'
-import { realmApi, type RealmRecord } from '@/api/realm'
+import { realmApi, type RealmOption } from '@/api/realm'
 
 import CreateAccountDialog from './components/CreateAccountDialog.vue'
 import AccountDetailView from './components/AccountDetailView.vue'
@@ -33,7 +30,7 @@ const query = reactive({
 const total = ref(0)
 const loading = ref(false)
 const tableData = ref<AccountRecord[]>([])
-const realmOptions = ref<RealmRecord[]>([])
+const realmOptions = ref<RealmOption[]>([])
 
 const selectedRows = ref<any[]>([])
 const currentDetail = ref<AccountRecord | null>(null)
@@ -59,8 +56,7 @@ const getAccountDisplayName = (row: AccountRecord) => row.nickname || row.userna
 
 const loadRealms = async () => {
   try {
-    const result = await realmApi.page({ page: 1, size: 100, status: 1 })
-    realmOptions.value = result.records ?? []
+    realmOptions.value = await realmApi.list()
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '身份域加载失败')
   }
@@ -102,7 +98,7 @@ const resetQuery = () => {
 }
 
 const openCreate = () => {
-  router.push('/accounts/create')
+  createDrawerRef.value?.open(realmOptions.value)
 }
 const openDetail = async (row: AccountRecord) => {
   try {

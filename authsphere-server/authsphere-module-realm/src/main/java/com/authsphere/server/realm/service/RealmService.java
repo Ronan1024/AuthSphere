@@ -5,7 +5,10 @@ import com.authsphere.server.realm.dto.RealmDetailResponse;
 import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
+import com.authsphere.server.realm.model.Realm;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.IService;
+
 import java.util.List;
 
 /**
@@ -13,7 +16,7 @@ import java.util.List;
  * @description 针对表【realm(身份域信息)】的数据库操作Service
  * @createDate 2026-05-26 14:40:36
  */
-public interface RealmService {
+public interface RealmService  extends IService<Realm> {
 
     /**
      * 创建身份域信息
@@ -50,7 +53,7 @@ public interface RealmService {
     /**
      * 查询启用状态的身份域列表
      */
-    List<RealmListResponse> list();
+    List<RealmListResponse> realmList();
 
     /**
      * 查询身份域详情

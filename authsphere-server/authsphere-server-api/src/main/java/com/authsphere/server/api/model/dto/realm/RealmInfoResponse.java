@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * @program: AuthSphere
  * @description:
@@ -56,4 +58,9 @@ public class RealmInfoResponse {
      * 描述
      */
     private String description;
+
+    /**
+     * 认证方式编号列表
+     */
+    private List<String> authMethod;
 }

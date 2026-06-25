@@ -88,6 +88,7 @@
             realm_id,
             credential_type,
             credential_value,
+            password_salt,
             password_algo,
             force_change,
             status,
@@ -99,8 +100,9 @@
             #{account.id},
             #{account.realmId},
             1,
-            #{password},
-            'PLAIN_DEV',
+            #{passwordHash},
+            #{passwordSalt},
+            #{passwordAlgo},
             case when #{forceReset} = true then 1 else 0 end,
             1,
             now(),
@@ -108,6 +110,7 @@
         )
         on duplicate key update
             credential_value = values(credential_value),
+            password_salt = values(password_salt),
             password_algo = values(password_algo),
             force_change = values(force_change),
             status = 1,

@@ -1,5 +1,6 @@
 package com.authsphere.server.subject.api;
 
+import com.authsphere.server.subject.dto.SubjectDetailResponse;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
 import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
@@ -49,7 +50,7 @@ public class SubjectController {
      * 主体详情。
      */
     @GetMapping("/{id}")
-    public SubjectResponse detail(@PathVariable Long id) {
+    public SubjectDetailResponse detail(@PathVariable Long id) {
         return subjectService.detail(id);
     }
 

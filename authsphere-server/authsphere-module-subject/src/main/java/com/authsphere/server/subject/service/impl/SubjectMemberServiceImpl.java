@@ -3,6 +3,8 @@ package com.authsphere.server.subject.service.impl;
 import com.authsphere.server.account.error.AccountErrorCode;
 import com.authsphere.server.account.mapper.AccountMapper;
 import com.authsphere.server.account.model.Account;
+import com.authsphere.server.account.security.PasswordHash;
+import com.authsphere.server.account.security.PasswordHashService;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.subject.domain.SubjectDomain;
@@ -43,6 +45,7 @@ public class SubjectMemberServiceImpl extends ServiceImpl<SubjectMemberMapper, S
     private final SubjectDomain subjectDomain;
     private final SubjectTypeMapper subjectTypeMapper;
     private final AccountMapper accountMapper;
+    private final PasswordHashService passwordHashService;
 
     @Override
     public Page<SubjectMemberResponse> page(SubjectMemberPageRequest request) {
@@ -74,9 +77,11 @@ public class SubjectMemberServiceImpl extends ServiceImpl<SubjectMemberMapper, S
         account.setUsername(request.getUsername());
         account.setMobile(request.getMobile());
         account.setEmail(request.getEmail());
-        account.setPassword(request.getPassword());
+        PasswordHash passwordHash = passwordHashService.hash(request.getPassword());
+        account.setPassword(passwordHash.hash());
         account.setStatus(StatusEnum.NORMAL.getCode());
         accountMapper.insert(account);
+        accountMapper.upsertPasswordCredential(account, passwordHash.hash(), passwordHash.salt(), passwordHash.algorithm(), Boolean.FALSE);
 
         String displayName = StringUtils.hasText(request.getDisplayName()) ? request.getDisplayName() : request.getUsername();
         createMember(subjectId, account.getId(), request.getMemberType(), displayName, request.getRemark());
