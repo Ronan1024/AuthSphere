@@ -4,7 +4,6 @@ import com.authsphere.server.common.model.BaseDataBaseModel;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -12,13 +11,13 @@ import java.util.Date;
 
 /**
  * 账号凭证表
+ *
  * @TableName account_credential
  */
 @Data
-@Builder
 @EqualsAndHashCode(callSuper = true)
-@TableName(value ="account_credential")
-public class AccountCredential  extends BaseDataBaseModel {
+@TableName(value = "account_credential")
+public class AccountCredential extends BaseDataBaseModel {
     /**
      * 凭证ID
      */
@@ -41,22 +40,42 @@ public class AccountCredential  extends BaseDataBaseModel {
     private Integer credentialType;
 
     /**
-     * 凭证值，密码为hash
+     * 凭证值。PASSWORD时为密码Hash；TOTP时可为加密后的Secret；PASSKEY时可为CredentialId
      */
     private String credentialValue;
 
     /**
-     * 密码盐，可选
+     * 凭证密文。TOTP Secret或其他敏感凭证加密后存储
+     */
+    private String credentialSecret;
+
+    /**
+     * 公钥凭证，如Passkey/WebAuthn公钥
+     */
+    private String publicKey;
+
+    /**
+     * 密码盐值，可选；BCrypt/Argon2id通常已内嵌在Hash中
      */
     private String passwordSalt;
 
     /**
-     * 密码算法，如 BCrypt
+     * 密码算法，如 BCrypt/Argon2id
      */
     private String passwordAlgo;
 
     /**
-     * 是否强制修改
+     * 密码算法版本
+     */
+    private String passwordVersion;
+
+    /**
+     * Pepper密钥版本ID，只保存ID，不保存密钥
+     */
+    private String pepperKeyId;
+
+    /**
+     * 是否强制修改/重新设置
      */
     private Boolean forceChange;
 
@@ -66,7 +85,12 @@ public class AccountCredential  extends BaseDataBaseModel {
     private Date expireAt;
 
     /**
-     * 状态 ENABLED/DISABLED
+     * 凭证最近使用时间
+     */
+    private Date lastUsedAt;
+
+    /**
+     * 状态：1.ENABLED 2.DISABLED
      */
     private Integer status;
 }

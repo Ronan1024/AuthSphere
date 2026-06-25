@@ -28,8 +28,8 @@ export interface SubjectPayload {
   name: string
   rootSubjectId?: string | number | null
   parentSubjectId?: string | number | null
-  isRoot: number
-  builtIn: number
+  isRoot: number | boolean
+  builtIn: number | boolean
   description?: string
 }
 
@@ -39,10 +39,17 @@ export interface SubjectRecord extends SubjectPayload {
   subjectTypeName?: string
   realmCode?: string
   realmName?: string
+  parentId?: string | number
+  parentName?: string
   rootSubjectCode?: string
   rootSubjectName?: string
   parentSubjectCode?: string
   parentSubjectName?: string
+  memberCount?: number
+  appCount?: number
+  childCount?: number
+  contractCount?: number
+  clientCount?: number
   status: number
   createTime?: string
   updateTime?: string

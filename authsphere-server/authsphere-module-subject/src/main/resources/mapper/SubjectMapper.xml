@@ -87,18 +87,54 @@
         order by create_time desc
     </select>
 
-    <select id="detail" resultType="com.authsphere.server.subject.dto.SubjectResponse">
+    <!-- 主体详情：单独返回详情页所需归属信息和统计信息。 -->
+    <select id="detail" resultType="com.authsphere.server.subject.dto.SubjectDetailResponse">
         select
-            *
-        from subject
-        where id = #{id}
+            s.id,
+            s.subject_type_id as subjectTypeId,
+            st.code as subjectTypeCode,
+            st.name as subjectTypeName,
+            s.realm_id as realmId,
+            r.code as realmCode,
+            r.name as realmName,
+            s.code,
+            s.name,
+            s.status,
+            s.root_subject_id as rootSubjectId,
+            root_subject.code as rootSubjectCode,
+            root_subject.name as rootSubjectName,
+            s.parent_subject_id as parentSubjectId,
+            parent_subject.code as parentSubjectCode,
+            parent_subject.name as parentSubjectName,
+            s.is_root as isRoot,
+            s.built_in as builtIn,
+            s.description,
+            (
+                select count(1)
+                from subject_member sm
+                where sm.subject_id = s.id
+                  and sm.status != 3
+            ) as memberCount,
+            (
+                select count(1)
+                from app_instance ai
+                where ai.owner_subject_id = s.id
+            ) as appCount,
+            (
+                select count(1)
+                from subject child
+                where child.parent_subject_id = s.id
+            ) as childCount,
+            s.create_time as createTime,
+            s.update_time as updateTime
+        from subject s
+        left join subject_type st on st.id = s.subject_type_id
+        left join realm r on r.id = s.realm_id
+        left join subject root_subject on root_subject.id = s.root_subject_id
+        left join subject parent_subject on parent_subject.id = s.parent_subject_id
+        where s.id = #{id}
     </select>
 
-    <select id="countRealmById" resultType="java.lang.Long">
-        select count(1)
-        from realm
-        where id = #{realmId}
-    </select>
 
     <select id="listRealmsByIds" resultType="com.authsphere.server.subject.dto.SubjectRealmOption">
         select

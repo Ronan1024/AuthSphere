@@ -4,9 +4,11 @@ import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
 import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
+import com.authsphere.server.common.utils.Assert;
 import com.authsphere.server.subject.convert.SubjectConvert;
 import com.authsphere.server.subject.domain.SubjectDomain;
 import com.authsphere.server.subject.domain.SubjectTypeDomain;
+import com.authsphere.server.subject.dto.SubjectDetailResponse;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
 import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
@@ -21,6 +23,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -59,22 +62,18 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
                 parentSubjectMap.putAll(parentSubjects.stream().collect(Collectors.toMap(Subject::getId, e -> e)));
 
             }
-            records.forEach(record -> {
-                RealmInfoResponse realmInfo = realmInfoMap.get(record.getRealmId());
-                record.setRealmName(realmInfo.getName());
-                record.setRealmCode(realmInfo.getCode());
-                Subject subject = parentSubjectMap.getOrDefault(record.getParentId(), new Subject());
-                record.setParentName(subject.getName());
+            records.forEach(subjectPageResponse -> {
+                RealmInfoResponse realmInfo = realmInfoMap.get(subjectPageResponse.getRealmId());
+                subjectPageResponse.setRealmName(realmInfo.getName());
+                subjectPageResponse.setRealmCode(realmInfo.getCode());
+                Subject subject = parentSubjectMap.getOrDefault(subjectPageResponse.getParentId(), new Subject());
+                subjectPageResponse.setParentName(subject.getName());
                 // TODO 主体关联数据
-                record.setMemberCount(0);
-                record.setClientCount(0);
-                record.setClientCount(0);
+                subjectPageResponse.setMemberCount(0);
+                subjectPageResponse.setClientCount(0);
+                subjectPageResponse.setClientCount(0);
             });
-
-
         }
-
-
         return result;
     }
 
@@ -84,7 +83,7 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
     }
 
     @Override
-    public SubjectResponse detail(Long id) {
+    public SubjectDetailResponse detail(Long id) {
         subjectDomain.findById(id);
         return subjectMapper.detail(id);
     }
@@ -136,14 +135,17 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
 
     private void validateSubject(Long currentId, SubjectRequest request) {
         // 创建和编辑共用同一套引用校验，避免两处规则漂移。
+        Assert.isEmpty(realmApi.info(request.getRealmId()),
+                () -> new BizException(SubjectErrorCode.SUBJECT_REALM_DATA_ERROR));
+
         subjectTypeDomain.findById(request.getSubjectTypeId());
-        checkRealmExists(request.getRealmId());
-        if (request.getParentSubjectId() != null) {
+        if (!ObjectUtils.isEmpty(request.getParentSubjectId())) {
             if (Objects.equals(currentId, request.getParentSubjectId())) {
                 throw new BizException(SubjectErrorCode.SUBJECT_PARENT_SELF_DENIED);
             }
             subjectDomain.findById(request.getParentSubjectId());
         }
+
         if (request.getRootSubjectId() != null) {
             if (Objects.equals(currentId, request.getRootSubjectId())) {
                 throw new BizException(SubjectErrorCode.SUBJECT_ROOT_SELF_DENIED);
@@ -152,10 +154,4 @@ public class SubjectServiceImpl extends ServiceImpl<SubjectMapper, Subject> impl
         }
     }
 
-    private void checkRealmExists(Long realmId) {
-        Long count = subjectMapper.countRealmById(realmId);
-        if (count == null || count == 0) {
-            throw new BizException(SubjectErrorCode.SUBJECT_REALM_DATA_ERROR);
-        }
-    }
 }

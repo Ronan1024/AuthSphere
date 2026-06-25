@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
 import { accountApi } from '@/api/account'
-import { realmApi, type RealmRecord } from '@/api/realm'
+import { realmApi, type RealmOption } from '@/api/realm'
 
 const visible = ref(false)
 const emit = defineEmits(['success'])
@@ -13,13 +13,14 @@ const realmLoading = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
 const editingId = ref<string>()
 
-const realmOptions = ref<RealmRecord[]>([])
+const realmOptions = ref<RealmOption[]>([])
 
 const formRef = ref()
 const formData = reactive({
   realmId: '',
   username: '',
   nickname: '',
+  remark: '',
   phonePrefix: '+86',
   mobile: '',
   email: '',
@@ -63,14 +64,27 @@ const rules = {
   confirmPassword: [{ required: true, validator: validatePass2, trigger: 'blur' }]
 }
 
+const selectedRealm = computed(() =>
+  realmOptions.value.find((item) => String(item.id) === String(formData.realmId)),
+)
+
+const supportsPasswordCredential = computed(() => {
+  const authMethodCodes = selectedRealm.value?.authMethodList?.map((item) => item.code?.toLowerCase()) ?? []
+  return authMethodCodes.some((code) => code === 'password' || code === 'password_login')
+})
+
+const clearPasswordFields = () => {
+  formData.password = ''
+  formData.confirmPassword = ''
+}
+
 const loadRealms = async (force = false) => {
   if (realmLoading.value || (!force && realmOptions.value.length > 0)) {
     return
   }
   realmLoading.value = true
   try {
-    const result = await realmApi.page({ page: 1, size: 100, status: 1 })
-    realmOptions.value = result.records ?? []
+    realmOptions.value = await realmApi.list()
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '身份域加载失败')
   } finally {
@@ -84,7 +98,7 @@ const handleRealmVisible = (opened: boolean) => {
   }
 }
 
-const open = (realms: RealmRecord[] = [], row?: any) => {
+const open = (realms: RealmOption[] = [], row?: any) => {
   if (realms.length > 0) {
     realmOptions.value = realms
   }
@@ -98,6 +112,7 @@ const open = (realms: RealmRecord[] = [], row?: any) => {
     formData.realmId = row.realmId
     formData.username = row.username
     formData.nickname = row.nickname
+    formData.remark = row.remark || ''
     formData.mobile = row.mobile
     formData.email = row.email || ''
     formData.credentialType = 'none'
@@ -107,6 +122,7 @@ const open = (realms: RealmRecord[] = [], row?: any) => {
     formData.realmId = ''
     formData.username = ''
     formData.nickname = ''
+    formData.remark = ''
     formData.mobile = ''
     formData.email = ''
     formData.credentialType = 'default'
@@ -118,6 +134,24 @@ const open = (realms: RealmRecord[] = [], row?: any) => {
   loadRealms()
 }
 
+watch(
+  () => formData.realmId,
+  async (realmId) => {
+    if (!realmId || dialogMode.value !== 'create') {
+      clearPasswordFields()
+      return
+    }
+    if (!supportsPasswordCredential.value) {
+      formData.credentialType = 'none'
+      clearPasswordFields()
+      return
+    }
+    if (formData.credentialType !== 'default' && formData.credentialType !== 'none') {
+      formData.credentialType = 'default'
+    }
+  },
+)
+
 const submit = async () => {
   if (!formRef.value) return
   await formRef.value.validate(async (valid: boolean) => {
@@ -128,9 +162,12 @@ const submit = async () => {
           realmId: formData.realmId,
           username: formData.username,
           nickname: formData.nickname,
+          remark: formData.remark || undefined,
           mobile: formData.mobile,
           email: formData.email || undefined,
-          password: formData.credentialType === 'default' ? formData.password : undefined,
+          password: supportsPasswordCredential.value && formData.credentialType === 'default'
+            ? formData.password
+            : undefined,
         }
         
         if (dialogMode.value === 'create') {
@@ -182,6 +219,16 @@ defineExpose({ open })
           <el-form-item label="昵称" prop="nickname">
             <el-input v-model="formData.nickname" placeholder="请输入昵称" />
           </el-form-item>
+          <el-form-item label="账号备注" prop="remark">
+            <el-input
+              v-model="formData.remark"
+              type="textarea"
+              :rows="3"
+              maxlength="200"
+              show-word-limit
+              placeholder="请输入账号备注"
+            />
+          </el-form-item>
           <el-form-item label="手机号" prop="mobile">
             <div class="mobile-input-group">
               <el-select v-model="formData.phonePrefix" style="width: 100px">
@@ -200,27 +247,34 @@ defineExpose({ open })
         <!-- 右栏：登录设置 -->
         <div class="form-column" v-if="dialogMode === 'create'">
           <div class="section-title">登录设置</div>
-          <el-form-item label="登录凭证">
-            <el-radio-group v-model="formData.credentialType" class="credential-radio">
-              <el-radio value="default">默认密码</el-radio>
-              <el-radio value="none">不设置密码 (首次登录时设置)</el-radio>
-            </el-radio-group>
-          </el-form-item>
-          
-          <template v-if="formData.credentialType === 'default'">
-            <el-form-item label="初始密码" prop="password">
-              <el-input v-model="formData.password" type="password" show-password placeholder="请输入初始密码" />
+          <template v-if="supportsPasswordCredential">
+            <el-form-item label="登录凭证">
+              <el-radio-group v-model="formData.credentialType" class="credential-radio">
+                <el-radio value="default">默认密码</el-radio>
+                <el-radio value="none">不设置密码 (首次登录时设置)</el-radio>
+              </el-radio-group>
             </el-form-item>
-            <el-form-item label="确认密码" prop="confirmPassword">
-              <el-input v-model="formData.confirmPassword" type="password" show-password placeholder="请再次输入密码" />
-            </el-form-item>
-            <el-form-item label="密码策略">
-              <div class="policy-check">
-                <el-icon class="check-icon"><CircleCheck /></el-icon>
-                <span>符合密码策略要求</span>
-              </div>
-            </el-form-item>
+            
+            <template v-if="formData.credentialType === 'default'">
+              <el-form-item label="初始密码" prop="password">
+                <el-input v-model="formData.password" type="password" show-password placeholder="请输入初始密码" />
+              </el-form-item>
+              <el-form-item label="确认密码" prop="confirmPassword">
+                <el-input v-model="formData.confirmPassword" type="password" show-password placeholder="请再次输入密码" />
+              </el-form-item>
+              <el-form-item label="密码策略">
+                <div class="policy-check">
+                  <el-icon class="check-icon"><CircleCheck /></el-icon>
+                  <span>符合密码策略要求</span>
+                </div>
+              </el-form-item>
+            </template>
           </template>
+          <el-form-item v-else label="登录凭证">
+            <div class="no-password-hint">
+              当前身份域未启用账号密码认证，不展示密码设置。
+            </div>
+          </el-form-item>
         </div>
       </div>
     </el-form>
@@ -276,6 +330,17 @@ defineExpose({ open })
   padding: 8px 12px;
   border-radius: 4px;
   width: 100%;
+}
+
+.no-password-hint {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.6;
+  border: 1px solid #e2e8f0;
 }
 
 .check-icon {

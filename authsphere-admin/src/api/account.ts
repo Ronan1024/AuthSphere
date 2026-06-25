@@ -20,6 +20,7 @@ export interface AccountRecord {
   realmName?: string
   username: string
   nickname?: string
+  remark?: string
   avatar?: string
   mobile?: string
   email?: string
@@ -35,6 +36,7 @@ export interface AccountPayload {
   realmId?: string | number
   username: string
   nickname?: string
+  remark?: string
   avatar?: string
   mobile: string
   email?: string
@@ -108,6 +110,7 @@ const mockAccounts = ref<AccountRecord[]>([
     realmName: '租户身份域',
     username: 'lisi',
     nickname: '李四',
+    remark: '租户侧运营账号',
     mobile: '13800000001',
     email: 'lisi@example.com',
     status: 1, // 启用
@@ -123,6 +126,7 @@ const mockAccounts = ref<AccountRecord[]>([
     realmName: '租户身份域',
     username: 'wangwu',
     nickname: '王五',
+    remark: '商户联系人',
     mobile: '13800000002',
     email: 'wangwu@example.com',
     status: 1,
@@ -138,6 +142,7 @@ const mockAccounts = ref<AccountRecord[]>([
     realmName: '平台身份域',
     username: 'old_admin',
     nickname: '管理员',
+    remark: '平台初始化管理员',
     mobile: '13900001111',
     email: 'admin@authsphere.com',
     status: 2, // 锁定
@@ -207,6 +212,7 @@ export const accountApi = {
         realmName: payload.realmId === '2' ? '平台身份域' : '租户身份域',
         username: payload.username,
         nickname: payload.nickname || payload.username,
+        remark: payload.remark,
         mobile: payload.mobile,
         email: payload.email,
         status: payload.status || 1,
@@ -231,6 +237,7 @@ export const accountApi = {
             ...mockAccounts.value[idx],
             username: payload.username,
             nickname: payload.nickname,
+            remark: payload.remark,
             mobile: payload.mobile,
             email: payload.email
           }

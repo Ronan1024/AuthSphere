@@ -1,30 +1,27 @@
-package com.authsphere.server.account.enums;
+package com.authsphere.server.common.enums;
 
 import lombok.Getter;
 
 /**
- * @program: AuthSphere
- * @description:
- * @author: L.J.Ran
- * @create: 2026/6/2
+ * 凭证类型。
  */
 @Getter
 public enum CredentialType {
 
     /**
-     * password
+     * 密码凭证。
      */
     PASSWORD(1, "PASSWORD"),
+
     /**
-     * TOTP
+     * TOTP 动态口令凭证。
      */
     TOTP(2, "TOTP"),
-    /**
-     * passkey
-     */
-    PASSKEY(3, "PASSKEY"),
 
-    ;
+    /**
+     * Passkey/WebAuthn 凭证。
+     */
+    PASSKEY(3, "PASSKEY");
 
     private final Integer code;
 
@@ -34,5 +31,4 @@ public enum CredentialType {
         this.code = code;
         this.desc = desc;
     }
-
 }

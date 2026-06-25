@@ -1,5 +1,6 @@
 package com.authsphere.server.subject.service;
 
+import com.authsphere.server.subject.dto.SubjectDetailResponse;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
 import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
@@ -30,7 +31,7 @@ public interface SubjectService extends IService<Subject> {
     /**
      * 主体详情。
      */
-    SubjectResponse detail(Long id);
+    SubjectDetailResponse detail(Long id);
 
     /**
      * 新增主体。

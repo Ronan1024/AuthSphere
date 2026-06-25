@@ -2,11 +2,14 @@ package com.authsphere.account.service.impl;
 
 import com.authsphere.server.account.dto.AccountCreateRequest;
 import com.authsphere.server.account.dto.AccountPageRequest;
+import com.authsphere.server.account.dto.AccountPasswordResetRequest;
 import com.authsphere.server.account.dto.AccountPageResponse;
 import com.authsphere.server.account.enums.AccountStatus;
 import com.authsphere.server.account.error.AccountErrorCode;
 import com.authsphere.server.account.mapper.AccountMapper;
 import com.authsphere.server.account.model.Account;
+import com.authsphere.server.account.security.PasswordHash;
+import com.authsphere.server.account.security.PasswordHashService;
 import com.authsphere.server.account.service.impl.AccountServiceImpl;
 import com.authsphere.server.api.realm.RealmApi;
 import com.baomidou.mybatisplus.core.metadata.IPage;
@@ -56,6 +59,9 @@ class AccountServiceImplTest {
     @Mock
     private com.authsphere.server.api.subject.SubjectMemberApi subjectMemberApi;
 
+    @Mock
+    private PasswordHashService passwordHashService;
+
     @InjectMocks
     private AccountServiceImpl accountService;
 
@@ -84,6 +90,8 @@ class AccountServiceImplTest {
         AccountCreateRequest request = createRequest();
         request.setStatus(null);
         when(realmApi.info(1L)).thenReturn(new RealmInfoResponse());
+        when(passwordHashService.hash("AuthSphere#123"))
+                .thenReturn(new PasswordHash("hashed-password", "salt-value", "PBKDF2_SHA256"));
 
         Boolean result = accountService.create(request);
 
@@ -93,9 +101,11 @@ class AccountServiceImplTest {
         Account account = captor.getValue();
         assertEquals(1L, account.getRealmId());
         assertEquals("admin", account.getUsername());
+        assertEquals("hashed-password", account.getPassword());
         assertEquals("admin@example.com", account.getEmail());
         assertEquals("13800138000", account.getMobile());
         assertEquals(AccountStatus.ENABLED.getCode(), account.getStatus());
+        verify(accountMapper).upsertPasswordCredential(account, "hashed-password", "salt-value", "PBKDF2_SHA256", Boolean.FALSE);
     }
 
     @Test
@@ -166,6 +176,27 @@ class AccountServiceImplTest {
         assertEquals(StatusEnum.NORMAL.getCode(), captor.getValue().getStatus());
     }
 
+    @Test
+    void resetPasswordShouldHashPasswordBeforePersisting() {
+        Account account = new Account();
+        account.setId(1L);
+        account.setRealmId(1L);
+        when(accountDomain.findById(1L)).thenReturn(account);
+        when(passwordHashService.hash("Next#Password1"))
+                .thenReturn(new PasswordHash("reset-hash", "reset-salt", "PBKDF2_SHA256"));
+
+        AccountPasswordResetRequest request = new AccountPasswordResetRequest();
+        request.setNewPassword("Next#Password1");
+        request.setForceReset(Boolean.TRUE);
+
+        Boolean result = accountService.resetPassword(1L, request);
+
+        assertTrue(result);
+        assertEquals("reset-hash", account.getPassword());
+        verify(accountMapper).updateById(account);
+        verify(accountMapper).upsertPasswordCredential(account, "reset-hash", "reset-salt", "PBKDF2_SHA256", Boolean.TRUE);
+    }
+
 
 
     private AccountCreateRequest createRequest() {
@@ -174,6 +205,7 @@ class AccountServiceImplTest {
         request.setUsername("admin");
         request.setEmail("admin@example.com");
         request.setMobile("13800138000");
+        request.setPassword("AuthSphere#123");
         request.setStatus(AccountStatus.ENABLED.getCode());
         return request;
     }

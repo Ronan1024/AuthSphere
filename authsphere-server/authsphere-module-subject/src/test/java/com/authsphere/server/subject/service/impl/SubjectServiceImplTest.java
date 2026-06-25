@@ -1,9 +1,12 @@
 package com.authsphere.server.subject.service.impl;
 
+import com.authsphere.server.api.model.dto.realm.RealmInfoResponse;
+import com.authsphere.server.api.realm.RealmApi;
 import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.subject.domain.SubjectDomain;
 import com.authsphere.server.subject.domain.SubjectTypeDomain;
+import com.authsphere.server.subject.dto.SubjectDetailResponse;
 import com.authsphere.server.subject.dto.SubjectPageRequest;
 import com.authsphere.server.subject.dto.SubjectPageResponse;
 import com.authsphere.server.subject.dto.SubjectRequest;
@@ -49,6 +52,9 @@ class SubjectServiceImplTest {
     @Mock
     private SubjectTypeDomain subjectTypeDomain;
 
+    @Mock
+    private RealmApi realmApi;
+
     @InjectMocks
     private SubjectServiceImpl subjectService;
 
@@ -61,14 +67,17 @@ class SubjectServiceImplTest {
         mapperResult.setPages(1);
         SubjectPageResponse response = new SubjectPageResponse();
         response.setCode("saas");
+        response.setRealmId(1L);
         mapperResult.setRecords(List.of(response));
         when(subjectMapper.page(any(IPage.class), any(SubjectPageRequest.class))).thenReturn(mapperResult);
+        when(realmApi.list(List.of(1L))).thenReturn(List.of(createRealmInfo()));
 
         Page<SubjectPageResponse> result = subjectService.page(request);
 
         assertEquals(1, result.getTotal());
         assertEquals(1, result.getRecords().size());
         assertEquals("saas", result.getRecords().getFirst().getCode());
+        assertEquals("tenant_realm", result.getRecords().getFirst().getRealmCode());
         verify(subjectMapper).page(any(IPage.class), any(SubjectPageRequest.class));
     }
 
@@ -86,12 +95,12 @@ class SubjectServiceImplTest {
 
     @Test
     void detailShouldReturnMapperDetail() {
-        SubjectResponse response = new SubjectResponse();
+        SubjectDetailResponse response = new SubjectDetailResponse();
         response.setCode("saas");
         when(subjectDomain.findById(1L)).thenReturn(createSubject());
         when(subjectMapper.detail(1L)).thenReturn(response);
 
-        SubjectResponse result = subjectService.detail(1L);
+        SubjectDetailResponse result = subjectService.detail(1L);
 
         assertSame(response, result);
     }
@@ -124,8 +133,7 @@ class SubjectServiceImplTest {
 
     @Test
     void createShouldThrowBizExceptionWhenRealmNotExists() {
-        when(subjectTypeDomain.findById(1L)).thenReturn(createSubjectType());
-        when(subjectMapper.countRealmById(1L)).thenReturn(0L);
+        when(realmApi.info(1L)).thenReturn(null);
 
         BizException exception = assertThrows(BizException.class,
                 () -> subjectService.create(createRequest()));
@@ -156,8 +164,8 @@ class SubjectServiceImplTest {
         SubjectRequest request = createRequest();
         request.setParentSubjectId(1L);
         when(subjectDomain.findById(1L)).thenReturn(createSubject());
+        when(realmApi.info(1L)).thenReturn(createRealmInfo());
         when(subjectTypeDomain.findById(1L)).thenReturn(createSubjectType());
-        when(subjectMapper.countRealmById(1L)).thenReturn(1L);
 
         BizException exception = assertThrows(BizException.class,
                 () -> subjectService.edit(1L, request));
@@ -206,8 +214,8 @@ class SubjectServiceImplTest {
     }
 
     private void mockValidReference() {
+        when(realmApi.info(1L)).thenReturn(createRealmInfo());
         when(subjectTypeDomain.findById(1L)).thenReturn(createSubjectType());
-        when(subjectMapper.countRealmById(1L)).thenReturn(1L);
     }
 
     private SubjectRequest createRequest() {
@@ -240,5 +248,13 @@ class SubjectServiceImplTest {
         subjectType.setCode("saas_platform");
         subjectType.setName("SaaS平台");
         return subjectType;
+    }
+
+    private RealmInfoResponse createRealmInfo() {
+        RealmInfoResponse response = new RealmInfoResponse();
+        response.setId(1L);
+        response.setCode("tenant_realm");
+        response.setName("租户身份域");
+        return response;
     }
 }

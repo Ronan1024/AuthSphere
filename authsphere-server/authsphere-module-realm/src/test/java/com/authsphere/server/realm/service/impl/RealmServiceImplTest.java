@@ -7,6 +7,7 @@ import com.authsphere.server.common.enums.StatusEnum;
 import com.authsphere.server.common.exception.BizException;
 import com.authsphere.server.realm.dto.CreateRealmRequest;
 import com.authsphere.server.realm.dto.RealmDetailResponse;
+import com.authsphere.server.realm.dto.RealmListResponse;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
@@ -385,15 +386,26 @@ class RealmServiceImplTest {
 
     @Test
     void listShouldReturnAllRealms() {
-        com.authsphere.server.realm.dto.RealmListResponse r1 = new com.authsphere.server.realm.dto.RealmListResponse();
+        RealmListResponse r1 = new RealmListResponse();
         r1.setId(1L);
         r1.setName("R1");
         when(realmMapper.listAll()).thenReturn(List.of(r1));
+        RealmAuthMethodRel rel1 = new RealmAuthMethodRel();
+        rel1.setRealmId(1L);
+        rel1.setAuthMethodId(1L);
+        when(realmAuthMethodRelMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of(rel1));
+        AuthMethod method = new AuthMethod();
+        method.setId(1L);
+        method.setCode("password_login");
+        method.setName("账号密码");
+        when(authMethodMapper.selectBatchIds(any())).thenReturn(List.of(method));
 
-        List<com.authsphere.server.realm.dto.RealmListResponse> result = realmService.list();
+        List<RealmListResponse> result = realmService.list();
 
         assertEquals(1, result.size());
         assertEquals("R1", result.get(0).getName());
+        assertEquals(1, result.get(0).getAuthMethodList().size());
+        assertEquals("password_login", result.get(0).getAuthMethodList().getFirst().getCode());
     }
 
     @Test

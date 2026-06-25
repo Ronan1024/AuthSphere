@@ -34,7 +34,6 @@ public interface AccountService extends IService<Account> {
     /**
      * 新增账号
      */
-    @Transactional(rollbackFor = Exception.class)
     Boolean create(AccountCreateRequest request);
 
     /**

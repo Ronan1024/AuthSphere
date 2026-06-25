@@ -33,7 +33,9 @@ public interface AccountMapper extends BaseMapper<Account> {
     Long countEnabledRealmById(@Param("realmId") Long realmId);
 
     void upsertPasswordCredential(@Param("account") Account account,
-                                  @Param("password") String password,
+                                  @Param("passwordHash") String passwordHash,
+                                  @Param("passwordSalt") String passwordSalt,
+                                  @Param("passwordAlgo") String passwordAlgo,
                                   @Param("forceReset") Boolean forceReset);
 
     java.util.List<AccountSubjectResponse> listSubjects(@Param("accountId") Long accountId);
@@ -44,6 +46,5 @@ public interface AccountMapper extends BaseMapper<Account> {
                                                 @Param("accountId") Long accountId,
                                                 @Param("request") AccountLoginLogPageRequest request);
 }
-
 
 

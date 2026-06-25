@@ -96,7 +96,7 @@ public class RealmController {
      */
     @GetMapping("/list")
     public List<RealmListResponse> list() {
-        return realmService.list();
+        return realmService.realmList();
     }
 
 }

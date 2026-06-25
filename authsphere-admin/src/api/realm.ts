@@ -77,6 +77,7 @@ export interface RealmOption {
   code: string
   name: string
   status?: number
+  authMethodList?: { id: string | number; code: string; name: string; description?: string }[]
 }
 
 export const realmApi = {
