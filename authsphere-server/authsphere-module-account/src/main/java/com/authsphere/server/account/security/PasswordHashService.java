@@ -9,8 +9,7 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
-import java.util.Arrays;
-import java.util.Base64;
+import java.util.*;
 
 /**
  * 密码哈希服务。
@@ -19,6 +18,13 @@ import java.util.Base64;
 @RequiredArgsConstructor
 public class PasswordHashService {
 
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+
+    private static final String UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+    private static final String LOWER = "abcdefghijkmnopqrstuvwxyz";
+    private static final String DIGIT = "23456789";
+    private static final String ALL = UPPER + LOWER + DIGIT;
+
     private static final String PASSWORD_ALGORITHM = "PBKDF2_SHA256";
     private static final String PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA256";
     private static final int ITERATIONS = 120_000;
@@ -26,6 +32,11 @@ public class PasswordHashService {
     private static final int SALT_BYTES = 16;
 
     private final PasswordSecurityProperties properties;
+
+
+    public PasswordSecurityProperties getProperties() {
+        return properties;
+    }
 
     /**
      * 使用随机盐值对密码进行哈希。
@@ -61,6 +72,38 @@ public class PasswordHashService {
             spec.clearPassword();
             specClear(source);
         }
+    }
+
+    /**
+     * 生成临时密码
+     */
+    public String generateTemplatePassword(int length) {
+        if (length < 12) {
+            throw new IllegalArgumentException("临时密码长度不能小于 12 位");
+        }
+
+        List<Character> chars = new ArrayList<>();
+
+        chars.add(randomChar(UPPER));
+        chars.add(randomChar(LOWER));
+        chars.add(randomChar(DIGIT));
+
+        for (int i = chars.size(); i < length; i++) {
+            chars.add(randomChar(ALL));
+        }
+
+        Collections.shuffle(chars, SECURE_RANDOM);
+
+        StringBuilder password = new StringBuilder();
+        for (Character c : chars) {
+            password.append(c);
+        }
+
+        return password.toString();
+    }
+
+    private static char randomChar(String source) {
+        return source.charAt(SECURE_RANDOM.nextInt(source.length()));
     }
 
     private void specClear(char[] source) {

@@ -28,7 +28,14 @@ public enum AccountErrorCode implements BaseError {
      * 身份域数据异常
      */
     ACCOUNT_REALM_DATA_ERROR(ACCOUNT + "014", "身份域数据异常"),
-    ;
+    /**
+     * 邮箱已存在
+     */
+    ACCOUNT_EMAIL_EXISTS(ACCOUNT + "015", "邮箱已被他人使用"),
+    /**
+     * 手机号已存在
+     */
+    ACCOUNT_MOBILE_EXISTS(ACCOUNT + "016", "手机号已被他人使用");
 
     private final String code;
 

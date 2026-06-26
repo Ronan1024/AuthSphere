@@ -1,6 +1,7 @@
 package com.authsphere.account.service.impl;
 
 import com.authsphere.server.account.dto.AccountCreateRequest;
+import com.authsphere.server.account.dto.AccountCreateResponse;
 import com.authsphere.server.account.dto.AccountPageRequest;
 import com.authsphere.server.account.dto.AccountPasswordResetRequest;
 import com.authsphere.server.account.dto.AccountPageResponse;
@@ -8,7 +9,9 @@ import com.authsphere.server.account.enums.AccountStatus;
 import com.authsphere.server.account.error.AccountErrorCode;
 import com.authsphere.server.account.mapper.AccountMapper;
 import com.authsphere.server.account.model.Account;
+import com.authsphere.server.account.model.AccountCredential;
 import com.authsphere.server.account.security.PasswordHash;
+import com.authsphere.server.account.security.PasswordSecurityProperties;
 import com.authsphere.server.account.security.PasswordHashService;
 import com.authsphere.server.account.service.impl.AccountServiceImpl;
 import com.authsphere.server.api.realm.RealmApi;
@@ -51,9 +54,6 @@ class AccountServiceImplTest {
     private com.authsphere.server.account.domain.AccountDomain accountDomain;
 
     @Mock
-    private com.authsphere.server.account.domain.AccountCredentialDomain accountCredentialDomain;
-
-    @Mock
     private RealmApi realmApi;
 
     @Mock
@@ -89,23 +89,59 @@ class AccountServiceImplTest {
     void createShouldInsertAccountWhenUsernameNotExistsInRealm() {
         AccountCreateRequest request = createRequest();
         request.setStatus(null);
-        when(realmApi.info(1L)).thenReturn(new RealmInfoResponse());
+        RealmInfoResponse realmInfo = new RealmInfoResponse();
+        realmInfo.setId(1L);
+        realmInfo.setAuthMethod(java.util.List.of("PASSWORD-LOGIN"));
+        when(realmApi.info(1L)).thenReturn(realmInfo);
+        PasswordSecurityProperties properties = new PasswordSecurityProperties();
+        properties.setPepper("pepper-value");
+        when(passwordHashService.getProperties()).thenReturn(properties);
         when(passwordHashService.hash("AuthSphere#123"))
                 .thenReturn(new PasswordHash("hashed-password", "salt-value", "PBKDF2_SHA256"));
 
-        Boolean result = accountService.create(request);
+        AccountCreateResponse result = accountService.create(request);
 
-        assertTrue(result);
-        ArgumentCaptor<Account> captor = ArgumentCaptor.forClass(Account.class);
-        verify(accountMapper).insert(captor.capture());
-        Account account = captor.getValue();
+        assertEquals(null, result.getTemporaryPassword());
+        ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
+        ArgumentCaptor<AccountCredential> credentialCaptor = ArgumentCaptor.forClass(AccountCredential.class);
+        verify(accountDomain).saveAccount(accountCaptor.capture(), credentialCaptor.capture());
+        Account account = accountCaptor.getValue();
+        AccountCredential credential = credentialCaptor.getValue();
         assertEquals(1L, account.getRealmId());
         assertEquals("admin", account.getUsername());
         assertEquals("hashed-password", account.getPassword());
         assertEquals("admin@example.com", account.getEmail());
         assertEquals("13800138000", account.getMobile());
         assertEquals(AccountStatus.ENABLED.getCode(), account.getStatus());
-        verify(accountMapper).upsertPasswordCredential(account, "hashed-password", "salt-value", "PBKDF2_SHA256", Boolean.FALSE);
+        assertEquals("hashed-password", credential.getCredentialValue());
+        assertEquals("salt-value", credential.getPasswordSalt());
+        assertEquals("PBKDF2_SHA256", credential.getPasswordAlgo());
+    }
+
+    @Test
+    void createShouldReturnTemporaryPasswordWhenRequested() {
+        AccountCreateRequest request = createRequest();
+        request.setPassword(null);
+        request.setUseTemporaryPassword(Boolean.TRUE);
+        RealmInfoResponse realmInfo = new RealmInfoResponse();
+        realmInfo.setId(1L);
+        realmInfo.setAuthMethod(java.util.List.of("PASSWORD-LOGIN"));
+        when(realmApi.info(1L)).thenReturn(realmInfo);
+        PasswordSecurityProperties properties = new PasswordSecurityProperties();
+        properties.setPepper("pepper-value");
+        when(passwordHashService.getProperties()).thenReturn(properties);
+        when(passwordHashService.generateTemplatePassword(12)).thenReturn("Temp#Pass123");
+        when(passwordHashService.hash("Temp#Pass123"))
+                .thenReturn(new PasswordHash("hashed-temp-password", "temp-salt", "PBKDF2_SHA256"));
+
+        AccountCreateResponse result = accountService.create(request);
+
+        assertEquals("Temp#Pass123", result.getTemporaryPassword());
+        ArgumentCaptor<Account> accountCaptor = ArgumentCaptor.forClass(Account.class);
+        ArgumentCaptor<AccountCredential> credentialCaptor = ArgumentCaptor.forClass(AccountCredential.class);
+        verify(accountDomain).saveAccount(accountCaptor.capture(), credentialCaptor.capture());
+        assertEquals("hashed-temp-password", accountCaptor.getValue().getPassword());
+        assertTrue(credentialCaptor.getValue().getForceChange());
     }
 
     @Test
@@ -206,6 +242,7 @@ class AccountServiceImplTest {
         request.setEmail("admin@example.com");
         request.setMobile("13800138000");
         request.setPassword("AuthSphere#123");
+        request.setUseTemporaryPassword(Boolean.FALSE);
         request.setStatus(AccountStatus.ENABLED.getCode());
         return request;
     }

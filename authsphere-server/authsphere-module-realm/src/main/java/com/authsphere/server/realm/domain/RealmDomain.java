@@ -8,8 +8,10 @@ import com.authsphere.server.realm.convert.RealmConvert;
 import com.authsphere.server.realm.dto.RealmPageRequest;
 import com.authsphere.server.realm.dto.RealmPageResponse;
 import com.authsphere.server.realm.error.RealmErrorCode;
+import com.authsphere.server.realm.mapper.AuthMethodMapper;
 import com.authsphere.server.realm.mapper.RealmAuthMethodRelMapper;
 import com.authsphere.server.realm.mapper.RealmMapper;
+import com.authsphere.server.realm.model.AuthMethod;
 import com.authsphere.server.realm.model.Realm;
 import com.authsphere.server.realm.model.RealmAuthMethodRel;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -33,6 +35,7 @@ public class RealmDomain implements RealmApi {
 
     private final RealmMapper realmMapper;
     private final RealmAuthMethodRelMapper realmAuthMethodRelMapper;
+    private final AuthMethodMapper authMethodMapper;
 
     /**
      * 获取身份域信息
@@ -71,8 +74,13 @@ public class RealmDomain implements RealmApi {
         if (ObjectUtils.isEmpty(byId)) {
             throw new BizException(RealmErrorCode.REALM_DATA_ERROR);
         }
-        // TODO 处理身份域认证方式编号列表
-        return RealmConvert.INSTANCE.toRealmInfoResponse(byId);
+        List<RealmAuthMethodRel> realmAuthMethodRelList = realmAuthMethodRelMapper.selectList(new LambdaQueryWrapper<RealmAuthMethodRel>().eq(RealmAuthMethodRel::getRealmId, realmId));
+        List<Long> authMethodIdList = realmAuthMethodRelList.stream().map(RealmAuthMethodRel::getAuthMethodId).toList();
+        List<AuthMethod> authMethods = authMethodMapper.selectByIds(authMethodIdList);
+        List<String> authMethodCodes = authMethods.stream().map(AuthMethod::getCode).toList();
+        RealmInfoResponse realmInfoResponse = RealmConvert.INSTANCE.toRealmInfoResponse(byId);
+        realmInfoResponse.setAuthMethod(authMethodCodes);
+        return realmInfoResponse;
     }
 
     /**

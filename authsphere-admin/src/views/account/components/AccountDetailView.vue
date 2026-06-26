@@ -261,34 +261,53 @@ const handleCommand = (command: string, row: AccountRecord) => {
           <!-- Metrics Row Inside Content -->
           <div class="content-metrics-row mb-6">
             <div class="c-metric-card">
-              <span class="c-metric-val">{{ account?.subjectMemberCount ?? 2 }}</span>
+              <span class="c-metric-val">{{ account?.subjectMemberCount ?? 0 }}</span>
               <span class="c-metric-lbl">关联主体</span>
             </div>
             <div class="c-metric-card">
-              <span class="c-metric-val">3</span>
-              <span class="c-metric-lbl">可访问客户端</span>
+              <span class="c-metric-val">{{ account?.externalIdentityCount ?? 0 }}</span>
+              <span class="c-metric-lbl">第三方绑定</span>
             </div>
             <div class="c-metric-card">
-              <span class="c-metric-val">4</span>
-              <span class="c-metric-lbl">已分配角色</span>
+              <span
+                class="c-metric-val"
+                :class="account?.status === ACCOUNT_STATUS_LOCKED ? 'text-warning' : account?.status === ACCOUNT_STATUS_DISABLED ? 'text-danger' : ''"
+              >
+                {{ account?.status === ACCOUNT_STATUS_LOCKED ? '锁定' : account?.status === ACCOUNT_STATUS_DISABLED ? '禁用' : '启用' }}
+              </span>
+              <span class="c-metric-lbl">账号状态</span>
             </div>
             <div class="c-metric-card">
-              <span class="c-metric-val">0</span>
-              <span class="c-metric-lbl">当前锁定风险</span>
+              <span class="c-metric-val metric-time">{{ account?.lastLoginTime || '-' }}</span>
+              <span class="c-metric-lbl">最近登录</span>
             </div>
           </div>
 
           <!-- Cards Grid -->
           <div class="basic-info-layout">
             <div class="info-card-panel">
-              <h3>基础信息</h3>
+              <div class="panel-header">
+                <h3>账号资料</h3>
+                <p>来自 `account` 表的基础信息</p>
+              </div>
               <div class="panel-rows">
+                <div class="panel-row">
+                  <label>账号 ID</label>
+                  <span class="mono-text">{{ account?.id || '-' }}</span>
+                </div>
                 <div class="panel-row">
                   <label>用户名</label>
                   <div v-if="isEditing" class="edit-input-wrapper">
                     <el-input v-model="editForm.username" size="default" />
                   </div>
                   <span v-else>{{ account?.username }}</span>
+                </div>
+                <div class="panel-row">
+                  <label>昵称</label>
+                  <div v-if="isEditing" class="edit-input-wrapper">
+                    <el-input v-model="editForm.nickname" size="default" />
+                  </div>
+                  <span v-else>{{ account?.nickname || '-' }}</span>
                 </div>
                 <div class="panel-row">
                   <label>所属身份域</label>
@@ -310,34 +329,38 @@ const handleCommand = (command: string, row: AccountRecord) => {
                 </div>
                 <div class="panel-row">
                   <label>状态</label>
-                  <span class="status-pill green" v-if="account?.status !== ACCOUNT_STATUS_DISABLED">启用</span>
+                  <span class="status-pill green" v-if="account?.status === 1">启用</span>
+                  <span class="status-pill orange" v-else-if="account?.status === ACCOUNT_STATUS_LOCKED">锁定</span>
                   <span class="status-pill red" v-else>禁用</span>
                 </div>
               </div>
             </div>
 
             <div class="info-card-panel">
-              <h3>安全状态</h3>
+              <div class="panel-header">
+                <h3>凭证状态</h3>
+                <p>按账号状态展示当前可判断的登录信息</p>
+              </div>
               <div class="panel-rows">
                 <div class="panel-row">
-                  <label>密码状态</label>
-                  <span>正常</span>
+                  <label>登录凭证</label>
+                  <span>-</span>
                 </div>
                 <div class="panel-row">
-                  <label>登录失败次数</label>
-                  <span>0 / 5</span>
+                  <label>锁定状态</label>
+                  <span>{{ account?.status === ACCOUNT_STATUS_LOCKED ? '已锁定' : '正常' }}</span>
                 </div>
                 <div class="panel-row">
-                  <label>是否锁定</label>
-                  <span>否</span>
+                  <label>创建时间</label>
+                  <span>{{ account?.createTime || '-' }}</span>
                 </div>
                 <div class="panel-row">
-                  <label>最近改密</label>
-                  <span>2026-05-10 14:20</span>
+                  <label>更新时间</label>
+                  <span>{{ account?.updateTime || '-' }}</span>
                 </div>
                 <div class="panel-row">
-                  <label>MFA</label>
-                  <span class="status-pill orange">未绑定</span>
+                  <label>最近登录</label>
+                  <span>{{ account?.lastLoginTime || '-' }}</span>
                 </div>
               </div>
             </div>
@@ -678,15 +701,29 @@ const handleCommand = (command: string, row: AccountRecord) => {
   font-family: var(--font-family-display);
 }
 
+.c-metric-val.metric-time {
+  font-size: 15px;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
 .c-metric-lbl {
   font-size: 13px;
   color: var(--text-muted);
 }
 
+.text-warning {
+  color: #ea580c;
+}
+
+.text-danger {
+  color: #dc2626;
+}
+
 /* Details Panel layout */
 .basic-info-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 20px;
 }
 
@@ -697,12 +734,26 @@ const handleCommand = (command: string, row: AccountRecord) => {
   background: #ffffff;
 }
 
+.panel-header {
+  margin-bottom: 20px;
+}
+
 .info-card-panel h3 {
   margin: 0 0 16px 0;
   font-size: 15px;
   font-weight: 700;
   color: var(--text-main);
   font-family: var(--font-family-display);
+}
+
+.panel-header h3 {
+  margin-bottom: 6px;
+}
+
+.panel-header p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .panel-rows {
@@ -727,6 +778,11 @@ const handleCommand = (command: string, row: AccountRecord) => {
   color: var(--text-main);
 }
 
+.mono-text {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -734,6 +790,26 @@ const handleCommand = (command: string, row: AccountRecord) => {
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 600;
+}
+
+@media (max-width: 1024px) {
+  .content-metrics-row,
+  .basic-info-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-metrics-row,
+  .basic-info-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .panel-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
 }
 
 .status-pill.green {
