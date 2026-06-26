@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import http from './http'
 import type { PageResult } from './subject'
 
 export interface AccountQuery {
@@ -40,8 +41,13 @@ export interface AccountPayload {
   avatar?: string
   mobile: string
   email?: string
+  useTemporaryPassword?: boolean
   password?: string
   status?: number
+}
+
+export interface AccountCreateResponse {
+  temporaryPassword?: string
 }
 
 export interface AccountPasswordResetPayload {
@@ -155,77 +161,15 @@ const mockAccounts = ref<AccountRecord[]>([
 
 export const accountApi = {
   page(params: AccountQuery) {
-    return new Promise<PageResult<AccountRecord>>((resolve) => {
-      let filtered = [...mockAccounts.value]
-      if (params.keyword) {
-        const kw = params.keyword.toLowerCase()
-        filtered = filtered.filter(item => 
-          item.username.toLowerCase().includes(kw) || 
-          (item.nickname && item.nickname.toLowerCase().includes(kw)) ||
-          (item.mobile && item.mobile.includes(kw)) ||
-          (item.email && item.email.toLowerCase().includes(kw))
-        )
-      }
-      if (params.realmId) {
-        filtered = filtered.filter(item => item.realmId === String(params.realmId))
-      }
-      if (params.status) {
-        filtered = filtered.filter(item => item.status === params.status)
-      }
-      
-      const total = filtered.length
-      const start = (params.page - 1) * params.size
-      const records = filtered.slice(start, start + params.size)
-      
-      setTimeout(() => {
-        resolve({
-          total,
-          records,
-          current: params.page,
-          size: params.size,
-          pages: Math.ceil(total / params.size)
-        })
-      }, 200)
-    })
+    return http.post<unknown, PageResult<AccountRecord>>('/admin/account/page', params)
   },
   
   detail(id: string) {
-    return new Promise<AccountRecord>((resolve, reject) => {
-      const record = mockAccounts.value.find(item => item.id === String(id))
-      setTimeout(() => {
-        if (record) {
-          resolve({ ...record })
-        } else {
-          reject(new Error('账号不存在'))
-        }
-      }, 150)
-    })
+    return http.get<unknown, AccountRecord>(`/admin/account/${id}`)
   },
   
   create(payload: AccountPayload) {
-    return new Promise<boolean>((resolve) => {
-      const newId = String(10000 + mockAccounts.value.length + 1)
-      const newRecord: AccountRecord = {
-        id: newId,
-        realmId: String(payload.realmId || '1'),
-        realmCode: payload.realmId === '2' ? 'platform_realm' : 'tenant_realm',
-        realmName: payload.realmId === '2' ? '平台身份域' : '租户身份域',
-        username: payload.username,
-        nickname: payload.nickname || payload.username,
-        remark: payload.remark,
-        mobile: payload.mobile,
-        email: payload.email,
-        status: payload.status || 1,
-        subjectMemberCount: 0,
-        externalIdentityCount: 0,
-        lastLoginTime: '-',
-        createTime: new Date().toISOString().replace('T', ' ').substring(0, 19)
-      }
-      mockAccounts.value.push(newRecord)
-      setTimeout(() => {
-        resolve(true)
-      }, 200)
-    })
+    return http.post<unknown, AccountCreateResponse>('/admin/account', payload)
   },
   
   update(id: string, payload: AccountPayload) {

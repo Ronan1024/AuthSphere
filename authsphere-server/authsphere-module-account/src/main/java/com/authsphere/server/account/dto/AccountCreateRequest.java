@@ -6,8 +6,6 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-import javax.swing.text.Style;
-
 /**
  * 创建用户账号
  *
@@ -49,6 +47,12 @@ public class AccountCreateRequest {
      */
     @NotBlank(message = "手机号不能为空")
     private String mobile;
+
+
+    /**
+     * 是否使用临时密码
+     */
+    private Boolean useTemporaryPassword;
 
     /**
      * 初始密码。

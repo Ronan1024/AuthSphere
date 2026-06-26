@@ -1,6 +1,7 @@
 package com.authsphere.server.account.api;
 
 import com.authsphere.server.account.dto.AccountCreateRequest;
+import com.authsphere.server.account.dto.AccountCreateResponse;
 import com.authsphere.server.account.dto.AccountExternalIdentityResponse;
 import com.authsphere.server.account.dto.AccountInfoResponse;
 import com.authsphere.server.account.dto.AccountLoginLogPageRequest;
@@ -42,6 +43,7 @@ public class AccountController {
 
     /**
      * 账号详情。
+     *
      */
     @GetMapping("/{id}")
     public AccountInfoResponse detail(@PathVariable Long id) {
@@ -52,7 +54,7 @@ public class AccountController {
      * 新增账号
      */
     @PostMapping
-    public Boolean create(@RequestBody @Validated AccountCreateRequest request) {
+    public AccountCreateResponse create(@RequestBody @Validated AccountCreateRequest request) {
         return accountService.create(request);
     }
 
@@ -62,7 +64,7 @@ public class AccountController {
      * @param id 账号id
      */
     @PutMapping("/{id}")
-    public Boolean update(@PathVariable("id") Long id, @RequestBody @Validated AccountCreateRequest request) {
+    public Boolean update(@PathVariable Long id, @RequestBody @Validated AccountCreateRequest request) {
         return accountService.update(id, request);
     }
 
@@ -72,7 +74,7 @@ public class AccountController {
      * @param id 账号id
      */
     @PutMapping("/status/{id}")
-    public Boolean editStatus(@PathVariable("id") Long id) {
+    public Boolean editStatus(@PathVariable Long id) {
         return accountService.editStatus(id);
     }
 
@@ -80,7 +82,7 @@ public class AccountController {
      * 锁定账号。
      */
     @PutMapping("/{id}/lock")
-    public Boolean lock(@PathVariable("id") Long id) {
+    public Boolean lock(@PathVariable Long id) {
         return accountService.lock(id);
     }
 
@@ -88,7 +90,7 @@ public class AccountController {
      * 解锁账号。
      */
     @PutMapping("/{id}/unlock")
-    public Boolean unlock(@PathVariable("id") Long id) {
+    public Boolean unlock(@PathVariable Long id) {
         return accountService.unlock(id);
     }
 
@@ -96,7 +98,7 @@ public class AccountController {
      * 重置账号密码。
      */
     @PutMapping("/{id}/password")
-    public Boolean resetPassword(@PathVariable("id") Long id,
+    public Boolean resetPassword(@PathVariable Long id,
                                  @RequestBody @Validated AccountPasswordResetRequest request) {
         return accountService.resetPassword(id, request);
     }
@@ -105,7 +107,7 @@ public class AccountController {
      * 查询账号加入的主体。
      */
     @GetMapping("/{id}/subjects")
-    public List<AccountSubjectResponse> listSubjects(@PathVariable("id") Long id) {
+    public List<AccountSubjectResponse> listSubjects(@PathVariable Long id) {
         return accountService.listSubjects(id);
     }
 
@@ -113,7 +115,7 @@ public class AccountController {
      * 查询账号第三方身份绑定。
      */
     @GetMapping("/{id}/external-identities")
-    public List<AccountExternalIdentityResponse> listExternalIdentities(@PathVariable("id") Long id) {
+    public List<AccountExternalIdentityResponse> listExternalIdentities(@PathVariable Long id) {
         return accountService.listExternalIdentities(id);
     }
 
@@ -121,7 +123,7 @@ public class AccountController {
      * 查询账号登录日志。
      */
     @PostMapping("/{id}/login-logs")
-    public Page<AccountLoginLogResponse> pageLoginLogs(@PathVariable("id") Long id,
+    public Page<AccountLoginLogResponse> pageLoginLogs(@PathVariable Long id,
                                                        @RequestBody @Validated AccountLoginLogPageRequest request) {
         return accountService.pageLoginLogs(id, request);
     }

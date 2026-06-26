@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch } from 'vue'
 import { CircleCheck } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 
-import { accountApi } from '@/api/account'
+import { accountApi, type AccountCreateResponse } from '@/api/account'
 import { realmApi, type RealmOption } from '@/api/realm'
 
 const visible = ref(false)
@@ -11,7 +11,9 @@ const emit = defineEmits(['success'])
 const saving = ref(false)
 const realmLoading = ref(false)
 const dialogMode = ref<'create' | 'edit'>('create')
+const createdResult = ref<AccountCreateResponse | null>(null)
 const editingId = ref<string>()
+const submitError = ref('')
 
 const realmOptions = ref<RealmOption[]>([])
 
@@ -24,13 +26,13 @@ const formData = reactive({
   phonePrefix: '+86',
   mobile: '',
   email: '',
-  credentialType: 'default', // default | none
+  credentialType: 'default', // default | temporary
   password: '',
   confirmPassword: ''
 })
 
 const validatePass2 = (_rule: any, value: any, callback: any) => {
-  if (formData.credentialType === 'none') {
+  if (formData.credentialType === 'temporary') {
     callback()
     return
   }
@@ -52,7 +54,7 @@ const rules = {
     {
       required: true,
       validator: (_rule: unknown, value: string, callback: (error?: Error) => void) => {
-        if (formData.credentialType === 'none' || value) {
+        if (formData.credentialType === 'temporary' || value) {
           callback()
           return
         }
@@ -69,13 +71,21 @@ const selectedRealm = computed(() =>
 )
 
 const supportsPasswordCredential = computed(() => {
-  const authMethodCodes = selectedRealm.value?.authMethodList?.map((item) => item.code?.toLowerCase()) ?? []
-  return authMethodCodes.some((code) => code === 'password' || code === 'password_login')
+  const authMethodCodes = selectedRealm.value?.authMethodList?.map((item) =>
+    item.code?.trim().toLowerCase().replace(/[-_]/g, ''),
+  ) ?? []
+  return authMethodCodes.some((code) => code === 'passwordlogin' || code === 'password')
 })
 
 const clearPasswordFields = () => {
   formData.password = ''
   formData.confirmPassword = ''
+}
+
+const closeCreatedResult = () => {
+  createdResult.value = null
+  visible.value = false
+  emit('success')
 }
 
 const loadRealms = async (force = false) => {
@@ -105,6 +115,8 @@ const open = (realms: RealmOption[] = [], row?: any) => {
   if (formRef.value) {
     formRef.value.resetFields()
   }
+  createdResult.value = null
+  submitError.value = ''
   
   if (row) {
     dialogMode.value = 'edit'
@@ -115,7 +127,7 @@ const open = (realms: RealmOption[] = [], row?: any) => {
     formData.remark = row.remark || ''
     formData.mobile = row.mobile
     formData.email = row.email || ''
-    formData.credentialType = 'none'
+    formData.credentialType = 'temporary'
   } else {
     dialogMode.value = 'create'
     editingId.value = undefined
@@ -142,11 +154,11 @@ watch(
       return
     }
     if (!supportsPasswordCredential.value) {
-      formData.credentialType = 'none'
+      formData.credentialType = 'temporary'
       clearPasswordFields()
       return
     }
-    if (formData.credentialType !== 'default' && formData.credentialType !== 'none') {
+    if (formData.credentialType !== 'default' && formData.credentialType !== 'temporary') {
       formData.credentialType = 'default'
     }
   },
@@ -154,39 +166,46 @@ watch(
 
 const submit = async () => {
   if (!formRef.value) return
-  await formRef.value.validate(async (valid: boolean) => {
-    if (valid) {
-      saving.value = true
-      try {
-        const payload = {
-          realmId: formData.realmId,
-          username: formData.username,
-          nickname: formData.nickname,
-          remark: formData.remark || undefined,
-          mobile: formData.mobile,
-          email: formData.email || undefined,
-          password: supportsPasswordCredential.value && formData.credentialType === 'default'
-            ? formData.password
-            : undefined,
-        }
-        
-        if (dialogMode.value === 'create') {
-          await accountApi.create(payload)
-          ElMessage.success('新建账号成功')
-        } else if (editingId.value) {
-          await accountApi.update(editingId.value, payload)
-          ElMessage.success('账号已更新')
-        }
-        
-        visible.value = false
-        emit('success')
-      } catch (error) {
-        ElMessage.error(error instanceof Error ? error.message : '账号保存失败')
-      } finally {
-        saving.value = false
-      }
+  submitError.value = ''
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) {
+    return
+  }
+
+  saving.value = true
+  try {
+    const payload = {
+      realmId: formData.realmId,
+      username: formData.username,
+      nickname: formData.nickname,
+      remark: formData.remark || undefined,
+      mobile: formData.mobile,
+      email: formData.email || undefined,
+      useTemporaryPassword: supportsPasswordCredential.value && formData.credentialType === 'temporary',
+      password: supportsPasswordCredential.value && formData.credentialType === 'default'
+        ? formData.password
+        : undefined,
     }
-  })
+
+    if (dialogMode.value === 'create') {
+      const result = await accountApi.create(payload)
+      createdResult.value = result
+      ElMessage.success('新建账号成功')
+      if (result.temporaryPassword) {
+        return
+      }
+    } else if (editingId.value) {
+      await accountApi.update(editingId.value, payload)
+      ElMessage.success('账号已更新')
+    }
+
+    visible.value = false
+    emit('success')
+  } catch (error) {
+    submitError.value = error instanceof Error ? error.message : '账号保存失败'
+  } finally {
+    saving.value = false
+  }
 }
 
 defineExpose({ open })
@@ -194,7 +213,28 @@ defineExpose({ open })
 
 <template>
   <el-dialog v-model="visible" :title="dialogMode === 'create' ? '新建账号' : '编辑账号'" :width="dialogMode === 'create' ? '720px' : '480px'" destroy-on-close class="create-account-dialog">
-    <el-form ref="formRef" :model="formData" :rules="rules" label-position="top">
+    <template v-if="createdResult?.temporaryPassword">
+      <div class="temporary-password-result">
+        <div class="result-icon">
+          <el-icon><CircleCheck /></el-icon>
+        </div>
+        <h3>账号已创建</h3>
+        <p>当前账号使用临时密码登录，请尽快复制并安全传达给用户。首次登录后将强制修改密码。</p>
+        <div class="temporary-password-card">
+          <span class="password-label">临时密码</span>
+          <code>{{ createdResult.temporaryPassword }}</code>
+        </div>
+      </div>
+    </template>
+    <el-form v-else ref="formRef" :model="formData" :rules="rules" label-position="top">
+      <el-alert
+        v-if="submitError"
+        :title="submitError"
+        type="error"
+        show-icon
+        :closable="false"
+        class="submit-error-alert"
+      />
       <div class="form-grid" :class="{ 'is-edit': dialogMode === 'edit' }">
         <!-- 左栏：基础信息 -->
         <div class="form-column">
@@ -251,7 +291,7 @@ defineExpose({ open })
             <el-form-item label="登录凭证">
               <el-radio-group v-model="formData.credentialType" class="credential-radio">
                 <el-radio value="default">默认密码</el-radio>
-                <el-radio value="none">不设置密码 (首次登录时设置)</el-radio>
+                <el-radio value="temporary">使用临时密码</el-radio>
               </el-radio-group>
             </el-form-item>
             
@@ -281,14 +321,28 @@ defineExpose({ open })
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="visible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="submit">确定</el-button>
+        <template v-if="createdResult?.temporaryPassword">
+          <el-button
+            type="primary"
+            @click="closeCreatedResult"
+          >
+            完成
+          </el-button>
+        </template>
+        <template v-else>
+          <el-button @click="visible = false">取消</el-button>
+          <el-button type="primary" :loading="saving" @click="submit">确定</el-button>
+        </template>
       </div>
     </template>
   </el-dialog>
 </template>
 
 <style scoped>
+.submit-error-alert {
+  margin-bottom: 20px;
+}
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -341,6 +395,61 @@ defineExpose({ open })
   font-size: 13px;
   line-height: 1.6;
   border: 1px solid #e2e8f0;
+}
+
+.temporary-password-result {
+  padding: 24px 8px 8px;
+  text-align: center;
+}
+
+.result-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: #ecfdf5;
+  color: #16a34a;
+  font-size: 28px;
+}
+
+.temporary-password-result h3 {
+  margin: 0 0 8px;
+  color: #111827;
+  font-size: 22px;
+}
+
+.temporary-password-result p {
+  margin: 0 auto 20px;
+  max-width: 460px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.temporary-password-card {
+  margin: 0 auto;
+  max-width: 420px;
+  padding: 16px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.password-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.temporary-password-card code {
+  display: block;
+  color: #0f172a;
+  font-size: 20px;
+  font-weight: 700;
+  word-break: break-all;
 }
 
 .check-icon {

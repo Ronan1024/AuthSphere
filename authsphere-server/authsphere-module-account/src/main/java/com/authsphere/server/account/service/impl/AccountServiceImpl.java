@@ -3,6 +3,7 @@ package com.authsphere.server.account.service.impl;
 import com.authsphere.server.account.convert.AccountConvert;
 import com.authsphere.server.account.domain.AccountDomain;
 import com.authsphere.server.account.dto.AccountCreateRequest;
+import com.authsphere.server.account.dto.AccountCreateResponse;
 import com.authsphere.server.account.dto.AccountExternalIdentityResponse;
 import com.authsphere.server.account.dto.AccountInfoResponse;
 import com.authsphere.server.account.dto.AccountLoginLogPageRequest;
@@ -26,6 +27,7 @@ import com.authsphere.server.api.subject.SubjectMemberApi;
 import com.authsphere.server.common.enums.AuthMethodEnum;
 import com.authsphere.server.common.enums.CredentialType;
 import com.authsphere.server.common.enums.StatusEnum;
+import com.authsphere.server.common.utils.Assert;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.authsphere.server.common.exception.BizException;
@@ -33,11 +35,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -97,10 +98,8 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
     public AccountInfoResponse detail(Long id) {
         Account account = accountDomain.findById(id);
         AccountInfoResponse result = AccountConvert.INSTANCE.toAccountInfoResponse(account);
-
         RealmInfoResponse info = realmApi.info(account.getRealmId());
         result.setRealmName(info.getName());
-
         List<AccountSubjectCountResponse> accountSubjectCount = subjectMemberApi.getAccountSubjectCount(Collections.singletonList(account.getId()));
         if (!CollectionUtils.isEmpty(accountSubjectCount)) {
             Map<Long, Integer> collect = accountSubjectCount.stream().collect(Collectors.toMap(AccountSubjectCountResponse::getAccountId, AccountSubjectCountResponse::getCount));
@@ -113,31 +112,47 @@ public class AccountServiceImpl extends ServiceImpl<AccountMapper, Account> impl
      * 新增账号
      */
     @Override
-    public Boolean create(AccountCreateRequest request) {
+    public AccountCreateResponse create(AccountCreateRequest request) {
         RealmInfoResponse info = realmApi.info(request.getRealmId());
         accountDomain.checkUsernameExists(null, request);
-
         Account account = AccountConvert.INSTANCE.toAccount(request);
-
-
         if (account.getStatus() == null) {
             account.setStatus(AccountStatus.ENABLED.getCode());
         }
         AccountCredential accountCredential = null;
-        if (info.getAuthMethod().contains(AuthMethodEnum.PASSWORD_LOGIN.getCode()) && StringUtils.hasText(request.getPassword())) {
-            PasswordHash hash = passwordHashService.hash(request.getPassword());
-            account.setPassword(hash.hash());
-            accountCredential = new AccountCredential();
-            accountCredential.setRealmId(info.getId());
-            accountCredential.setCredentialType(CredentialType.PASSWORD.getCode());
-            accountCredential.setCredentialValue(hash.hash());
-            accountCredential.setCredentialSecret(hash.salt());
-            accountCredential.setPasswordSalt(hash.salt());
-            accountCredential.setPasswordAlgo(hash.algorithm());
-            accountCredential.setStatus(StatusEnum.NORMAL.getCode());
+        String temporaryPassword = null;
+        boolean useTemporaryPassword = Boolean.TRUE.equals(request.getUseTemporaryPassword());
+        if (info.getAuthMethod().contains(AuthMethodEnum.PASSWORD_LOGIN.getCode())) {
+            if (StringUtils.hasText(request.getPassword()) || useTemporaryPassword) {
+                String rawPassword = useTemporaryPassword
+                        ? passwordHashService.generateTemplatePassword(12)
+                        : request.getPassword();
+                PasswordHash hash = passwordHashService.hash(rawPassword);
+                account.setPassword(hash.hash());
+                accountCredential = new AccountCredential();
+                accountCredential.setRealmId(info.getId());
+                accountCredential.setCredentialType(CredentialType.PASSWORD.getCode());
+                accountCredential.setCredentialValue(hash.hash());
+                accountCredential.setCredentialSecret(hash.salt());
+                accountCredential.setPasswordSalt(hash.salt());
+                accountCredential.setPasswordAlgo(hash.algorithm());
+                accountCredential.setPepperKeyId(passwordHashService.getProperties().getPepper());
+                accountCredential.setStatus(StatusEnum.NORMAL.getCode());
+                accountCredential.setForceChange(Boolean.FALSE);
+                if (useTemporaryPassword) {
+                    // 临时密码需进行登录强制修改 临时密码默认有效期 1 小时
+                    accountCredential.setForceChange(Boolean.TRUE);
+                    accountCredential.setExpireAt(new Date(System.currentTimeMillis() + 60 * 60 * 1000));
+                    temporaryPassword = rawPassword;
+                }
+            } else {
+                Assert.isFalse(StringUtils.hasText(request.getPassword()), BizException.supplier("密码不能为空"));
+            }
         }
-
-        return accountDomain.saveAccount(account, accountCredential);
+        accountDomain.saveAccount(account, accountCredential);
+        AccountCreateResponse response = new AccountCreateResponse();
+        response.setTemporaryPassword(temporaryPassword);
+        return response;
     }
 
     /**

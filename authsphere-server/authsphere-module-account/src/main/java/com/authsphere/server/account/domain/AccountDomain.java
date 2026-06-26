@@ -34,13 +34,22 @@ public class AccountDomain {
      * 检查当前 username 是否存在
      */
     public void checkUsernameExists(Long currentId, AccountCreateRequest request) {
-        List<Account> accounts = accountMapper.selectList(new LambdaQueryWrapper<Account>()
+        Account account = accountMapper.selectOne(new LambdaQueryWrapper<Account>()
                 .eq(Account::getRealmId, request.getRealmId())
                 .eq(Account::getUsername, request.getUsername())
+                .or().eq(Account::getEmail, request.getEmail())
+                .or().eq(Account::getMobile, request.getMobile())
                 .ne(!ObjectUtils.isEmpty(currentId), Account::getId, currentId)
         );
-        if (!CollectionUtils.isEmpty(accounts)) {
+        if (!ObjectUtils.isEmpty(account) && account.getUsername().equals(request.getUsername())) {
             throw new BizException(AccountErrorCode.ACCOUNT_USERNAME_EXISTS);
+        }
+
+        if (!ObjectUtils.isEmpty(account) && account.getEmail().equals(request.getEmail())) {
+            throw new BizException(AccountErrorCode.ACCOUNT_EMAIL_EXISTS);
+        }
+        if (!ObjectUtils.isEmpty(account) && account.getMobile().equals(request.getMobile())) {
+            throw new BizException(AccountErrorCode.ACCOUNT_MOBILE_EXISTS);
         }
     }
 
@@ -58,7 +67,6 @@ public class AccountDomain {
     @Transactional(rollbackFor = Exception.class)
     public Boolean saveAccount(Account account, AccountCredential accountCredential) {
         accountMapper.insert(account);
-
         if (!ObjectUtils.isEmpty(accountCredential)) {
             accountCredential.setAccountId(account.getId());
             accountCredentialMapper.insert(accountCredential);

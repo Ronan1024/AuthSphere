@@ -1,18 +1,9 @@
 package com.authsphere.server.account.service;
 
-import com.authsphere.server.account.dto.AccountCreateRequest;
-import com.authsphere.server.account.dto.AccountExternalIdentityResponse;
-import com.authsphere.server.account.dto.AccountInfoResponse;
-import com.authsphere.server.account.dto.AccountLoginLogPageRequest;
-import com.authsphere.server.account.dto.AccountLoginLogResponse;
-import com.authsphere.server.account.dto.AccountPageRequest;
-import com.authsphere.server.account.dto.AccountPageResponse;
-import com.authsphere.server.account.dto.AccountPasswordResetRequest;
-import com.authsphere.server.account.dto.AccountSubjectResponse;
+import com.authsphere.server.account.dto.*;
 import com.authsphere.server.account.model.Account;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
 * @author longjiangran
@@ -34,7 +25,7 @@ public interface AccountService extends IService<Account> {
     /**
      * 新增账号
      */
-    Boolean create(AccountCreateRequest request);
+    AccountCreateResponse create(AccountCreateRequest request);
 
     /**
      * 修改账号
