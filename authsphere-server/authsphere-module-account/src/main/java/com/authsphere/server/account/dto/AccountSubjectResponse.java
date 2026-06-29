@@ -30,6 +30,8 @@ public class AccountSubjectResponse {
 
     private String memberTypeName;
 
+    private Integer isDefault;
+
     private Integer memberStatus;
 
     private Integer subjectStatus;

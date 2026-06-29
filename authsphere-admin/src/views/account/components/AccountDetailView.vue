@@ -1,124 +1,176 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { ArrowDown, ArrowLeft } from '@element-plus/icons-vue'
+import { ref, watch } from 'vue'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { accountApi, type AccountRecord } from '@/api/account'
-import AccountSecurityTab from './AccountSecurityTab.vue'
-import AccountThirdPartyTab from './AccountThirdPartyTab.vue'
-import AccountSubjectTab from './AccountSubjectTab.vue'
+import { accountApi, type AccountRecord, type AccountSubjectRecord } from '@/api/account'
+import { subjectApi, type SubjectRecord } from '@/api/subject'
+import {
+  MEMBER_STATUS_ENABLED,
+  MEMBER_TYPE_ADMIN,
+  MEMBER_TYPE_MEMBER,
+  MEMBER_TYPE_OWNER,
+  MEMBER_TYPE_STAFF,
+  subjectMemberApi,
+} from '@/api/subjectMember'
 import AccountClientRoleTab from './AccountClientRoleTab.vue'
 import AccountLoginLogTab from './AccountLoginLogTab.vue'
-import AccountActionLogTab from './AccountActionLogTab.vue'
-
-const associatedSubjects = ref([
-  {
-    id: '1',
-    subjectName: '租户A',
-    subjectCode: 'tenant_a',
-    subjectType: '租户',
-    realmName: '租户身份域',
-    memberType: '主体管理员',
-    isDefault: true,
-    status: '启用',
-    joinedTime: '2026-05-01'
-  },
-  {
-    id: '2',
-    subjectName: '支付服务商A',
-    subjectCode: 'provider_a',
-    subjectType: '服务商',
-    realmName: '服务商身份域',
-    memberType: '成员',
-    isDefault: false,
-    status: '启用',
-    joinedTime: '2026-06-02'
-  }
-])
-
-const handleSetDefault = (row: any) => {
-  associatedSubjects.value.forEach(sub => {
-    sub.isDefault = sub.id === row.id
-  })
-  ElMessage.success('已设为默认主体')
-}
-
-const handleRemoveSubject = (row: any) => {
-  ElMessageBox.confirm(`确定要移除与主体 ${row.subjectName} 的关联吗？`, '提示', {
-    type: 'warning',
-    confirmButtonText: '确定',
-    cancelButtonText: '取消'
-  }).then(() => {
-    associatedSubjects.value = associatedSubjects.value.filter(sub => sub.id !== row.id)
-    ElMessage.success('已移除主体关联')
-  }).catch(() => {})
-}
-
-const joinDialogVisible = ref(false)
-const joinForm = ref({
-  subjectId: '',
-  memberType: 'admin', // 'admin' | 'member'
-  isDefault: 'no', // 'yes' | 'no'
-  remark: ''
-})
-
-const subjectOptions = [
-  { id: '1', labelName: '租户A tenant_a', subjectName: '租户A', subjectCode: 'tenant_a', subjectType: '租户', realmName: '租户身份域' },
-  { id: '2', labelName: '支付服务商A provider_a', subjectName: '支付服务商A', subjectCode: 'provider_a', subjectType: '服务商', realmName: '服务商身份域' },
-  { id: '3', labelName: '电商分拨中心B distribution_b', subjectName: '电商分拨中心B', subjectCode: 'distribution_b', subjectType: '分部', realmName: '租户身份域' }
-]
-
-const handleJoinSubjectClick = () => {
-  joinForm.value = {
-    subjectId: '1',
-    memberType: 'admin',
-    isDefault: 'no',
-    remark: '租户A后台管理员。'
-  }
-  joinDialogVisible.value = true
-}
-
-const handleSaveJoinSubject = () => {
-  const selectedSub = subjectOptions.find(sub => sub.id === joinForm.value.subjectId)
-  if (!selectedSub) {
-    ElMessage.error('请选择主体')
-    return
-  }
-
-  if (associatedSubjects.value.some(sub => sub.subjectCode === selectedSub.subjectCode)) {
-    ElMessage.warning('该账号已加入此主体')
-    joinDialogVisible.value = false
-    return
-  }
-
-  const isDefaultBool = joinForm.value.isDefault === 'yes'
-
-  if (isDefaultBool) {
-    associatedSubjects.value.forEach(sub => {
-      sub.isDefault = false
-    })
-  }
-
-  associatedSubjects.value.push({
-    id: String(associatedSubjects.value.length + 1),
-    subjectName: selectedSub.subjectName,
-    subjectCode: selectedSub.subjectCode,
-    subjectType: selectedSub.subjectType,
-    realmName: selectedSub.realmName,
-    memberType: joinForm.value.memberType === 'admin' ? '主体管理员' : '成员',
-    isDefault: isDefaultBool,
-    status: '启用',
-    joinedTime: new Date().toISOString().substring(0, 10)
-  })
-
-  ElMessage.success('成功加入主体')
-  joinDialogVisible.value = false
-}
 
 const props = defineProps<{
   account: AccountRecord
 }>()
 
 const emit = defineEmits(['back', 'refresh', 'command'])
+
+const associatedSubjects = ref<AccountSubjectRecord[]>([])
+const subjectOptions = ref<SubjectRecord[]>([])
+const subjectLoading = ref(false)
+const subjectOptionLoading = ref(false)
+const joinSaving = ref(false)
+
+const joinDialogVisible = ref(false)
+const joinForm = ref({
+  subjectId: '',
+  memberType: MEMBER_TYPE_ADMIN,
+  isDefault: false,
+  remark: ''
+})
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  return error instanceof Error && error.message ? error.message : fallback
+}
+
+const isDialogCancel = (error: unknown) => error === 'cancel' || error === 'close'
+
+const isDefaultSubject = (row: AccountSubjectRecord) => Number(row.isDefault) === 1
+
+const getMemberTypeName = (row: AccountSubjectRecord) => {
+  if (row.memberTypeName) return row.memberTypeName
+  if (row.memberType === MEMBER_TYPE_OWNER) return 'OWNER'
+  if (row.memberType === MEMBER_TYPE_ADMIN) return 'ADMIN'
+  if (row.memberType === MEMBER_TYPE_MEMBER) return 'MEMBER'
+  if (row.memberType === MEMBER_TYPE_STAFF) return 'STAFF'
+  return '-'
+}
+
+const loadAssociatedSubjects = async () => {
+  if (!props.account?.id) {
+    associatedSubjects.value = []
+    return
+  }
+  subjectLoading.value = true
+  try {
+    associatedSubjects.value = await accountApi.subjects(props.account.id)
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '关联主体加载失败'))
+  } finally {
+    subjectLoading.value = false
+  }
+}
+
+const loadSubjectOptions = async () => {
+  if (!props.account?.realmId) {
+    subjectOptions.value = []
+    return
+  }
+  subjectOptionLoading.value = true
+  try {
+    const joinedSubjectIds = new Set(associatedSubjects.value.map(item => String(item.subjectId)))
+    const result = await subjectApi.page({
+      page: 1,
+      size: 100,
+      realmId: props.account.realmId,
+      status: 1,
+    })
+    subjectOptions.value = (result.records ?? []).filter(item => !joinedSubjectIds.has(String(item.id)))
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '主体选项加载失败'))
+  } finally {
+    subjectOptionLoading.value = false
+  }
+}
+
+const handleSetDefault = async (row: AccountSubjectRecord) => {
+  if (isDefaultSubject(row)) return
+  try {
+    await subjectMemberApi.setDefault(row.memberId)
+    await loadAssociatedSubjects()
+    emit('refresh')
+    ElMessage.success('已设为默认主体')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '设置默认主体失败'))
+  }
+}
+
+const handleRemoveSubject = async (row: AccountSubjectRecord) => {
+  try {
+    await ElMessageBox.confirm(`确定要移除与主体 ${row.subjectName || '-'} 的关联吗？`, '提示', {
+      type: 'warning',
+      confirmButtonText: '确定',
+      cancelButtonText: '取消'
+    })
+    await subjectMemberApi.remove(row.memberId)
+    await loadAssociatedSubjects()
+    emit('refresh')
+    ElMessage.success('已移除主体关联')
+  } catch (error) {
+    if (!isDialogCancel(error)) {
+      ElMessage.error(getErrorMessage(error, '移除主体关联失败'))
+    }
+  }
+}
+
+const handleJoinSubjectClick = () => {
+  joinForm.value = {
+    subjectId: '',
+    memberType: MEMBER_TYPE_ADMIN,
+    isDefault: false,
+    remark: ''
+  }
+  joinDialogVisible.value = true
+  loadSubjectOptions()
+}
+
+const handleSaveJoinSubject = async () => {
+  if (!props.account?.id) return
+  if (!joinForm.value.subjectId) {
+    ElMessage.warning('请选择主体')
+    return
+  }
+
+  if (associatedSubjects.value.some(sub => String(sub.subjectId) === String(joinForm.value.subjectId))) {
+    ElMessage.warning('该账号已加入此主体')
+    return
+  }
+
+  joinSaving.value = true
+  try {
+    await subjectMemberApi.addExisting(joinForm.value.subjectId, {
+      accountId: props.account.id,
+      memberType: joinForm.value.memberType,
+      displayName: props.account.nickname || props.account.username,
+      remark: joinForm.value.remark,
+    })
+
+    await loadAssociatedSubjects()
+    if (joinForm.value.isDefault) {
+      const joined = associatedSubjects.value.find(sub => String(sub.subjectId) === String(joinForm.value.subjectId))
+      if (joined?.memberId) {
+        await subjectMemberApi.setDefault(joined.memberId)
+        await loadAssociatedSubjects()
+      }
+    }
+
+    ElMessage.success('成功加入主体')
+    joinDialogVisible.value = false
+    emit('refresh')
+  } catch (error) {
+    ElMessage.error(getErrorMessage(error, '加入主体失败'))
+  } finally {
+    joinSaving.value = false
+  }
+}
+
+watch(() => props.account?.id, loadAssociatedSubjects, { immediate: true })
 
 const activeTab = ref('basic')
 const ACCOUNT_STATUS_LOCKED = 2
@@ -366,59 +418,66 @@ const handleCommand = (command: string, row: AccountRecord) => {
             </div>
           </div>
 
-          <!-- 账号详情 / 关联主体 Card -->
+          <!-- 关联主体 Card -->
           <div class="subject-association-card mt-6">
             <div class="card-header-flex">
               <div class="header-left-group">
-                <span class="card-title">账号详情 / 关联主体</span>
+                <span class="card-title">关联主体</span>
                 <span class="card-subtitle">账号加入主体后，才可以代表该主体进入业务系统</span>
               </div>
               <el-button type="primary" @click="handleJoinSubjectClick">加入主体</el-button>
             </div>
 
-            <el-table :data="associatedSubjects" style="width: 100%; margin-top: 16px;">
+            <el-table v-loading="subjectLoading" :data="associatedSubjects" style="width: 100%; margin-top: 16px;">
               <el-table-column label="主体" min-width="150">
                 <template #default="{ row }">
                   <div class="subject-name-cell">
-                    <strong>{{ row.subjectName }}</strong>
-                    <span class="code-inline-badge">{{ row.subjectCode }}</span>
+                    <strong>{{ row.subjectName || '-' }}</strong>
+                    <span v-if="row.subjectCode" class="code-inline-badge">{{ row.subjectCode }}</span>
                   </div>
                 </template>
               </el-table-column>
               
               <el-table-column label="主体类型" width="100">
                 <template #default="{ row }">
-                  <el-tag :type="row.subjectType === '租户' ? 'primary' : 'info'" size="default">
-                    {{ row.subjectType }}
-                  </el-tag>
+                  <el-tag type="info" size="default">{{ row.subjectTypeName || '-' }}</el-tag>
                 </template>
               </el-table-column>
               
-              <el-table-column prop="realmName" label="身份域" min-width="120" />
-              <el-table-column prop="memberType" label="成员类型" width="120" />
+              <el-table-column label="身份域" min-width="120">
+                <template #default>{{ account?.realmName || '-' }}</template>
+              </el-table-column>
+              <el-table-column label="成员类型" width="120">
+                <template #default="{ row }">{{ getMemberTypeName(row) }}</template>
+              </el-table-column>
               
               <el-table-column label="是否默认" width="100">
                 <template #default="{ row }">
-                  <el-tag type="success" v-if="row.isDefault" size="default">默认</el-tag>
+                  <el-tag type="success" v-if="isDefaultSubject(row)" size="default">默认</el-tag>
                   <span v-else>-</span>
                 </template>
               </el-table-column>
               
-              <el-table-column label="状态" width="100">
+              <el-table-column label="成员状态" width="100">
                 <template #default="{ row }">
-                  <span class="status-pill green" v-if="row.status === '启用'">启用</span>
+                  <span class="status-pill green" v-if="row.memberStatus === MEMBER_STATUS_ENABLED">启用</span>
                   <span class="status-pill red" v-else>禁用</span>
                 </template>
               </el-table-column>
               
-              <el-table-column prop="joinedTime" label="加入时间" width="140" />
+              <el-table-column prop="joinedAt" label="加入时间" width="170" />
               
-              <el-table-column label="操作" width="220">
+              <el-table-column label="操作" width="180">
                 <template #default="{ row }">
                   <div class="action-buttons-flex">
-                    <span class="action-btn-link" v-if="!row.isDefault" @click="handleSetDefault(row)">设为默认</span>
-                    <span class="action-btn-link disabled-action" v-else>默认主体</span>
-                    <span class="action-btn-link">成员角色</span>
+                    <span
+                      class="action-btn-link"
+                      v-if="!isDefaultSubject(row) && row.memberStatus === MEMBER_STATUS_ENABLED"
+                      @click="handleSetDefault(row)"
+                    >
+                      设为默认
+                    </span>
+                    <span class="action-btn-link disabled-action" v-else>{{ isDefaultSubject(row) ? '默认主体' : '不可设默认' }}</span>
                     <span class="action-btn-link danger" @click="handleRemoveSubject(row)">移除</span>
                   </div>
                 </template>
@@ -470,24 +529,30 @@ const handleCommand = (command: string, row: AccountRecord) => {
         <el-form :model="joinForm" label-position="top">
           <!-- 选择主体 -->
           <el-form-item label="选择主体 *" class="form-item-bold-label">
-            <el-select v-model="joinForm.subjectId" placeholder="请选择主体" style="width: 100%">
+            <el-select
+              v-model="joinForm.subjectId"
+              placeholder="请选择主体"
+              filterable
+              :loading="subjectOptionLoading"
+              style="width: 100%"
+            >
               <el-option
                 v-for="item in subjectOptions"
                 :key="item.id"
-                :label="item.labelName"
+                :label="`${item.name} ${item.code}`"
                 :value="item.id"
               />
             </el-select>
-            <div class="field-sub-tip">只展示与账号身份域匹配或允许跨域加入的主体。</div>
+            <div class="field-sub-tip">只展示账号所属身份域下尚未加入的主体。</div>
           </el-form-item>
 
           <!-- 成员类型 -->
           <el-form-item label="成员类型 *" class="form-item-bold-label">
             <div class="member-type-cards">
-              <div 
+              <div
                 class="type-card" 
-                :class="{ active: joinForm.memberType === 'admin' }"
-                @click="joinForm.memberType = 'admin'"
+                :class="{ active: joinForm.memberType === MEMBER_TYPE_ADMIN }"
+                @click="joinForm.memberType = MEMBER_TYPE_ADMIN"
               >
                 <div class="card-radio-header">
                   <span class="card-title">主体管理员</span>
@@ -495,10 +560,10 @@ const handleCommand = (command: string, row: AccountRecord) => {
                 <div class="card-desc">可维护主体成员、应用开通和授权入口</div>
               </div>
 
-              <div 
+              <div
                 class="type-card" 
-                :class="{ active: joinForm.memberType === 'member' }"
-                @click="joinForm.memberType = 'member'"
+                :class="{ active: joinForm.memberType === MEMBER_TYPE_MEMBER }"
+                @click="joinForm.memberType = MEMBER_TYPE_MEMBER"
               >
                 <div class="card-radio-header">
                   <span class="card-title">普通成员</span>
@@ -511,8 +576,8 @@ const handleCommand = (command: string, row: AccountRecord) => {
           <!-- 是否设为默认主体 -->
           <el-form-item label="是否设为默认主体" class="form-item-bold-label">
             <el-select v-model="joinForm.isDefault" style="width: 100%">
-              <el-option label="是" value="yes" />
-              <el-option label="否" value="no" />
+              <el-option label="是" :value="true" />
+              <el-option label="否" :value="false" />
             </el-select>
           </el-form-item>
 
@@ -536,7 +601,7 @@ const handleCommand = (command: string, row: AccountRecord) => {
       <template #footer>
         <div class="dialog-footer">
           <el-button @click="joinDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSaveJoinSubject">保存</el-button>
+          <el-button type="primary" :loading="joinSaving" :disabled="!joinForm.subjectId" @click="handleSaveJoinSubject">保存</el-button>
         </div>
       </template>
     </el-dialog>

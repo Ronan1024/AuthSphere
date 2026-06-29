@@ -133,6 +133,7 @@
                 when 4 then 'STAFF'
                 else 'UNKNOWN'
             end as memberTypeName,
+            sm.is_default as isDefault,
             sm.status as memberStatus,
             s.status as subjectStatus,
             sm.joined_at as joinedAt
@@ -141,6 +142,7 @@
         left join subject_type st on st.id = s.subject_type_id
         left join subject root_subject on root_subject.id = s.root_subject_id
         where sm.account_id = #{accountId}
+          and sm.status != 3
         order by sm.joined_at desc, sm.create_time desc
     </select>
 

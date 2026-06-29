@@ -85,6 +85,9 @@ export const subjectMemberApi = {
   disable(id: string) {
     return http.put<unknown, boolean>(`/admin/subject-member/${id}/disable`)
   },
+  setDefault(id: string) {
+    return http.put<unknown, boolean>(`/admin/subject-member/${id}/set-default`)
+  },
   remove(id: string) {
     return http.delete<unknown, boolean>(`/admin/subject-member/${id}`)
   },
