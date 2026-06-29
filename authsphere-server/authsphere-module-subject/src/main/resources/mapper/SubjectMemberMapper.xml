@@ -11,6 +11,7 @@
         <result property="memberType" column="member_type" jdbcType="TINYINT"/>
         <result property="displayName" column="display_name" jdbcType="VARCHAR"/>
         <result property="remark" column="remark" jdbcType="VARCHAR"/>
+        <result property="isDefault" column="is_default" jdbcType="TINYINT"/>
         <result property="status" column="status" jdbcType="TINYINT"/>
         <result property="joinedAt" column="joined_at" jdbcType="TIMESTAMP"/>
         <result property="joinedByAccountId" column="joined_by_account_id" jdbcType="BIGINT"/>

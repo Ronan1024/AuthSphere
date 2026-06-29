@@ -64,6 +64,7 @@ export interface AccountSubjectRecord {
   rootSubjectName?: string
   memberType: number
   memberTypeName?: string
+  isDefault?: number
   memberStatus: number
   subjectStatus: number
   joinedAt?: string
@@ -247,38 +248,7 @@ export const accountApi = {
   },
   
   subjects(id: string) {
-    return new Promise<AccountSubjectRecord[]>((resolve) => {
-      setTimeout(() => {
-        resolve([
-          {
-            memberId: 'm101',
-            subjectId: 's201',
-            subjectCode: 'saas_platform',
-            subjectName: 'SAAS运营方',
-            subjectTypeName: 'SAAS平台',
-            rootSubjectName: '平台主体',
-            memberType: 1,
-            memberTypeName: 'ADMIN',
-            memberStatus: 1,
-            subjectStatus: 1,
-            joinedAt: '2026-05-01'
-          },
-          {
-            memberId: 'm102',
-            subjectId: 's202',
-            subjectCode: 'tenant_a_ops',
-            subjectName: '租户A运营部',
-            subjectTypeName: '租户分部',
-            rootSubjectName: '租户A',
-            memberType: 2,
-            memberTypeName: 'MEMBER',
-            memberStatus: 1,
-            subjectStatus: 1,
-            joinedAt: '2026-06-02'
-          }
-        ])
-      }, 150)
-    })
+    return http.get<unknown, AccountSubjectRecord[]>(`/admin/account/${id}/subjects`)
   },
   
   externalIdentities(id: string) {
